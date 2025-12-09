@@ -1,0 +1,13 @@
+# ============================================================
+# DEPENDENCIAS - Publicador Automático Facebook
+# ============================================================
+# Instalar con: pip install -r requirements.txt
+
+# Automatización de navegadores
+selenium==4.15.2
+
+# Gestión automática de ChromeDriver
+webdriver-manager==4.0.1
+
+# Manejo del portapapeles (para pegar texto largo)
+pyperclip==1.8.2

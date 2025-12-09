@@ -1,0 +1,216 @@
+# ============================================================
+# .gitignore - Publicador Automático Facebook
+# ============================================================
+
+# ============================================================
+# ARCHIVOS DE DATOS SENSIBLES
+# ============================================================
+
+# Ignorar registro de publicaciones (contiene historial)
+registro_publicaciones.json
+
+# Ignorar carpeta de perfiles de navegador (contiene sesiones)
+perfiles/
+
+# ============================================================
+# ARCHIVOS DE PYTHON
+# ============================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# ============================================================
+# ARCHIVOS TEMPORALES Y DE DESARROLLO
+# ============================================================
+
+# Archivos temporales de desarrollo
+*_BACKUP.py
+*_OLD.py
+*_TEST.py
+*_TEMP.py
+
+# Archivos de respaldo
+*.bak
+*.backup
+*.tmp
+*~
+
+# ============================================================
+# ARCHIVOS DEL SISTEMA OPERATIVO
+# ============================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================
+# IDEs Y EDITORES
+# ============================================================
+
+# Visual Studio Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ============================================================
+# ARCHIVOS DE CONFIGURACIÓN LOCAL
+# ============================================================
+
+# Configuraciones locales (no commitear si tienes versiones personalizadas)
+# config_local.txt
+# secrets.txt
+# credentials.json
+.env
+.env.local
+
+# ============================================================
+# MANTENER MÓDULOS EN GIT
+# ============================================================
+
+# Mantener archivos __init__.py
+!compartido/__init__.py
+!publicadores/__init__.py
+
+# ============================================================
+# OTROS
+# ============================================================
+
+# Logs de Chrome/Firefox/Selenium
+chromedriver.log
+geckodriver.log
+selenium-debug.log
+
+# Node modules (por si se agregan herramientas JS)
+node_modules/
+
+# Archivos de base de datos (por si se agregan en el futuro)
+*.db
+*.sqlite
+*.sqlite3

@@ -1,0 +1,110 @@
+# ============================================================
+# CONFIGURACIÓN GLOBAL - PUBLICADOR AUTOMÁTICO FACEBOOK
+# ============================================================
+# Este archivo controla todo el comportamiento del sistema
+# Edita los valores según tus necesidades
+
+[GENERAL]
+# Nombre del proyecto
+nombre_proyecto = Publicador Automático Facebook
+
+# Carpeta donde están los mensajes a publicar
+carpeta_mensajes = mensajes
+
+# Navegador a usar: firefox o chrome
+navegador = firefox
+
+# Activar modo debug: si o no
+modo_debug = si
+
+[PUBLICACION]
+# Tiempo de espera entre intentos (segundos)
+tiempo_entre_intentos = 3
+
+# Máximo de intentos por publicación
+max_intentos_por_publicacion = 3
+
+# Espera después de publicar exitosamente (segundos)
+espera_despues_publicar = 5
+
+# Verificar que la publicación fue exitosa: si o no
+verificar_publicacion_exitosa = si
+
+# Tiempo de espera para que el modal se estabilice (segundos)
+espera_estabilizacion_modal = 3
+
+[LIMITES]
+# NOTA: Sistema con Tareas Programadas de Windows
+# Publicaciones automáticas: 4 veces al día (8:40, 11:00, 13:00, 16:00)
+# Publicaciones manuales: Sin límite (clic en acceso directo)
+
+# Verificar que no se haya publicado hace muy poco (segundos)
+# Evita publicaciones duplicadas si se ejecuta 2 veces por error
+tiempo_minimo_entre_publicaciones_segundos = 120
+
+# Permitir publicar mensajes duplicados: si o no
+# Recomendado: no (evita repetir los últimos mensajes)
+permitir_duplicados = no
+
+# Permitir saltarse la verificación de tiempo mínimo (para publicaciones manuales)
+# Si ejecutas manualmente, se saltará la verificación de 120 segundos
+permitir_forzar_publicacion_manual = si
+
+[MENSAJES]
+# Método de selección: aleatoria o secuencial
+# aleatoria: Elige al azar evitando repetir los últimos N
+# secuencial: Publica en orden (mensaje-001, mensaje-002, etc.)
+seleccion = aleatoria
+
+# Número de mensajes recientes a evitar (para no repetir)
+# Este es el "historial de memoria" del sistema
+# Si = 5, el sistema recuerda los últimos 5 mensajes publicados
+# y NO los volverá a elegir hasta que pasen 5 publicaciones
+# 
+# Ejemplo con historial_evitar_repetir = 5:
+#   Pub 1: mensaje-007  → Bloqueado por 5 turnos
+#   Pub 2: mensaje-012  → Bloqueado por 5 turnos  
+#   Pub 3: mensaje-003  → Bloqueado por 5 turnos
+#   Pub 4: mensaje-019  → Bloqueado por 5 turnos
+#   Pub 5: mensaje-015  → Bloqueado por 5 turnos
+#   Pub 6: mensaje-007 ✅ Ya está disponible de nuevo
+#
+# Con 21 mensajes totales y 5 bloqueados = 16 disponibles por turno
+historial_evitar_repetir = 5
+
+# Agregar fecha al mensaje: si o no
+formato_fecha = no
+
+# Agregar hashtags automáticamente: si o no
+agregar_hashtags = no
+
+# Hashtags a agregar al final (separados por comas)
+hashtags = #Fe,#Biblia,#Reflexión
+
+# Agregar firma al final del mensaje: si o no
+agregar_firma = no
+
+# Texto de la firma (se agrega al final del mensaje)
+texto_firma = 
+
+--- 
+Publicado automáticamente
+
+[DEBUG]
+# Modo debug: muestra más información en consola
+# basico: Solo mensajes importantes
+# detallado: Información paso a paso
+modo_debug = detallado
+
+[NAVEGADOR]
+# Usar perfil existente del navegador: si o no
+usar_perfil_existente = si
+
+# Carpeta de perfil personalizado (se usa si usar_perfil_existente = no)
+carpeta_perfil_custom = perfiles/facebook_publicador
+
+# Desactivar notificaciones del navegador: si o no
+desactivar_notificaciones = si
+
+# Maximizar ventana al iniciar: si o no
+maximizar_ventana = si
