@@ -85,10 +85,8 @@ hashtags = #Fe,#Biblia,#Reflexión
 agregar_firma = no
 
 # Texto de la firma (se agrega al final del mensaje)
-texto_firma = 
-
---- 
-Publicado automáticamente
+# Usa \n para saltos de línea
+texto_firma = --- \nPublicado automáticamente
 
 [DEBUG]
 # Modo debug: muestra más información en consola

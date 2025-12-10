@@ -10,7 +10,7 @@ echo           Mensajes Biblicos
 echo ============================================================
 echo.
 
-py automatizacion_mensajes_biblicos.py
+py publicar_facebook.py
 
 echo.
 echo ============================================================
