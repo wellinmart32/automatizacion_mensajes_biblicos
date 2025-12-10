@@ -55,8 +55,8 @@ def mostrar_estado_sistema(gestor, config):
         print(f"   Duración estimada: {pendientes / 2:.1f} días")
 
 
-def confirmar_extraccion(config, indice_actual):
-    """Pide confirmación al usuario antes de extraer"""
+def confirmar_extraccion(config, indice_actual, es_automatico=False):
+    """Pide confirmación al usuario antes de extraer (solo en modo manual)"""
     print("\n" + "="*70)
     print("🎯 EXTRACCIÓN A REALIZAR:")
     print("="*70)
@@ -69,6 +69,11 @@ def confirmar_extraccion(config, indice_actual):
     print(f"   🎯 Rango a extraer: [{indice_actual + 1} - {indice_actual + cantidad}]")
     print(f"   💾 Destino: cola-facebook/pendientes/")
     print("="*70 + "\n")
+    
+    # Si es automático, no pedir confirmación
+    if es_automatico:
+        print("🤖 Modo automático - iniciando inmediatamente...\n")
+        return True
     
     print("⏳ Iniciando en 5 segundos... (Presiona Ctrl+C para cancelar)\n")
     
@@ -87,15 +92,20 @@ def confirmar_extraccion(config, indice_actual):
 def main():
     """Función principal"""
     
-    # Mostrar banner
-    mostrar_banner()
+    # Detectar si se ejecuta en modo automático
+    es_automatico = len(sys.argv) > 1 and sys.argv[1] == '--auto'
+    
+    # Mostrar banner (solo en modo manual)
+    if not es_automatico:
+        mostrar_banner()
     
     # Cargar configuración
     try:
         config = leer_config_global()
     except Exception as e:
         print(f"❌ Error cargando configuración: {e}")
-        input("\nPresiona Enter para salir...")
+        if not es_automatico:
+            input("\nPresiona Enter para salir...")
         return
     
     # Verificar que las predicaciones estén activadas
@@ -106,7 +116,8 @@ def main():
         print("   2. O edita config_global.txt:")
         print("      [PREDICACIONES]")
         print("      activar_predicaciones = si\n")
-        input("Presiona Enter para salir...")
+        if not es_automatico:
+            input("Presiona Enter para salir...")
         return
     
     # Verificar estructura de carpetas
@@ -125,7 +136,7 @@ def main():
     indice_actual = predicaciones.get('indice_catalogo', 0)
     
     # Confirmar extracción
-    if not confirmar_extraccion(config, indice_actual):
+    if not confirmar_extraccion(config, indice_actual, es_automatico):
         return
     
     # Inicializar extractor
@@ -197,8 +208,9 @@ def main():
         traceback.print_exc()
     
     finally:
-        # Pausa final
-        input("\nPresiona Enter para salir...")
+        # Solo pausar si se ejecuta manualmente (no desde flujo automático)
+        if not es_automatico:
+            input("\nPresiona Enter para salir...")
 
 
 if __name__ == "__main__":

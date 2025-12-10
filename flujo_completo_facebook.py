@@ -9,15 +9,20 @@ from compartido.gestor_archivos import (
 from gestor_registro import GestorRegistro
 
 
-def ejecutar_script(script_name, descripcion):
+def ejecutar_script(script_name, descripcion, modo_auto=True):
     """Ejecuta un script de Python y maneja errores"""
     print(f"\n{'='*70}")
     print(f"🚀 {descripcion}")
     print(f"{'='*70}\n")
     
     try:
+        # Construir comando con parámetro --auto si es necesario
+        comando = [sys.executable, script_name]
+        if modo_auto:
+            comando.append('--auto')
+        
         resultado = subprocess.run(
-            [sys.executable, script_name],
+            comando,
             capture_output=False,
             text=True
         )

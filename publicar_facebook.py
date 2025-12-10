@@ -1,712 +1,443 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-import pyperclip
+import sys
 import time
-import os
 from datetime import datetime
+from compartido.gestor_archivos import (
+    leer_config_global,
+    verificar_y_crear_estructura,
+    obtener_mensaje_aleatorio_sin_repetir,
+    obtener_mensaje_secuencial,
+    contar_predicaciones_pendientes,
+    contar_predicaciones_publicadas,
+    obtener_siguiente_predicacion,
+    mover_predicacion_a_publicados
+)
+from publicadores.publicador_facebook import PublicadorFacebook
+from gestor_registro import GestorRegistro
 
 
-class PublicadorFacebook:
-    """Automatización de publicaciones en Facebook"""
+def mostrar_banner():
+    """Muestra el banner inicial"""
+    print("\n" + "="*70)
+    print(" " * 15 + "🚀 PUBLICADOR AUTOMÁTICO DE FACEBOOK")
+    print(" " * 20 + "Sistema de Mensajes Bíblicos")
+    print("="*70 + "\n")
+
+
+def mostrar_configuracion(config):
+    """Muestra la configuración actual"""
+    print("📁 Verificando estructura...")
+    verificar_y_crear_estructura()
+    print()
     
-    def __init__(self, config):
-        self.driver = None
-        self.wait = None
-        self.config = config
+    print("⚙️  CONFIGURACIÓN DEL SISTEMA:")
+    print(f"   📁 Carpeta mensajes: {config['carpeta_mensajes']}")
+    print(f"   🌐 Navegador: {config['navegador'].upper()}")
+    print(f"   🎲 Selección: {config['seleccion'].capitalize()}")
+    print(f"   💾 Memoria: Últimos {config['historial_evitar_repetir']} mensajes")
+    print(f"   🔄 Máx. intentos: {config['max_intentos_por_publicacion']}")
     
-    def iniciar_navegador(self):
-        """Inicia el navegador según configuración (Firefox o Chrome)"""
-        navegador = self.config['navegador']
-        
-        print(f"🌐 Iniciando {navegador.upper()}...")
-        
-        if navegador == 'firefox':
-            self._iniciar_firefox()
-        elif navegador == 'chrome':
-            self._iniciar_chrome()
-        else:
-            raise Exception(f"Navegador no soportado: {navegador}")
-        
-        self.wait = WebDriverWait(self.driver, 20)
-        
-        if self.config['maximizar_ventana']:
-            self.driver.maximize_window()
-        
-        print("✅ Navegador iniciado correctamente")
+    # Info de mensajes bíblicos
+    from compartido.gestor_archivos import obtener_estadisticas_mensajes
+    stats_mensajes = obtener_estadisticas_mensajes()
     
-    def _iniciar_firefox(self):
-        """Inicia Firefox con perfil configurado"""
-        opciones = FirefoxOptions()
-        
-        if self.config['desactivar_notificaciones']:
-            opciones.set_preference("dom.webnotifications.enabled", False)
-        
-        from compartido.gestor_archivos import obtener_ruta_perfil_navegador
-        ruta_perfil = obtener_ruta_perfil_navegador()
-        
-        if ruta_perfil:
-            opciones.add_argument("-profile")
-            opciones.add_argument(ruta_perfil)
-        
-        self.driver = webdriver.Firefox(options=opciones)
+    print(f"\n📊 MENSAJES BÍBLICOS:")
+    print(f"   Total: {stats_mensajes['total_mensajes']} archivos")
     
-    def _iniciar_chrome(self):
-        """Inicia Chrome con perfil configurado"""
-        opciones = ChromeOptions()
+    # Info de predicaciones
+    if config.get('activar_predicaciones', False):
+        pendientes = contar_predicaciones_pendientes()
+        publicadas = contar_predicaciones_publicadas()
         
-        if self.config['desactivar_notificaciones']:
-            opciones.add_argument("--disable-notifications")
-        
-        opciones.add_argument("--disable-blink-features=AutomationControlled")
-        opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
-        opciones.add_experimental_option('useAutomationExtension', False)
-        
-        if not self.config['usar_perfil_existente']:
-            ruta_perfil = os.path.abspath(self.config['carpeta_perfil_custom'])
-            opciones.add_argument(f"--user-data-dir={ruta_perfil}")
-        
-        servicio = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=servicio, options=opciones)
+        print(f"\n🎬 PREDICACIONES:")
+        print(f"   Pendientes: {pendientes}")
+        print(f"   Publicadas: {publicadas}")
+        print(f"   Alternancia: {'ACTIVADA ✅' if config.get('alternar_con_predicaciones') else 'DESACTIVADA'}")
+        print(f"   Tiempo espera preview: {config.get('tiempo_espera_previsualizacion', 12)}s")
+
+
+def decidir_tipo_publicacion(gestor, config):
+    """
+    Decide si publicar mensaje bíblico o predicación según alternancia 1:1
     
-    def verificar_sesion_facebook(self):
-        """Verifica si hay sesión activa en Facebook, espera si necesita login"""
-        print("🔐 Verificando sesión de Facebook...")
+    Returns:
+        str: 'biblico' o 'predicacion'
+    """
+    if not config.get('activar_predicaciones', False):
+        return 'biblico'
+    
+    if not config.get('alternar_con_predicaciones', False):
+        return 'biblico'
+    
+    # Verificar si hay predicaciones pendientes
+    pendientes = contar_predicaciones_pendientes()
+    if pendientes == 0:
+        print("⚠️  No hay predicaciones pendientes, publicando mensaje bíblico")
+        return 'biblico'
+    
+    # Verificar última publicación
+    historial = gestor.registro.get('historial_completo', [])
+    
+    if not historial:
+        # Primera publicación, empezar con mensaje bíblico
+        return 'biblico'
+    
+    # Obtener tipo de la última publicación
+    ultima = historial[-1]
+    ultimo_tipo = ultima.get('tipo', 'biblico')
+    
+    # Alternar: si último fue bíblico → predicación, si fue predicación → bíblico
+    if ultimo_tipo == 'biblico':
+        return 'predicacion'
+    else:
+        return 'biblico'
+
+
+def preparar_contenido_biblico(config, gestor):
+    """
+    Prepara el contenido de un mensaje bíblico
+    
+    Returns:
+        tuple: (contenido, nombre_archivo) o (None, None)
+    """
+    print("\n🎯 SELECCIÓN DE MENSAJE:")
+    print(f"   Método: {config['seleccion'].capitalize()} (evitando últimos publicados)")
+    
+    if config['seleccion'] == 'aleatoria':
+        contenido, nombre_archivo = obtener_mensaje_aleatorio_sin_repetir(gestor.registro)
+    else:
+        contenido, nombre_archivo = obtener_mensaje_secuencial(gestor.registro)
+    
+    if not contenido:
+        print("❌ No se pudo obtener mensaje bíblico")
+        return None, None
+    
+    return contenido, nombre_archivo
+
+
+def preparar_contenido_predicacion(config):
+    """
+    Prepara el contenido de una predicación
+    
+    Returns:
+        tuple: (contenido_completo, nombre_archivo, enlace_original) o (None, None, None)
+    """
+    print("\n🎯 SELECCIÓN DE PREDICACIÓN:")
+    
+    ruta_archivo, nombre_archivo = obtener_siguiente_predicacion()
+    
+    if not ruta_archivo:
+        print("❌ No hay predicaciones pendientes")
+        return None, None, None
+    
+    print(f"   Archivo: {nombre_archivo}")
+    
+    # Leer el contenido del archivo
+    try:
+        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+            contenido = f.read().strip()
+        
+        # El contenido puede ser un enlace directo o [IMAGEN]
+        if contenido.startswith('[IMAGEN]'):
+            print("⚠️  Predicación tipo imagen - No soportado aún")
+            return None, None, None
+        
+        # Es un enlace
+        enlace = contenido
+        
+        # Construir contenido completo con introducción y hashtags
+        texto_completo = ""
+        
+        # Agregar introducción
+        if config.get('agregar_introduccion_predica', True):
+            intro = config.get('texto_introduccion_predica', '🎬 Predicación recomendada:\n\n')
+            texto_completo += intro
+            # Asegurar salto de línea después de introducción
+            if not intro.endswith('\n\n'):
+                texto_completo += '\n\n'
+        
+        # Agregar enlace
+        texto_completo += enlace
+        
+        # Agregar hashtags
+        if config.get('agregar_hashtags_predicaciones', True):
+            hashtags = config.get('hashtags_predicaciones', '#Predicación,#Fe,#Cristiano')
+            texto_completo += f"\n\n{hashtags}"
+        
+        return texto_completo, nombre_archivo, enlace
+        
+    except Exception as e:
+        print(f"❌ Error leyendo predicación: {e}")
+        return None, None, None
+
+
+def publicar_contenido(publicador, contenido, tipo, config):
+    """
+    Publica el contenido usando el publicador correcto
+    
+    Args:
+        publicador: Instancia de PublicadorFacebook
+        contenido: Texto completo a publicar
+        tipo: 'biblico' o 'predicacion'
+        config: Configuración del sistema
+        
+    Returns:
+        bool: True si se publicó exitosamente
+    """
+    max_intentos = config['max_intentos_por_publicacion']
+    tiempo_entre_intentos = config['tiempo_entre_intentos']
+    
+    for intento in range(1, max_intentos + 1):
+        print(f"\n{'='*70}")
+        print(f"🎯 INTENTO {intento}/{max_intentos}")
+        print(f"{'='*70}\n")
         
         try:
-            self.driver.get("https://www.facebook.com")
-            time.sleep(3)
+            # PASO 1: Verificar sesión de Facebook
+            if not publicador.verificar_sesion_facebook():
+                print("❌ No se pudo verificar sesión de Facebook")
+                if intento < max_intentos:
+                    print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                    time.sleep(tiempo_entre_intentos)
+                    continue
+                return False
             
-            try:
-                login_elements = self.driver.find_elements(By.XPATH, 
-                    "//input[@name='email' or @name='pass']")
+            # PASO 2: Abrir compositor
+            if not publicador.abrir_compositor():
+                print("❌ No se pudo abrir el compositor")
+                if intento < max_intentos:
+                    print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                    time.sleep(tiempo_entre_intentos)
+                    continue
+                return False
+            
+            # PASO 3: Publicar según tipo
+            if tipo == 'predicacion':
+                # Detectar si es enlace
+                es_enlace = any(plat in contenido.lower() for plat in ['http', 'youtube', 'instagram', 'facebook', 'tiktok'])
                 
-                if len(login_elements) > 0:
-                    print("\n⚠️  NO HAS INICIADO SESIÓN EN FACEBOOK")
-                    print("=" * 60)
-                    print("Por favor INICIA SESIÓN en Facebook ahora.")
-                    print("Tienes 2 MINUTOS para iniciar sesión.")
-                    print("=" * 60 + "\n")
+                if es_enlace and config.get('usar_estrategia_optimizada_enlaces', True):
+                    # Separar introducción, enlace y hashtags
+                    lineas = contenido.split('\n')
+                    enlace = None
+                    intro_lineas = []
+                    hashtags_lineas = []
                     
-                    timeout = 120
-                    tiempo_transcurrido = 0
+                    encontro_enlace = False
+                    for linea in lineas:
+                        if any(plat in linea.lower() for plat in ['http', 'youtube', 'instagram', 'facebook', 'tiktok']):
+                            enlace = linea.strip()
+                            encontro_enlace = True
+                        elif not encontro_enlace:
+                            intro_lineas.append(linea)
+                        else:
+                            hashtags_lineas.append(linea)
                     
-                    while tiempo_transcurrido < timeout:
-                        time.sleep(5)
-                        tiempo_transcurrido += 5
-                        
-                        try:
-                            login_check = self.driver.find_elements(By.XPATH, 
-                                "//input[@name='email' or @name='pass']")
-                            
-                            if len(login_check) == 0:
-                                print("✅ Sesión iniciada correctamente")
-                                time.sleep(3)
-                                return True
-                            else:
-                                print(f"⏳ Esperando login... ({timeout - tiempo_transcurrido}s restantes)")
-                        except:
-                            print("✅ Sesión iniciada correctamente")
-                            time.sleep(3)
-                            return True
+                    intro = '\n'.join(intro_lineas).strip()
+                    hashtags = '\n'.join(hashtags_lineas).strip()
                     
-                    print("\n❌ Tiempo de espera agotado. No se detectó inicio de sesión.")
-                    return False
+                    # Usar método optimizado para enlaces
+                    if not publicador.publicar_enlace_con_preview_optimizado(enlace if enlace else contenido, intro, hashtags):
+                        print(f"⚠️  Intento {intento} falló")
+                        if intento < max_intentos:
+                            print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                            time.sleep(tiempo_entre_intentos)
+                            continue
+                        return False
                 else:
-                    print("✅ Ya tienes sesión activa en Facebook")
-                    return True
-                    
-            except:
-                print("✅ Ya tienes sesión activa en Facebook")
-                return True
-                
-        except Exception as e:
-            print(f"⚠️  Error verificando sesión: {e}")
-            print("Continuando de todos modos...")
-            return True
-    
-    def abrir_compositor(self):
-        """Abre el cuadro de publicación - SELECTOR EXACTO DEL HTML DE WELLINGTON"""
-        print("📝 Abriendo compositor de publicación...")
-        
-        # CRÍTICO: Verificar que estamos en Facebook
-        url_actual = self.driver.current_url
-        
-        if "facebook.com" not in url_actual:
-            print("   ⚠️  No estás en Facebook. Navegando...")
-            self.driver.get("https://www.facebook.com")
-            time.sleep(5)
-        elif "stories" in url_actual or "watch" in url_actual or "?sk=" in url_actual:
-            print("   Navegando a página principal...")
-            self.driver.get("https://www.facebook.com")
-            time.sleep(5)
-        
-        # ESTRATEGIA 1: Selector exacto del HTML
-        print("   Estrategia 1: Selector exacto del HTML...")
-        
-        try:
-            selector_exacto = "//div[@role='button']//span[@class='x1lliihq x6ikm8r x10wlt62 x1n2onr6' and contains(text(), 'pensando')]"
-            
-            botones = self.driver.find_elements(By.XPATH, selector_exacto)
-            
-            if botones:
-                for boton_span in botones:
-                    try:
-                        boton = boton_span.find_element(By.XPATH, "./ancestor::div[@role='button']")
-                        
-                        if boton.is_displayed():
-                            print(f"   ✅ Botón encontrado: {boton_span.text[:50]}")
-                            
-                            self.driver.execute_script(
-                                "arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", 
-                                boton
-                            )
-                            time.sleep(1.5)
-                            
-                            self.driver.execute_script("arguments[0].click();", boton)
-                            time.sleep(3)
-                            
-                            dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                            if dialogs and len(dialogs) > 0 and dialogs[0].is_displayed():
-                                print("   ✅ Modal confirmado - Estrategia 1")
-                                
-                                tiempo_espera = self.config.get('espera_estabilizacion_modal', 3)
-                                print(f"   ⏳ Esperando {tiempo_espera}s...")
-                                time.sleep(tiempo_espera)
-                                
-                                try:
-                                    WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((By.XPATH, "//div[@role='dialog']//div[@contenteditable='true']"))
-                                    )
-                                    print("   ✅ Área de texto lista")
-                                    return True
-                                except:
-                                    print("   ✅ Modal confirmado")
-                                    return True
-                    except:
-                        continue
-        except Exception as e:
-            print(f"   ⚠️  Error estrategia 1: {e}")
-        
-        # ESTRATEGIA 2: Buscar contenedor principal
-        print("   Estrategia 2: Contenedor 'Crear una publicación'...")
-        
-        try:
-            contenedor = self.driver.find_element(By.XPATH, 
-                "//div[@role='region' and @aria-label='Crear una publicación']")
-            
-            if contenedor:
-                try:
-                    boton = contenedor.find_element(By.XPATH, 
-                        ".//div[@role='button' and contains(., 'pensando')]")
-                    
-                    if boton.is_displayed():
-                        self.driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", 
-                            boton
-                        )
-                        time.sleep(1.5)
-                        self.driver.execute_script("arguments[0].click();", boton)
-                        time.sleep(3)
-                        
-                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                        if dialogs and dialogs[0].is_displayed():
-                            print("   ✅ Modal abierto - Estrategia 2")
-                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
-                            return True
-                except:
-                    pass
-        except:
-            pass
-        
-        # ESTRATEGIA 3: Buscar span directamente
-        print("   Estrategia 3: Buscando span directamente...")
-        
-        selectores_span = [
-            "//span[contains(text(), '¿Qué estás pensando, Wellington?')]",
-            "//span[contains(text(), 'pensando, Wellington')]",
-            "//span[contains(text(), '¿Qué estás pensando')]"
-        ]
-        
-        for selector in selectores_span:
-            try:
-                spans = self.driver.find_elements(By.XPATH, selector)
-                
-                for span in spans:
-                    try:
-                        if not span.is_displayed():
+                    # Texto normal
+                    if not publicador.ingresar_texto(contenido):
+                        print(f"⚠️  Intento {intento} falló al ingresar texto")
+                        if intento < max_intentos:
+                            print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                            time.sleep(tiempo_entre_intentos)
                             continue
-                        
-                        boton = span.find_element(By.XPATH, "./ancestor::div[@role='button']")
-                        
-                        self.driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", 
-                            boton
-                        )
-                        time.sleep(1)
-                        self.driver.execute_script("arguments[0].click();", boton)
-                        time.sleep(3)
-                        
-                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                        if dialogs and dialogs[0].is_displayed():
-                            print("   ✅ Modal abierto - Estrategia 3")
-                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
-                            return True
-                    except:
-                        continue
-            except:
-                continue
-        
-        # ESTRATEGIA 4: Buscar todos los botones y filtrar
-        print("   Estrategia 4: Buscando entre todos los botones...")
-        
-        try:
-            todos_botones = self.driver.find_elements(By.XPATH, "//div[@role='button']")
-            
-            for boton in todos_botones[:30]:
-                try:
-                    if not boton.is_displayed():
-                        continue
+                        return False
                     
-                    texto = boton.text.strip().lower()
-                    
-                    if 'pensando' in texto and len(texto) < 100:
-                        self.driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", 
-                            boton
-                        )
-                        time.sleep(1)
-                        self.driver.execute_script("arguments[0].click();", boton)
-                        time.sleep(3)
-                        
-                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                        if dialogs:
-                            print("   ✅ Modal abierto - Estrategia 4")
-                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
-                            return True
-                except:
-                    continue
-        except:
-            pass
-        
-        # ESTRATEGIA 5: Scroll al inicio y buscar
-        print("   Estrategia 5: Scroll al inicio...")
-        
-        try:
-            self.driver.execute_script("window.scrollTo(0, 0);")
-            time.sleep(2)
-            
-            spans = self.driver.find_elements(By.XPATH, 
-                "//span[contains(text(), 'pensando')]")
-            
-            for span in spans:
-                try:
-                    if span.is_displayed():
-                        boton = span.find_element(By.XPATH, "./ancestor::div[@role='button']")
-                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", boton)
-                        time.sleep(1)
-                        self.driver.execute_script("arguments[0].click();", boton)
-                        time.sleep(3)
-                        
-                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                        if dialogs:
-                            print("   ✅ Modal abierto - Estrategia 5")
-                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
-                            return True
-                except:
-                    continue
-        except:
-            pass
-        
-        # ESTRATEGIA 6: Atajo de teclado 'p'
-        print("   Estrategia 6: Atajo 'p'...")
-        
-        try:
-            body = self.driver.find_element(By.TAG_NAME, "body")
-            body.click()
-            time.sleep(1)
-            ActionChains(self.driver).send_keys('p').perform()
-            time.sleep(3)
-            
-            dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-            if dialogs:
-                print("   ✅ Modal abierto - Atajo 'p'")
-                time.sleep(self.config.get('espera_estabilizacion_modal', 3))
-                return True
-        except:
-            pass
-        
-        print("\n   ❌ No se pudo abrir el compositor")
-        print("   💡 Intenta: cerrar navegador y ejecutar de nuevo\n")
-        return False
-    
-    def ingresar_texto(self, mensaje):
-        """Ingresa el texto en el compositor - Usa portapapeles y fallbacks"""
-        print("✍️  Ingresando texto...")
-        
-        area_texto = self._buscar_area_texto()
-        
-        if not area_texto:
-            print("   ❌ No se encontró área de texto")
-            return False
-        
-        try:
-            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_texto)
-            time.sleep(0.5)
-            self.driver.execute_script("arguments[0].click();", area_texto)
-            time.sleep(1)
-            self.driver.execute_script("arguments[0].focus();", area_texto)
-            time.sleep(1)
-        except Exception as e:
-            print(f"   ⚠️  Error dando foco: {e}")
-        
-        # MÉTODO 1: Portapapeles
-        print("   Método: Portapapeles...")
-        try:
-            pyperclip.copy(mensaje)
-            ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
-            time.sleep(2)
-            
-            texto_actual = area_texto.text
-            if len(texto_actual) >= 10:
-                print(f"   ✅ Texto ingresado ({len(texto_actual)} caracteres)")
-                return True
-        except Exception as e:
-            print(f"   ⚠️  Error portapapeles: {e}")
-        
-        # MÉTODO 2: send_keys
-        print("   Método: send_keys...")
-        try:
-            area_texto.clear()
-            time.sleep(0.5)
-            area_texto.send_keys(mensaje)
-            time.sleep(2)
-            
-            texto_actual = area_texto.text
-            if len(texto_actual) >= 10:
-                print(f"   ✅ Texto ingresado ({len(texto_actual)} caracteres)")
-                return True
-        except Exception as e:
-            print(f"   ⚠️  Error send_keys: {e}")
-        
-        # MÉTODO 3: JavaScript
-        print("   Método: JavaScript...")
-        try:
-            self.driver.execute_script(
-                "arguments[0].textContent = arguments[1];", 
-                area_texto, 
-                mensaje
-            )
-            time.sleep(2)
-            print("   ✅ Texto ingresado con JavaScript")
-            return True
-        except Exception as e:
-            print(f"   ❌ Error JavaScript: {e}")
-            return False
-    
-    def _buscar_area_texto(self):
-        """Busca el área de texto del compositor"""
-        selectores_texto = [
-            "//div[@role='textbox' and @contenteditable='true']",
-            "//div[@contenteditable='true' and contains(@aria-label, 'publicación')]",
-            "//div[@contenteditable='true' and contains(@aria-label, 'post')]",
-            "//div[@role='textbox']",
-            "//div[@contenteditable='true']"
-        ]
-        
-        for selector in selectores_texto:
-            try:
-                elementos = self.driver.find_elements(By.XPATH, selector)
-                
-                for elemento in elementos:
-                    try:
-                        if elemento.is_displayed():
-                            size = elemento.size
-                            if size['height'] > 50:
-                                return elemento
-                    except:
-                        continue
-            except:
-                continue
-        
-        try:
-            dialog = self.driver.find_element(By.XPATH, "//div[@role='dialog']")
-            area_texto = dialog.find_element(By.XPATH, ".//div[@contenteditable='true']")
-            return area_texto
-        except:
-            pass
-        
-        return None
-    
-    def publicar_mensaje(self):
-        """Hace clic en botón Publicar"""
-        print("🚀 Buscando botón 'Publicar'...")
-        
-        time.sleep(2)
-        
-        selectores_boton = [
-            "//div[@aria-label='Publicar']",
-            "//div[@role='button' and contains(text(), 'Publicar')]",
-            "//span[text()='Publicar']/ancestor::div[@role='button']",
-            "//div[@role='button']//span[text()='Publicar']"
-        ]
-        
-        boton_encontrado = False
-        
-        for selector in selectores_boton:
-            try:
-                elementos = self.driver.find_elements(By.XPATH, selector)
-                if elementos:
-                    for elemento in elementos:
-                        try:
-                            if elemento.is_displayed() and elemento.is_enabled():
-                                self.driver.execute_script(
-                                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", 
-                                    elemento
-                                )
-                                time.sleep(1)
-                                
-                                self.driver.execute_script("arguments[0].click();", elemento)
-                                boton_encontrado = True
-                                print(f"   ✅ Clic en 'Publicar'")
-                                break
-                        except:
+                    if not publicador.publicar_mensaje():
+                        print(f"⚠️  Intento {intento} falló al publicar")
+                        if intento < max_intentos:
+                            print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                            time.sleep(tiempo_entre_intentos)
                             continue
-                    if boton_encontrado:
-                        break
-            except:
-                continue
-        
-        if not boton_encontrado:
-            print("   Buscando por texto...")
-            try:
-                elementos = self.driver.find_elements(By.XPATH, "//div[@role='button']")
-                for elemento in elementos:
-                    try:
-                        texto = elemento.text.strip().lower()
-                        if texto == "publicar":
-                            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", elemento)
-                            time.sleep(0.5)
-                            self.driver.execute_script("arguments[0].click();", elemento)
-                            boton_encontrado = True
-                            print("   ✅ Botón 'Publicar' encontrado por texto")
-                            break
-                    except:
-                        continue
-            except Exception as e:
-                print(f"   ⚠️  Error: {e}")
-        
-        if not boton_encontrado:
-            try:
-                dialog = self.driver.find_element(By.XPATH, "//div[@role='dialog']")
-                boton = dialog.find_element(By.XPATH, ".//div[@role='button' and contains(., 'Publicar')]")
-                self.driver.execute_script("arguments[0].click();", boton)
-                boton_encontrado = True
-                print("   ✅ Botón encontrado en dialog")
-            except:
-                pass
-        
-        if not boton_encontrado:
-            print("   ❌ No se encontró botón 'Publicar'")
-            return False
-        
-        tiempo_espera = self.config['espera_despues_publicar']
-        print(f"   ⏳ Esperando {tiempo_espera}s...")
-        time.sleep(tiempo_espera)
-        
-        return True
-    
-    def verificar_publicacion_exitosa(self):
-        """Verifica que la publicación fue exitosa (modal cerrado)"""
-        if not self.config['verificar_publicacion_exitosa']:
-            return True
-        
-        print("🔍 Verificando publicación...")
-        
-        try:
-            dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-            
-            if len(dialogs) == 0:
-                print("   ✅ Modal cerrado - Publicación exitosa")
-                return True
+                        return False
             else:
-                time.sleep(3)
-                
-                dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
-                if len(dialogs) == 0:
-                    print("   ✅ Modal cerrado - Publicación exitosa")
-                    return True
-                else:
-                    print("   ⚠️  Modal sigue abierto")
+                # Mensaje bíblico - método tradicional
+                if not publicador.ingresar_texto(contenido):
+                    print(f"⚠️  Intento {intento} falló al ingresar texto")
+                    if intento < max_intentos:
+                        print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                        time.sleep(tiempo_entre_intentos)
+                        continue
                     return False
-        except:
-            print("   ✅ Asumiendo publicación exitosa")
-            return True
-    
-    def publicar_completo(self, mensaje):
-        """Realiza el proceso completo de publicación"""
-        try:
-            # Verificar sesión (esto navega a Facebook)
-            if not self.verificar_sesion_facebook():
-                print("❌ No se pudo verificar sesión")
-                return False
-            
-            # Ahora ya estamos en Facebook, abrir compositor
-            if not self.abrir_compositor():
-                print("❌ No se pudo abrir compositor")
-                return False
-            
-            if not self.ingresar_texto(mensaje):
-                print("❌ No se pudo ingresar texto")
-                return False
-            
-            if not self.publicar_mensaje():
-                print("❌ No se pudo publicar")
-                return False
-            
-            if not self.verificar_publicacion_exitosa():
-                print("⚠️  No se pudo verificar éxito")
-            
-            print("✅ Publicación completada")
-            return True
-            
-        except Exception as e:
-            print(f"❌ Error durante publicación: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-    
-    def publicar_enlace_con_preview_optimizado(self, enlace, texto_introduccion="", hashtags=""):
-        """
-        Publica un enlace con previsualización optimizada
-        ESTRATEGIA: Pegar enlace → Esperar preview → Agregar texto
-        """
-        print("\n🔗 MODO OPTIMIZADO: Publicación de enlace con previsualización")
-        
-        # FASE 1: Pegar SOLO el enlace
-        print("📎 FASE 1: Pegando enlace...")
-        print(f"   {enlace[:70]}...")
-        
-        area_texto = self._buscar_area_texto()
-        if not area_texto:
-            print("   ❌ No se encontró área de texto")
-            return False
-        
-        try:
-            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_texto)
-            time.sleep(0.5)
-            self.driver.execute_script("arguments[0].click();", area_texto)
-            time.sleep(1)
-            self.driver.execute_script("arguments[0].focus();", area_texto)
-            time.sleep(1)
-            
-            # Limpiar contenido previo
-            area_texto.send_keys(Keys.CONTROL + "a")
-            time.sleep(0.3)
-            area_texto.send_keys(Keys.DELETE)
-            time.sleep(0.5)
-            
-            # Pegar enlace usando portapapeles
-            pyperclip.copy(enlace)
-            time.sleep(0.5)
-            
-            ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
-            time.sleep(2)
-            
-            print("✅ Enlace pegado")
-            
-        except Exception as e:
-            print(f"❌ Error pegando enlace: {e}")
-            return False
-        
-        # FASE 2: Esperar previsualización
-        tiempo_espera = self.config.get('tiempo_espera_previsualizacion', 12)
-        print(f"\n⏳ FASE 2: Esperando previsualización ({tiempo_espera}s)...")
-        print("   Facebook está generando la miniatura del video...")
-        
-        for i in range(tiempo_espera, 0, -1):
-            if i % 2 == 0:
-                print(f"   Esperando... {i}s restantes", end='\r', flush=True)
-            time.sleep(1)
-        
-        print("\n✅ Previsualización lista")
-        
-        # FASE 3: Agregar texto adicional
-        if texto_introduccion or hashtags:
-            print("\n📝 FASE 3: Agregando texto adicional...")
-            
-            try:
-                time.sleep(1)
-                area_texto = self._buscar_area_texto()
                 
-                if not area_texto:
-                    print("   ⚠️  No se encontró área de texto para agregar más texto")
-                    print("   Continuando con solo el enlace...")
-                else:
-                    self.driver.execute_script("arguments[0].click();", area_texto)
-                    time.sleep(0.5)
-                    
-                    # Ir al inicio del texto
-                    ActionChains(self.driver).key_down(Keys.CONTROL).send_keys(Keys.HOME).key_up(Keys.CONTROL).perform()
-                    time.sleep(0.5)
-                    
-                    # Agregar introducción antes del enlace
-                    texto_antes = ""
-                    if texto_introduccion:
-                        texto_antes = texto_introduccion.strip() + "\n\n"
-                    
-                    if texto_antes:
-                        for linea in texto_antes.split('\n'):
-                            area_texto.send_keys(linea)
-                            if linea != texto_antes.split('\n')[-1]:
-                                area_texto.send_keys(Keys.RETURN)
-                            time.sleep(0.1)
-                        
-                        print("   ✅ Introducción agregada")
-                    
-                    # Ir al final del texto
-                    ActionChains(self.driver).key_down(Keys.CONTROL).send_keys(Keys.END).key_up(Keys.CONTROL).perform()
-                    time.sleep(0.5)
-                    
-                    # Agregar hashtags al final
-                    if hashtags:
-                        area_texto.send_keys(Keys.RETURN)
-                        time.sleep(0.2)
-                        area_texto.send_keys(Keys.RETURN)
-                        time.sleep(0.2)
-                        area_texto.send_keys(hashtags.strip())
-                        time.sleep(0.5)
-                        
-                        print("   ✅ Hashtags agregados")
+                if not publicador.publicar_mensaje():
+                    print(f"⚠️  Intento {intento} falló al publicar")
+                    if intento < max_intentos:
+                        print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                        time.sleep(tiempo_entre_intentos)
+                        continue
+                    return False
             
-            except Exception as e:
-                print(f"   ⚠️  Error agregando texto adicional: {e}")
-                print("   Continuando con solo el enlace y previsualización...")
-        
-        # FASE 4: Publicar
-        print("\n🚀 Publicando...")
-        
-        if not self.publicar_mensaje():
-            print("❌ Error al publicar")
-            return False
-        
-        if not self.verificar_publicacion_exitosa():
-            print("⚠️  No se pudo verificar publicación")
-        
-        print("✅ Publicación completada con previsualización")
-        return True
+            # PASO 4: Verificar éxito
+            publicador.verificar_publicacion_exitosa()
+            
+            print(f"✅ Publicación exitosa en intento {intento}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error en intento {intento}: {e}")
+            if intento < max_intentos:
+                print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
+                time.sleep(tiempo_entre_intentos)
+            else:
+                import traceback
+                traceback.print_exc()
     
-    def cerrar_navegador(self):
-        """Cierra el navegador"""
-        if self.driver:
-            print("🔒 Cerrando navegador...")
-            time.sleep(2)
-            self.driver.quit()
-            print("✅ Navegador cerrado")
+    return False
+
+
+def main():
+    """Función principal del publicador"""
+    
+    # Mostrar banner
+    mostrar_banner()
+    
+    # Cargar configuración
+    try:
+        config = leer_config_global()
+    except Exception as e:
+        print(f"❌ Error leyendo configuración: {e}")
+        input("\nPresiona Enter para salir...")
+        return
+    
+    # Mostrar configuración
+    mostrar_configuracion(config)
+    
+    # Inicializar gestor de registro
+    gestor = GestorRegistro()
+    
+    # Mostrar estadísticas
+    gestor.mostrar_estadisticas()
+    
+    # Mostrar historial bloqueado (memoria)
+    gestor.mostrar_historial_reciente(config['historial_evitar_repetir'])
+    
+    # Verificar límite de tiempo
+    tiempo_minimo = config['tiempo_minimo_entre_publicaciones_segundos']
+    es_manual = True  # Ejecución manual desde este script
+    
+    puede_publicar, mensaje_limite = gestor.puede_publicar_ahora(
+        tiempo_minimo, 
+        config['permitir_forzar_publicacion_manual'] and es_manual
+    )
+    
+    if not puede_publicar:
+        print(f"\n⏸️  NO SE PUEDE PUBLICAR AHORA:")
+        print(f"   {mensaje_limite}")
+        print(f"\n💡 Espera {tiempo_minimo}s entre publicaciones")
+        input("\nPresiona Enter para salir...")
+        return
+    
+    print(f"\n🖱️  Ejecución MANUAL")
+    
+    # Decidir tipo de publicación
+    tipo_publicacion = decidir_tipo_publicacion(gestor, config)
+    
+    print(f"\n🎯 TIPO DE PUBLICACIÓN: {'📖 MENSAJE BÍBLICO' if tipo_publicacion == 'biblico' else '🎬 PREDICACIÓN'}\n")
+    
+    # Preparar contenido
+    contenido = None
+    nombre_archivo = None
+    
+    if tipo_publicacion == 'biblico':
+        contenido, nombre_archivo = preparar_contenido_biblico(config, gestor)
+    else:
+        contenido, nombre_archivo, enlace_original = preparar_contenido_predicacion(config)
+    
+    if not contenido:
+        print("❌ No se pudo preparar el contenido")
+        input("\nPresiona Enter para salir...")
+        return
+    
+    # Mostrar preview
+    print(f"\n📄 PREVIEW:")
+    print("-" * 70)
+    preview = contenido[:200] + "..." if len(contenido) > 200 else contenido
+    print(preview)
+    print("-" * 70)
+    
+    # Iniciar navegador
+    publicador = PublicadorFacebook(config)
+    
+    inicio = time.time()
+    
+    try:
+        publicador.iniciar_navegador()
+        
+        # Publicar
+        print(f"\n{'='*70}")
+        print(f"{'📖 PUBLICANDO MENSAJE BÍBLICO' if tipo_publicacion == 'biblico' else '🎬 PUBLICANDO PREDICACIÓN'}")
+        print(f"{'='*70}")
+        print(f"📄 Archivo: {nombre_archivo}")
+        print(f"📝 Longitud: {len(contenido)} caracteres")
+        print(f"🔄 Máximo de intentos: {config['max_intentos_por_publicacion']}")
+        
+        if tipo_publicacion == 'predicacion':
+            es_enlace = any(plat in contenido.lower() for plat in ['http', 'youtube', 'instagram', 'facebook', 'tiktok'])
+            print(f"🔗 Tipo: {'Enlace' if es_enlace else 'Texto'} (Estrategia optimizada: {'Sí' if config.get('usar_estrategia_optimizada_enlaces', True) else 'No'})")
+        
+        print(f"{'='*70}\n")
+        
+        exito = publicar_contenido(publicador, contenido, tipo_publicacion, config)
+        
+        fin = time.time()
+        tiempo_ejecucion = round(fin - inicio, 1)
+        
+        if exito:
+            # Registrar éxito
+            gestor.registrar_publicacion_exitosa(
+                mensaje_archivo=nombre_archivo,
+                contenido=contenido,
+                longitud=len(contenido),
+                intentos=1,  # TODO: capturar intentos reales
+                tiempo_ejecucion=tiempo_ejecucion,
+                tipo=tipo_publicacion
+            )
+            
+            # Si es predicación, mover a publicados
+            if tipo_publicacion == 'predicacion':
+                mover_predicacion_a_publicados(nombre_archivo)
+            
+            print(f"\n{'='*70}")
+            print("✅ PUBLICACIÓN EXITOSA")
+            print(f"{'='*70}")
+            print(f"⏱️  Tiempo: {tiempo_ejecucion}s")
+            print(f"📄 Archivo: {nombre_archivo}")
+            print(f"{'='*70}\n")
+        else:
+            # Registrar error
+            gestor.registrar_error(nombre_archivo, f"Falló después de {config['max_intentos_por_publicacion']} intentos", tipo_publicacion)
+            
+            print(f"\n{'='*70}")
+            print("❌ PROCESO CON ERRORES")
+            print(f"{'='*70}\n")
+    
+    except KeyboardInterrupt:
+        print("\n\n❌ Proceso cancelado por el usuario")
+    
+    except Exception as e:
+        print(f"\n❌ Error durante la publicación: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        if nombre_archivo:
+            gestor.registrar_error(nombre_archivo, str(e), tipo_publicacion)
+    
+    finally:
+        publicador.cerrar_navegador()
+        print("⏳ Cerrando en 2 segundos...")
+        time.sleep(2)
+
+
+if __name__ == "__main__":
+    main()

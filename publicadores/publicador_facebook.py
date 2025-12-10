@@ -550,6 +550,138 @@ class PublicadorFacebook:
             print("   ✅ Asumiendo publicación exitosa")
             return True
     
+    
+    def publicar_enlace_con_preview_optimizado(self, enlace, texto_introduccion="", hashtags=""):
+        """
+        Publica un enlace con previsualización optimizada
+        NUEVA ESTRATEGIA: Escribir introducción → Pegar enlace → Esperar preview
+        """
+        print("\n🔗 MODO OPTIMIZADO: Publicación de enlace con previsualización")
+        
+        # Buscar área de texto
+        area_texto = self._buscar_area_texto()
+        if not area_texto:
+            print("   ❌ No se encontró área de texto")
+            return False
+        
+        try:
+            # Dar foco al área
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_texto)
+            time.sleep(0.5)
+            self.driver.execute_script("arguments[0].click();", area_texto)
+            time.sleep(1)
+            self.driver.execute_script("arguments[0].focus();", area_texto)
+            time.sleep(1)
+            
+            # Limpiar contenido previo
+            area_texto.send_keys(Keys.CONTROL + "a")
+            time.sleep(0.3)
+            area_texto.send_keys(Keys.DELETE)
+            time.sleep(0.5)
+            
+        except Exception as e:
+            print(f"   ⚠️  Error dando foco: {e}")
+        
+        # FASE 1: Escribir introducción PRIMERO (si existe)
+        if texto_introduccion:
+            print("📝 FASE 1: Escribiendo introducción...")
+            print(f"   {texto_introduccion}")
+            
+            try:
+                # Escribir introducción letra por letra (más confiable)
+                for caracter in texto_introduccion:
+                    area_texto.send_keys(caracter)
+                    time.sleep(0.02)
+                
+                # Agregar 2 saltos de línea
+                area_texto.send_keys(Keys.RETURN)
+                time.sleep(0.2)
+                area_texto.send_keys(Keys.RETURN)
+                time.sleep(0.3)
+                
+                print("   ✅ Introducción escrita")
+                
+            except Exception as e:
+                print(f"   ⚠️  Error escribiendo introducción: {e}")
+        
+        # FASE 2: Pegar enlace
+        print("\n📎 FASE 2: Pegando enlace...")
+        print(f"   {enlace[:70]}...")
+        
+        try:
+            # Pegar enlace usando portapapeles
+            pyperclip.copy(enlace)
+            time.sleep(0.5)
+            
+            ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+            time.sleep(2)
+            
+            print("   ✅ Enlace pegado")
+            
+        except Exception as e:
+            print(f"   ❌ Error pegando enlace: {e}")
+            return False
+        
+        # FASE 3: Esperar previsualización
+        tiempo_espera = self.config.get('tiempo_espera_previsualizacion', 12)
+        print(f"\n⏳ FASE 3: Esperando previsualización ({tiempo_espera}s)...")
+        print("   Facebook está generando la miniatura del video...")
+        
+        for i in range(tiempo_espera, 0, -1):
+            if i % 2 == 0:
+                print(f"   Esperando... {i}s restantes", end='\r', flush=True)
+            time.sleep(1)
+        
+        print("\n   ✅ Previsualización lista")
+        
+        # FASE 4: Agregar hashtags al final (si existen)
+        if hashtags:
+            print("\n📝 FASE 4: Agregando hashtags...")
+            
+            try:
+                time.sleep(1)
+                area_texto = self._buscar_area_texto()
+                
+                if area_texto:
+                    # Ir al final del texto
+                    ActionChains(self.driver).key_down(Keys.CONTROL).send_keys(Keys.END).key_up(Keys.CONTROL).perform()
+                    time.sleep(0.5)
+                    
+                    # Agregar saltos de línea y hashtags
+                    area_texto.send_keys(Keys.RETURN)
+                    time.sleep(0.2)
+                    area_texto.send_keys(Keys.RETURN)
+                    time.sleep(0.2)
+                    
+                    # Escribir hashtags letra por letra
+                    for caracter in hashtags.strip():
+                        area_texto.send_keys(caracter)
+                        time.sleep(0.05)
+                        
+                        # Si es #, cerrar menú de sugerencias
+                        if caracter == '#':
+                            time.sleep(0.3)
+                            area_texto.send_keys(Keys.ESCAPE)
+                            time.sleep(0.2)
+                    
+                    print("   ✅ Hashtags agregados")
+            
+            except Exception as e:
+                print(f"   ⚠️  Error agregando hashtags: {e}")
+        
+        # FASE 5: Publicar
+        print("\n🚀 Publicando...")
+        
+        if not self.publicar_mensaje():
+            print("❌ Error al publicar")
+            return False
+        
+        if not self.verificar_publicacion_exitosa():
+            print("⚠️  No se pudo verificar publicación")
+        
+        print("✅ Publicación completada con previsualización")
+        return True
+    
     def publicar_completo(self, mensaje):
         """Realiza el proceso completo de publicación"""
         try:

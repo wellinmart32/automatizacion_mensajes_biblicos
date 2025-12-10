@@ -12,4 +12,4 @@ echo.
 
 python configurador_interactivo.py
 
-pause
+exit

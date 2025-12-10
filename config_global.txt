@@ -44,89 +44,10 @@ alternar_con_predicaciones = si
 nombre_grupo_whatsapp = Prédicas
 mensajes_por_extraccion = 10
 agregar_introduccion_predica = si
-
-# ============================================================
-# 🎨 TEXTO DE INTRODUCCIÓN MEJORADO
-# ============================================================
-# IMPORTANTE: Para saltos de línea, presiona Enter (NO escribas \n)
-#
-# 5 OPCIONES DE TEXTO ATRACTIVO:
-#
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# OPCIÓN 1 - Impacto y Transformación (⭐ RECOMENDADA)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🔥 Palabra que transforma vidas
-# 
-# Te comparto esta poderosa predicación:
-#
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# OPCIÓN 2 - Elegante y Minimalista
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ✨ Reflexión del día
-# 
-# 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# OPCIÓN 3 - Cálido y Personal
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 💝 Comparto contigo
-# 
-# Esta enseñanza tocó profundamente mi corazón:
-#
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# OPCIÓN 4 - Llamado a la Acción
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🙏 Mensaje de bendición
-# 
-# Dedica unos minutos a esta poderosa enseñanza:
-#
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# OPCIÓN 5 - Inspirador y Directo
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 📖 Alimento espiritual
-# 
-# Palabra fresca para tu vida:
-#
-# ============================================================
-# 👇 EDITA LA LÍNEA DE ABAJO CON TU OPCIÓN PREFERIDA:
-# ============================================================
-texto_introduccion_predica = 🔥 Palabra que transforma vidas
-
-Te comparto esta poderosa predicación:
+texto_introduccion_predica = ⏰ Vale la pena ver esto
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CONFIGURACIÓN DE HASHTAGS PARA PREDICACIONES
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-agregar_hashtags_predicaciones = si
-
-# 💡 OPCIONES DE HASHTAGS:
-# 
-# Opción A - Cristiano general:
-# #Predicación #Fe #Cristiano #Palabra #Biblia
-#
-# Opción B - Evangelístico:
-# #Evangelio #Jesús #Cristo #PalabraDeDios #Salvación
-#
-# Opción C - Motivacional:
-# #Motivación #Inspiración #FeCristiana #PalabraViva
-#
-# Opción D - Específico ministerio:
-# #Predica #Sermón #IglesiaCristiana #MensajeDeDios
-#
-hashtags_predicaciones = #Predicación,#Fe,#Cristiano
-
-# ============================================================
-# ⚙️ CONFIGURACIÓN TÉCNICA PARA PREVISUALIZACIÓN
-# ============================================================
-# Estos valores controlan cuánto tiempo espera el sistema
-# para que Facebook genere la miniatura del video
-
-# Tiempo de espera después de pegar el enlace (segundos)
-# IMPORTANTE: Instagram/TikTok necesitan más tiempo que YouTube
-# Recomendado: 10-12 segundos para Instagram Reels
+agregar_hashtags_predicaciones = no
+hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
-
-# Usar estrategia optimizada para enlaces (pegar solo enlace primero)
-# Si = Mejor previsualización pero publicación más lenta
-# No = Más rápido pero puede fallar la miniatura
 usar_estrategia_optimizada_enlaces = si
