@@ -15,19 +15,9 @@ from datetime import datetime
 
 
 class PublicadorFacebook:
-    """
-    Maneja la automatización de publicaciones en Facebook
-    Implementa múltiples estrategias para evitar problemas con overlays
-    Similar a PublicadorMarketplace pero adaptado para Facebook
-    """
+    """Automatización de publicaciones en Facebook"""
     
     def __init__(self, config):
-        """
-        Inicializa el publicador con la configuración
-        
-        Args:
-            config: Diccionario de configuración desde config_global.txt
-        """
         self.driver = None
         self.wait = None
         self.config = config
@@ -45,7 +35,6 @@ class PublicadorFacebook:
         else:
             raise Exception(f"Navegador no soportado: {navegador}")
         
-        # Configurar wait
         self.wait = WebDriverWait(self.driver, 20)
         
         if self.config['maximizar_ventana']:
@@ -57,11 +46,9 @@ class PublicadorFacebook:
         """Inicia Firefox con perfil configurado"""
         opciones = FirefoxOptions()
         
-        # Desactivar notificaciones
         if self.config['desactivar_notificaciones']:
             opciones.set_preference("dom.webnotifications.enabled", False)
         
-        # Usar perfil existente o personalizado
         from compartido.gestor_archivos import obtener_ruta_perfil_navegador
         ruta_perfil = obtener_ruta_perfil_navegador()
         
@@ -75,16 +62,13 @@ class PublicadorFacebook:
         """Inicia Chrome con perfil configurado"""
         opciones = ChromeOptions()
         
-        # Desactivar notificaciones
         if self.config['desactivar_notificaciones']:
             opciones.add_argument("--disable-notifications")
         
-        # Anti-detección
         opciones.add_argument("--disable-blink-features=AutomationControlled")
         opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
         opciones.add_experimental_option('useAutomationExtension', False)
         
-        # Perfil personalizado
         if not self.config['usar_perfil_existente']:
             ruta_perfil = os.path.abspath(self.config['carpeta_perfil_custom'])
             opciones.add_argument(f"--user-data-dir={ruta_perfil}")
@@ -93,20 +77,13 @@ class PublicadorFacebook:
         self.driver = webdriver.Chrome(service=servicio, options=opciones)
     
     def verificar_sesion_facebook(self):
-        """
-        Verifica si hay sesión activa en Facebook
-        Espera si necesita login
-        
-        Returns:
-            bool: True si hay sesión activa
-        """
+        """Verifica si hay sesión activa en Facebook, espera si necesita login"""
         print("🔐 Verificando sesión de Facebook...")
         
         try:
             self.driver.get("https://www.facebook.com")
             time.sleep(3)
             
-            # Verificar si hay campos de login
             try:
                 login_elements = self.driver.find_elements(By.XPATH, 
                     "//input[@name='email' or @name='pass']")
@@ -156,124 +133,230 @@ class PublicadorFacebook:
             return True
     
     def abrir_compositor(self):
-        """
-        Abre el cuadro de publicación de Facebook
-        Usa múltiples estrategias para máxima compatibilidad
-        
-        Returns:
-            bool: True si se abrió correctamente
-        """
+        """Abre el cuadro de publicación - SELECTOR EXACTO DEL HTML DE WELLINGTON"""
         print("📝 Abriendo compositor de publicación...")
         
-        # Asegurar que estamos en la página principal
+        # CRÍTICO: Verificar que estamos en Facebook
         url_actual = self.driver.current_url
-        if "stories" in url_actual or "watch" in url_actual:
+        
+        if "facebook.com" not in url_actual:
+            print("   ⚠️  No estás en Facebook. Navegando...")
+            self.driver.get("https://www.facebook.com")
+            time.sleep(5)
+        elif "stories" in url_actual or "watch" in url_actual or "?sk=" in url_actual:
             print("   Navegando a página principal...")
             self.driver.get("https://www.facebook.com")
-            time.sleep(3)
+            time.sleep(5)
         
-        # ESTRATEGIA 1: Buscar y hacer clic en "¿Qué estás pensando?"
-        print("   Estrategia 1: Buscando '¿Qué estás pensando?'...")
+        # ESTRATEGIA 1: Selector exacto del HTML
+        print("   Estrategia 1: Selector exacto del HTML...")
         
-        selectores_campo = [
-            "//span[contains(text(), '¿Qué estás pensando')]",
-            "//div[@role='button' and contains(., '¿Qué estás pensando')]",
-            "//div[contains(@class, 'x1i10hfl') and @role='button']",
-            "//div[@aria-label='Crear publicación']"
+        try:
+            selector_exacto = "//div[@role='button']//span[@class='x1lliihq x6ikm8r x10wlt62 x1n2onr6' and contains(text(), 'pensando')]"
+            
+            botones = self.driver.find_elements(By.XPATH, selector_exacto)
+            
+            if botones:
+                for boton_span in botones:
+                    try:
+                        boton = boton_span.find_element(By.XPATH, "./ancestor::div[@role='button']")
+                        
+                        if boton.is_displayed():
+                            print(f"   ✅ Botón encontrado: {boton_span.text[:50]}")
+                            
+                            self.driver.execute_script(
+                                "arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", 
+                                boton
+                            )
+                            time.sleep(1.5)
+                            
+                            self.driver.execute_script("arguments[0].click();", boton)
+                            time.sleep(3)
+                            
+                            dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
+                            if dialogs and len(dialogs) > 0 and dialogs[0].is_displayed():
+                                print("   ✅ Modal confirmado - Estrategia 1")
+                                
+                                tiempo_espera = self.config.get('espera_estabilizacion_modal', 3)
+                                print(f"   ⏳ Esperando {tiempo_espera}s...")
+                                time.sleep(tiempo_espera)
+                                
+                                try:
+                                    WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((By.XPATH, "//div[@role='dialog']//div[@contenteditable='true']"))
+                                    )
+                                    print("   ✅ Área de texto lista")
+                                    return True
+                                except:
+                                    print("   ✅ Modal confirmado")
+                                    return True
+                    except:
+                        continue
+        except Exception as e:
+            print(f"   ⚠️  Error estrategia 1: {e}")
+        
+        # ESTRATEGIA 2: Buscar contenedor principal
+        print("   Estrategia 2: Contenedor 'Crear una publicación'...")
+        
+        try:
+            contenedor = self.driver.find_element(By.XPATH, 
+                "//div[@role='region' and @aria-label='Crear una publicación']")
+            
+            if contenedor:
+                try:
+                    boton = contenedor.find_element(By.XPATH, 
+                        ".//div[@role='button' and contains(., 'pensando')]")
+                    
+                    if boton.is_displayed():
+                        self.driver.execute_script(
+                            "arguments[0].scrollIntoView({block: 'center'});", 
+                            boton
+                        )
+                        time.sleep(1.5)
+                        self.driver.execute_script("arguments[0].click();", boton)
+                        time.sleep(3)
+                        
+                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
+                        if dialogs and dialogs[0].is_displayed():
+                            print("   ✅ Modal abierto - Estrategia 2")
+                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
+                            return True
+                except:
+                    pass
+        except:
+            pass
+        
+        # ESTRATEGIA 3: Buscar span directamente
+        print("   Estrategia 3: Buscando span directamente...")
+        
+        selectores_span = [
+            "//span[contains(text(), '¿Qué estás pensando, Wellington?')]",
+            "//span[contains(text(), 'pensando, Wellington')]",
+            "//span[contains(text(), '¿Qué estás pensando')]"
         ]
         
-        campo_encontrado = False
-        for selector in selectores_campo:
+        for selector in selectores_span:
             try:
-                elementos = self.driver.find_elements(By.XPATH, selector)
-                if elementos:
-                    # Scroll al elemento
-                    self.driver.execute_script(
-                        "arguments[0].scrollIntoView({block: 'center'});", 
-                        elementos[0]
-                    )
-                    time.sleep(1)
-                    
-                    # Clic con JavaScript (evita overlays)
-                    self.driver.execute_script("arguments[0].click();", elementos[0])
-                    campo_encontrado = True
-                    print(f"   ✅ Clic exitoso con selector: {selector[:50]}...")
-                    break
-            except Exception as e:
+                spans = self.driver.find_elements(By.XPATH, selector)
+                
+                for span in spans:
+                    try:
+                        if not span.is_displayed():
+                            continue
+                        
+                        boton = span.find_element(By.XPATH, "./ancestor::div[@role='button']")
+                        
+                        self.driver.execute_script(
+                            "arguments[0].scrollIntoView({block: 'center'});", 
+                            boton
+                        )
+                        time.sleep(1)
+                        self.driver.execute_script("arguments[0].click();", boton)
+                        time.sleep(3)
+                        
+                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
+                        if dialogs and dialogs[0].is_displayed():
+                            print("   ✅ Modal abierto - Estrategia 3")
+                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
+                            return True
+                    except:
+                        continue
+            except:
                 continue
         
-        # ESTRATEGIA 2: Usar atajo de teclado 'p'
-        if not campo_encontrado:
-            print("   Estrategia 2: Usando atajo de teclado 'p'...")
-            try:
-                body = self.driver.find_element(By.TAG_NAME, "body")
-                body.click()
-                time.sleep(0.5)
-                ActionChains(self.driver).send_keys('p').perform()
-                time.sleep(2)
-                campo_encontrado = True
-                print("   ✅ Compositor abierto con atajo 'p'")
-            except:
-                pass
+        # ESTRATEGIA 4: Buscar todos los botones y filtrar
+        print("   Estrategia 4: Buscando entre todos los botones...")
         
-        # ESTRATEGIA 3: URL directa
-        if not campo_encontrado:
-            print("   Estrategia 3: Usando URL directa...")
-            self.driver.get("https://www.facebook.com/?sk=h_chr")
+        try:
+            todos_botones = self.driver.find_elements(By.XPATH, "//div[@role='button']")
+            
+            for boton in todos_botones[:30]:
+                try:
+                    if not boton.is_displayed():
+                        continue
+                    
+                    texto = boton.text.strip().lower()
+                    
+                    if 'pensando' in texto and len(texto) < 100:
+                        self.driver.execute_script(
+                            "arguments[0].scrollIntoView({block: 'center'});", 
+                            boton
+                        )
+                        time.sleep(1)
+                        self.driver.execute_script("arguments[0].click();", boton)
+                        time.sleep(3)
+                        
+                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
+                        if dialogs:
+                            print("   ✅ Modal abierto - Estrategia 4")
+                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
+                            return True
+                except:
+                    continue
+        except:
+            pass
+        
+        # ESTRATEGIA 5: Scroll al inicio y buscar
+        print("   Estrategia 5: Scroll al inicio...")
+        
+        try:
+            self.driver.execute_script("window.scrollTo(0, 0);")
+            time.sleep(2)
+            
+            spans = self.driver.find_elements(By.XPATH, 
+                "//span[contains(text(), 'pensando')]")
+            
+            for span in spans:
+                try:
+                    if span.is_displayed():
+                        boton = span.find_element(By.XPATH, "./ancestor::div[@role='button']")
+                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", boton)
+                        time.sleep(1)
+                        self.driver.execute_script("arguments[0].click();", boton)
+                        time.sleep(3)
+                        
+                        dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
+                        if dialogs:
+                            print("   ✅ Modal abierto - Estrategia 5")
+                            time.sleep(self.config.get('espera_estabilizacion_modal', 3))
+                            return True
+                except:
+                    continue
+        except:
+            pass
+        
+        # ESTRATEGIA 6: Atajo de teclado 'p'
+        print("   Estrategia 6: Atajo 'p'...")
+        
+        try:
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            body.click()
+            time.sleep(1)
+            ActionChains(self.driver).send_keys('p').perform()
             time.sleep(3)
             
-            try:
-                boton_crear = self.driver.find_element(By.XPATH, 
-                    "//span[contains(text(), '¿Qué estás pensando')]")
-                self.driver.execute_script("arguments[0].click();", boton_crear)
-                time.sleep(2)
-                campo_encontrado = True
-                print("   ✅ Compositor abierto con URL directa")
-            except:
-                pass
-        
-        if not campo_encontrado:
-            print("   ❌ No se pudo abrir el compositor con ninguna estrategia")
-            return False
-        
-        # CRÍTICO: Esperar a que el modal se estabilice
-        tiempo_espera = self.config['espera_estabilizacion_modal']
-        print(f"   ⏳ Esperando {tiempo_espera}s a que el modal se estabilice...")
-        time.sleep(tiempo_espera)
-        
-        # Verificar que el modal está abierto
-        try:
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//div[@role='dialog']"))
-            )
-            print("   ✅ Modal confirmado abierto")
-            return True
+            dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
+            if dialogs:
+                print("   ✅ Modal abierto - Atajo 'p'")
+                time.sleep(self.config.get('espera_estabilizacion_modal', 3))
+                return True
         except:
-            print("   ⚠️  No se detectó el modal, pero continuando...")
-            return True
+            pass
+        
+        print("\n   ❌ No se pudo abrir el compositor")
+        print("   💡 Intenta: cerrar navegador y ejecutar de nuevo\n")
+        return False
     
     def ingresar_texto(self, mensaje):
-        """
-        Ingresa el texto en el compositor
-        Usa múltiples métodos con fallbacks
+        """Ingresa el texto en el compositor - Usa portapapeles y fallbacks"""
+        print("✍️  Ingresando texto...")
         
-        Args:
-            mensaje: Texto a publicar
-            
-        Returns:
-            bool: True si se ingresó correctamente
-        """
-        print("✍️  Ingresando texto en el compositor...")
-        
-        # Buscar área de texto
         area_texto = self._buscar_area_texto()
         
         if not area_texto:
-            print("   ❌ No se encontró el área de texto")
+            print("   ❌ No se encontró área de texto")
             return False
         
-        # Hacer clic y dar foco
-        print("   Dando foco al área de texto...")
         try:
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_texto)
             time.sleep(0.5)
@@ -284,25 +367,22 @@ class PublicadorFacebook:
         except Exception as e:
             print(f"   ⚠️  Error dando foco: {e}")
         
-        # MÉTODO 1: Portapapeles (más confiable para textos largos)
-        print("   Método 1: Pegando desde portapapeles...")
+        # MÉTODO 1: Portapapeles
+        print("   Método: Portapapeles...")
         try:
             pyperclip.copy(mensaje)
             ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
             time.sleep(2)
             
-            # Verificar que se ingresó
             texto_actual = area_texto.text
             if len(texto_actual) >= 10:
-                print(f"   ✅ Texto ingresado correctamente ({len(texto_actual)} caracteres)")
+                print(f"   ✅ Texto ingresado ({len(texto_actual)} caracteres)")
                 return True
-            else:
-                print(f"   ⚠️  Solo se detectan {len(texto_actual)} caracteres, intentando método 2...")
         except Exception as e:
-            print(f"   ⚠️  Error con portapapeles: {e}")
+            print(f"   ⚠️  Error portapapeles: {e}")
         
-        # MÉTODO 2: send_keys directo
-        print("   Método 2: Usando send_keys directo...")
+        # MÉTODO 2: send_keys
+        print("   Método: send_keys...")
         try:
             area_texto.clear()
             time.sleep(0.5)
@@ -311,15 +391,13 @@ class PublicadorFacebook:
             
             texto_actual = area_texto.text
             if len(texto_actual) >= 10:
-                print(f"   ✅ Texto ingresado con send_keys ({len(texto_actual)} caracteres)")
+                print(f"   ✅ Texto ingresado ({len(texto_actual)} caracteres)")
                 return True
-            else:
-                print(f"   ⚠️  Solo {len(texto_actual)} caracteres, intentando método 3...")
         except Exception as e:
-            print(f"   ⚠️  Error con send_keys: {e}")
+            print(f"   ⚠️  Error send_keys: {e}")
         
-        # MÉTODO 3: JavaScript (último recurso)
-        print("   Método 3: Usando JavaScript...")
+        # MÉTODO 3: JavaScript
+        print("   Método: JavaScript...")
         try:
             self.driver.execute_script(
                 "arguments[0].textContent = arguments[1];", 
@@ -330,17 +408,11 @@ class PublicadorFacebook:
             print("   ✅ Texto ingresado con JavaScript")
             return True
         except Exception as e:
-            print(f"   ❌ Error con JavaScript: {e}")
+            print(f"   ❌ Error JavaScript: {e}")
             return False
     
     def _buscar_area_texto(self):
-        """
-        Busca el área de texto del compositor
-        Usa múltiples selectores
-        
-        Returns:
-            WebElement o None
-        """
+        """Busca el área de texto del compositor"""
         selectores_texto = [
             "//div[@role='textbox' and @contenteditable='true']",
             "//div[@contenteditable='true' and contains(@aria-label, 'publicación')]",
@@ -353,25 +425,20 @@ class PublicadorFacebook:
             try:
                 elementos = self.driver.find_elements(By.XPATH, selector)
                 
-                # Buscar el área visible más grande (el compositor)
                 for elemento in elementos:
                     try:
                         if elemento.is_displayed():
                             size = elemento.size
-                            # El compositor principal suele ser grande
                             if size['height'] > 50:
-                                print(f"   ✅ Área de texto encontrada: {selector[:50]}...")
                                 return elemento
                     except:
                         continue
             except:
                 continue
         
-        # Último intento: buscar dentro del dialog
         try:
             dialog = self.driver.find_element(By.XPATH, "//div[@role='dialog']")
             area_texto = dialog.find_element(By.XPATH, ".//div[@contenteditable='true']")
-            print("   ✅ Área de texto encontrada dentro del dialog")
             return area_texto
         except:
             pass
@@ -379,16 +446,9 @@ class PublicadorFacebook:
         return None
     
     def publicar_mensaje(self):
-        """
-        Hace clic en el botón Publicar
-        Usa múltiples estrategias
-        
-        Returns:
-            bool: True si se publicó correctamente
-        """
+        """Hace clic en botón Publicar"""
         print("🚀 Buscando botón 'Publicar'...")
         
-        # Esperar un momento antes de buscar
         time.sleep(2)
         
         selectores_boton = [
@@ -407,17 +467,15 @@ class PublicadorFacebook:
                     for elemento in elementos:
                         try:
                             if elemento.is_displayed() and elemento.is_enabled():
-                                # Scroll al botón
                                 self.driver.execute_script(
                                     "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", 
                                     elemento
                                 )
                                 time.sleep(1)
                                 
-                                # Clic con JavaScript (evita overlays)
                                 self.driver.execute_script("arguments[0].click();", elemento)
                                 boton_encontrado = True
-                                print(f"   ✅ Clic en 'Publicar' con selector: {selector[:50]}...")
+                                print(f"   ✅ Clic en 'Publicar'")
                                 break
                         except:
                             continue
@@ -426,9 +484,8 @@ class PublicadorFacebook:
             except:
                 continue
         
-        # Buscar por texto si no funcionó
         if not boton_encontrado:
-            print("   Buscando botón por texto...")
+            print("   Buscando por texto...")
             try:
                 elementos = self.driver.find_elements(By.XPATH, "//div[@role='button']")
                 for elemento in elementos:
@@ -444,109 +501,84 @@ class PublicadorFacebook:
                     except:
                         continue
             except Exception as e:
-                print(f"   ⚠️  Error buscando por texto: {e}")
+                print(f"   ⚠️  Error: {e}")
         
-        # Último intento: dentro del dialog
         if not boton_encontrado:
-            print("   Último intento: buscando dentro del dialog...")
             try:
                 dialog = self.driver.find_element(By.XPATH, "//div[@role='dialog']")
                 boton = dialog.find_element(By.XPATH, ".//div[@role='button' and contains(., 'Publicar')]")
                 self.driver.execute_script("arguments[0].click();", boton)
                 boton_encontrado = True
-                print("   ✅ Botón encontrado dentro del dialog")
+                print("   ✅ Botón encontrado en dialog")
             except:
                 pass
         
         if not boton_encontrado:
-            print("   ❌ No se pudo encontrar el botón 'Publicar'")
+            print("   ❌ No se encontró botón 'Publicar'")
             return False
         
-        # Esperar a que se complete la publicación
         tiempo_espera = self.config['espera_despues_publicar']
-        print(f"   ⏳ Esperando {tiempo_espera}s a que se complete...")
+        print(f"   ⏳ Esperando {tiempo_espera}s...")
         time.sleep(tiempo_espera)
         
         return True
     
     def verificar_publicacion_exitosa(self):
-        """
-        Verifica que la publicación fue exitosa
-        
-        Returns:
-            bool: True si el modal se cerró (indicador de éxito)
-        """
+        """Verifica que la publicación fue exitosa (modal cerrado)"""
         if not self.config['verificar_publicacion_exitosa']:
             return True
         
-        print("🔍 Verificando que la publicación fue exitosa...")
+        print("🔍 Verificando publicación...")
         
         try:
-            # Si el modal se cerró, la publicación fue exitosa
             dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
             
             if len(dialogs) == 0:
                 print("   ✅ Modal cerrado - Publicación exitosa")
                 return True
             else:
-                print("   ⚠️  Modal sigue abierto - Verificando...")
                 time.sleep(3)
                 
-                # Verificar de nuevo
                 dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
                 if len(dialogs) == 0:
                     print("   ✅ Modal cerrado - Publicación exitosa")
                     return True
                 else:
-                    print("   ⚠️  Modal sigue abierto - Puede haber fallado")
+                    print("   ⚠️  Modal sigue abierto")
                     return False
         except:
-            # Si hay error buscando dialogs, asumir éxito
             print("   ✅ Asumiendo publicación exitosa")
             return True
     
     def publicar_completo(self, mensaje):
-        """
-        Realiza el proceso completo de publicación
-        Orquesta todos los pasos
-        
-        Args:
-            mensaje: Texto a publicar
-            
-        Returns:
-            bool: True si la publicación fue exitosa
-        """
+        """Realiza el proceso completo de publicación"""
         try:
-            # Paso 1: Verificar sesión
+            # Verificar sesión (esto navega a Facebook)
             if not self.verificar_sesion_facebook():
-                print("❌ No se pudo verificar sesión de Facebook")
+                print("❌ No se pudo verificar sesión")
                 return False
             
-            # Paso 2: Abrir compositor
+            # Ahora ya estamos en Facebook, abrir compositor
             if not self.abrir_compositor():
-                print("❌ No se pudo abrir el compositor")
+                print("❌ No se pudo abrir compositor")
                 return False
             
-            # Paso 3: Ingresar texto
             if not self.ingresar_texto(mensaje):
-                print("❌ No se pudo ingresar el texto")
+                print("❌ No se pudo ingresar texto")
                 return False
             
-            # Paso 4: Publicar
             if not self.publicar_mensaje():
-                print("❌ No se pudo hacer clic en Publicar")
+                print("❌ No se pudo publicar")
                 return False
             
-            # Paso 5: Verificar éxito
             if not self.verificar_publicacion_exitosa():
-                print("⚠️  No se pudo verificar el éxito de la publicación")
-                # Continuar de todos modos (puede haber publicado)
+                print("⚠️  No se pudo verificar éxito")
             
-            print("✅ Publicación completada exitosamente")
+            print("✅ Publicación completada")
             return True
             
         except Exception as e:
-            print(f"❌ Error durante la publicación: {e}")
+            print(f"❌ Error durante publicación: {e}")
             import traceback
             traceback.print_exc()
             return False

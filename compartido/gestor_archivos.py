@@ -1,6 +1,7 @@
 import os
 import configparser
 import random
+import shutil
 from datetime import datetime
 
 
@@ -54,7 +55,17 @@ def leer_config_global():
         'usar_perfil_existente': config['NAVEGADOR']['usar_perfil_existente'].lower() == 'si',
         'carpeta_perfil_custom': config['NAVEGADOR']['carpeta_perfil_custom'],
         'desactivar_notificaciones': config['NAVEGADOR']['desactivar_notificaciones'].lower() == 'si',
-        'maximizar_ventana': config['NAVEGADOR']['maximizar_ventana'].lower() == 'si'
+        'maximizar_ventana': config['NAVEGADOR']['maximizar_ventana'].lower() == 'si',
+        
+        # [PREDICACIONES]
+        'activar_predicaciones': config['PREDICACIONES']['activar_predicaciones'].lower() == 'si' if config.has_option('PREDICACIONES', 'activar_predicaciones') else False,
+        'alternar_con_predicaciones': config['PREDICACIONES']['alternar_con_predicaciones'].lower() == 'si' if config.has_option('PREDICACIONES', 'alternar_con_predicaciones') else False,
+        'nombre_grupo_whatsapp': config['PREDICACIONES']['nombre_grupo_whatsapp'] if config.has_option('PREDICACIONES', 'nombre_grupo_whatsapp') else 'Prédicas',
+        'mensajes_por_extraccion': int(config['PREDICACIONES']['mensajes_por_extraccion']) if config.has_option('PREDICACIONES', 'mensajes_por_extraccion') else 10,
+        'agregar_introduccion_predica': config['PREDICACIONES']['agregar_introduccion_predica'].lower() == 'si' if config.has_option('PREDICACIONES', 'agregar_introduccion_predica') else True,
+        'texto_introduccion_predica': config['PREDICACIONES']['texto_introduccion_predica'].replace('\\n', '\n') if config.has_option('PREDICACIONES', 'texto_introduccion_predica') else '🎬 Predicación recomendada:\n\n',
+        'agregar_hashtags_predicaciones': config['PREDICACIONES']['agregar_hashtags_predicaciones'].lower() == 'si' if config.has_option('PREDICACIONES', 'agregar_hashtags_predicaciones') else True,
+        'hashtags_predicaciones': config['PREDICACIONES']['hashtags_predicaciones'] if config.has_option('PREDICACIONES', 'hashtags_predicaciones') else '#Predicación,#Fe,#Cristiano'
     }
     
     return config_dict
@@ -66,15 +77,18 @@ def crear_config_defecto():
     print("   Por favor, copia manualmente el archivo config_global.txt al proyecto")
 
 
-def verificar_estructura_carpetas():
+def verificar_y_crear_estructura():
     """
-    Verifica que existan todas las carpetas necesarias
-    Las crea si no existen
+    Verifica y crea todas las carpetas necesarias del sistema
+    Incluye carpetas de predicaciones
     """
     config = leer_config_global()
     
     carpetas_necesarias = [
-        config['carpeta_mensajes']
+        config['carpeta_mensajes'],
+        'cola-facebook',
+        'cola-facebook/pendientes',
+        'cola-facebook/publicados'
     ]
     
     # Crear carpeta de perfil si no usa perfil existente
@@ -87,10 +101,132 @@ def verificar_estructura_carpetas():
             os.makedirs(carpeta)
             carpetas_creadas.append(carpeta)
     
+    # Crear .gitkeep en carpetas de predicaciones
+    gitkeep_pendientes = os.path.join('cola-facebook', 'pendientes', '.gitkeep')
+    gitkeep_publicados = os.path.join('cola-facebook', 'publicados', '.gitkeep')
+    
+    if not os.path.exists(gitkeep_pendientes):
+        with open(gitkeep_pendientes, 'w') as f:
+            f.write('')
+    
+    if not os.path.exists(gitkeep_publicados):
+        with open(gitkeep_publicados, 'w') as f:
+            f.write('')
+    
     if carpetas_creadas:
         print(f"✅ Carpetas creadas: {', '.join(carpetas_creadas)}")
     
     return True
+
+
+def contar_predicaciones_pendientes():
+    """
+    Cuenta cuántas predicaciones hay en cola-facebook/pendientes/
+    
+    Returns:
+        int: Número de predicaciones pendientes
+    """
+    carpeta = 'cola-facebook/pendientes'
+    
+    if not os.path.exists(carpeta):
+        return 0
+    
+    archivos = [f for f in os.listdir(carpeta) 
+               if f.endswith('.txt') and f.startswith('predica-')]
+    
+    return len(archivos)
+
+
+def contar_predicaciones_publicadas():
+    """
+    Cuenta cuántas predicaciones hay en cola-facebook/publicados/
+    
+    Returns:
+        int: Número de predicaciones publicadas
+    """
+    carpeta = 'cola-facebook/publicados'
+    
+    if not os.path.exists(carpeta):
+        return 0
+    
+    archivos = [f for f in os.listdir(carpeta) 
+               if f.endswith('.txt') and f.startswith('predica-')]
+    
+    return len(archivos)
+
+
+def obtener_siguiente_predicacion():
+    """
+    Obtiene la siguiente predicación pendiente (orden alfabético)
+    
+    Returns:
+        tuple: (ruta_completa, nombre_archivo) o (None, None)
+    """
+    carpeta = 'cola-facebook/pendientes'
+    
+    if not os.path.exists(carpeta):
+        return None, None
+    
+    # Obtener archivos .txt que empiecen con 'predica-'
+    archivos = [f for f in os.listdir(carpeta) 
+               if f.endswith('.txt') and f.startswith('predica-')]
+    
+    if not archivos:
+        return None, None
+    
+    # Ordenar alfabéticamente (predica-001.txt, predica-002.txt, etc.)
+    archivos.sort()
+    
+    # Tomar el primero
+    archivo_siguiente = archivos[0]
+    ruta_completa = os.path.join(carpeta, archivo_siguiente)
+    
+    return ruta_completa, archivo_siguiente
+
+
+def mover_predicacion_a_publicados(nombre_archivo):
+    """
+    Mueve una predicación de pendientes/ a publicados/
+    También mueve archivos asociados (imágenes si existen)
+    
+    Args:
+        nombre_archivo: Nombre del archivo (ej: predica-001.txt)
+    
+    Returns:
+        bool: True si se movió correctamente
+    """
+    carpeta_pendientes = 'cola-facebook/pendientes'
+    carpeta_publicados = 'cola-facebook/publicados'
+    
+    # Asegurar que existan las carpetas
+    os.makedirs(carpeta_publicados, exist_ok=True)
+    
+    # Rutas del archivo .txt
+    origen_txt = os.path.join(carpeta_pendientes, nombre_archivo)
+    destino_txt = os.path.join(carpeta_publicados, nombre_archivo)
+    
+    try:
+        # Mover archivo .txt
+        if os.path.exists(origen_txt):
+            shutil.move(origen_txt, destino_txt)
+            print(f"   📦 Movido: {nombre_archivo}")
+        
+        # Buscar archivo de imagen asociado (mismo nombre pero .jpg)
+        nombre_base = nombre_archivo.replace('.txt', '')
+        nombre_imagen = f"{nombre_base}.jpg"
+        
+        origen_img = os.path.join(carpeta_pendientes, nombre_imagen)
+        destino_img = os.path.join(carpeta_publicados, nombre_imagen)
+        
+        if os.path.exists(origen_img):
+            shutil.move(origen_img, destino_img)
+            print(f"   🖼️  Movida imagen: {nombre_imagen}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"   ⚠️  Error moviendo predicación: {e}")
+        return False
 
 
 def obtener_mensaje_aleatorio_sin_repetir(registro_publicaciones):
@@ -139,7 +275,7 @@ def obtener_mensaje_aleatorio_sin_repetir(registro_publicaciones):
         mensajes_disponibles = todos_mensajes
     
     # Mostrar mensajes bloqueados en debug
-    if mensajes_bloqueados and config['nivel_log'] in ['detallado', 'completo']:
+    if mensajes_bloqueados and config['modo_debug'] in ['detallado', 'completo']:
         print(f"\n🚫 Bloqueados actualmente:")
         for i, msg in enumerate(mensajes_bloqueados, 1):
             print(f"   {i}. {msg}")
@@ -197,18 +333,26 @@ def obtener_mensaje_secuencial(registro_publicaciones):
         # Primera publicación, usar el primero
         mensaje_seleccionado = todos_mensajes[0]
     else:
-        # Obtener el último publicado
-        ultimo_publicado = historial[-1].get('mensaje_archivo', '')
+        # Obtener el último publicado (solo bíblicos)
+        ultimo_biblico = None
+        for entrada in reversed(historial):
+            if entrada.get('tipo', 'biblico') == 'biblico':
+                ultimo_biblico = entrada.get('mensaje_archivo')
+                break
         
-        try:
-            # Encontrar índice del último publicado
-            indice_actual = todos_mensajes.index(ultimo_publicado)
-            # Siguiente mensaje (con rotación)
-            indice_siguiente = (indice_actual + 1) % len(todos_mensajes)
-            mensaje_seleccionado = todos_mensajes[indice_siguiente]
-        except ValueError:
-            # Si el último publicado no existe, empezar desde el primero
+        if not ultimo_biblico:
+            # No hay bíblicos previos, empezar desde el primero
             mensaje_seleccionado = todos_mensajes[0]
+        else:
+            try:
+                # Encontrar índice del último publicado
+                indice_actual = todos_mensajes.index(ultimo_biblico)
+                # Siguiente mensaje (con rotación)
+                indice_siguiente = (indice_actual + 1) % len(todos_mensajes)
+                mensaje_seleccionado = todos_mensajes[indice_siguiente]
+            except ValueError:
+                # Si el último publicado no existe, empezar desde el primero
+                mensaje_seleccionado = todos_mensajes[0]
     
     print(f"📋 Mensaje secuencial seleccionado: {mensaje_seleccionado}")
     

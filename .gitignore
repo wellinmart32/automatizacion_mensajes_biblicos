@@ -12,6 +12,14 @@ registro_publicaciones.json
 # Ignorar carpeta de perfiles de navegador (contiene sesiones)
 perfiles/
 
+# Ignorar cola de predicaciones (contenido dinámico)
+# Solo ignorar archivos, no las carpetas
+cola-facebook/pendientes/*
+cola-facebook/publicados/*
+# Mantener las carpetas con .gitkeep
+!cola-facebook/pendientes/.gitkeep
+!cola-facebook/publicados/.gitkeep
+
 # ============================================================
 # ARCHIVOS DE PYTHON
 # ============================================================
@@ -90,6 +98,10 @@ env/
 *.backup
 *.tmp
 *~
+
+# Screenshots de debug
+capturas/
+*.png
 
 # ============================================================
 # ARCHIVOS DEL SISTEMA OPERATIVO
@@ -196,7 +208,14 @@ tramp
 
 # Mantener archivos __init__.py
 !compartido/__init__.py
+!extractores/__init__.py
 !publicadores/__init__.py
+
+# Mantener .gitkeep en carpetas importantes
+!mensajes/.gitkeep
+!cola-facebook/.gitkeep
+!cola-facebook/pendientes/.gitkeep
+!cola-facebook/publicados/.gitkeep
 
 # ============================================================
 # OTROS

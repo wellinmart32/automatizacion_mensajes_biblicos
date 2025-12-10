@@ -1,13 +1,13 @@
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class GestorRegistro:
     """
     Gestiona el registro de publicaciones en Facebook
-    Mantiene historial de últimos 5 mensajes para evitar repetición
-    Similar a GestorRegistro de Marketplace pero adaptado para Facebook
+    Soporta tanto mensajes bíblicos como predicaciones de WhatsApp
+    Mantiene historial y sistema de índice para predicaciones
     """
     
     def __init__(self, archivo_registro="registro_publicaciones.json"):
@@ -32,15 +32,41 @@ class GestorRegistro:
                         'publicaciones_exitosas': 0,
                         'publicaciones_fallidas': 0,
                         'total_intentos': 0,
-                        'tiempo_promedio_publicacion': 0
+                        'tiempo_promedio_publicacion': 0,
+                        'publicaciones_biblicas': 0,
+                        'publicaciones_predicaciones': 0
                     },
-                    'errores': []
+                    'errores': [],
+                    'predicaciones_whatsapp': {
+                        'indice_catalogo': 0,
+                        'total_extraidos': 0,
+                        'fecha_ultima_extraccion': None,
+                        'historial_extracciones': []
+                    }
                 }
                 
                 # Agregar campos faltantes
                 for campo, valor_default in campos_requeridos.items():
                     if campo not in registro:
                         registro[campo] = valor_default
+                
+                # Asegurar subcampos de predicaciones_whatsapp
+                if 'predicaciones_whatsapp' in registro:
+                    pred = registro['predicaciones_whatsapp']
+                    if 'indice_catalogo' not in pred:
+                        pred['indice_catalogo'] = 0
+                    if 'total_extraidos' not in pred:
+                        pred['total_extraidos'] = 0
+                    if 'fecha_ultima_extraccion' not in pred:
+                        pred['fecha_ultima_extraccion'] = None
+                    if 'historial_extracciones' not in pred:
+                        pred['historial_extracciones'] = []
+                
+                # Asegurar contadores de predicaciones en estadísticas
+                if 'publicaciones_biblicas' not in registro['estadisticas']:
+                    registro['estadisticas']['publicaciones_biblicas'] = 0
+                if 'publicaciones_predicaciones' not in registro['estadisticas']:
+                    registro['estadisticas']['publicaciones_predicaciones'] = 0
                 
                 return registro
                 
@@ -58,17 +84,25 @@ class GestorRegistro:
             'total_publicaciones': 0,
             'ultima_ejecucion': None,
             'fecha_ultima_publicacion': None,
-            'historial_reciente': [],  # Últimos N mensajes publicados
-            'historial_completo': [],  # Lista de todas las publicaciones con detalles
+            'historial_reciente': [],
+            'historial_completo': [],
             'estadisticas': {
                 'publicaciones_exitosas': 0,
                 'publicaciones_fallidas': 0,
                 'total_intentos': 0,
                 'tiempo_promedio_publicacion': 0,
                 'mensaje_mas_publicado': None,
-                'contador_mensajes': {}  # Cuenta veces que se publicó cada mensaje
+                'contador_mensajes': {},
+                'publicaciones_biblicas': 0,
+                'publicaciones_predicaciones': 0
             },
-            'errores': []
+            'errores': [],
+            'predicaciones_whatsapp': {
+                'indice_catalogo': 0,
+                'total_extraidos': 0,
+                'fecha_ultima_extraccion': None,
+                'historial_extracciones': []
+            }
         }
     
     def guardar_registro(self):
@@ -95,7 +129,6 @@ class GestorRegistro:
         fecha_ultima = self.registro.get('fecha_ultima_publicacion')
         
         if not fecha_ultima:
-            # Primera publicación, permitir
             return True, "Primera publicación"
         
         try:
@@ -107,10 +140,8 @@ class GestorRegistro:
                 tiempo_restante = int(tiempo_minimo_segundos - diferencia)
                 
                 if permitir_forzar_manual:
-                    # Mostrar advertencia pero permitir
                     return True, f"⚠️  Última publicación hace {int(diferencia)}s (forzado manual)"
                 else:
-                    # Bloquear publicación
                     return False, f"Última publicación hace {int(diferencia)}s. Espera {tiempo_restante}s más"
             
             return True, f"Última publicación hace {int(diferencia)}s"
@@ -119,16 +150,17 @@ class GestorRegistro:
             print(f"⚠️  Error verificando tiempo: {e}")
             return True, "Error en verificación, permitiendo publicación"
     
-    def registrar_publicacion_exitosa(self, mensaje_archivo, contenido, longitud, intentos, tiempo_ejecucion):
+    def registrar_publicacion_exitosa(self, mensaje_archivo, contenido, longitud, intentos, tiempo_ejecucion, tipo='biblico'):
         """
         Registra una publicación exitosa
         
         Args:
-            mensaje_archivo: Nombre del archivo (ej: mensaje-007.txt)
+            mensaje_archivo: Nombre del archivo (ej: mensaje-007.txt o predica-001.txt)
             contenido: Contenido publicado (primeros 100 caracteres)
             longitud: Longitud total del mensaje
             intentos: Número de intentos que tomó
             tiempo_ejecucion: Tiempo total en segundos
+            tipo: 'biblico' o 'predicacion'
         """
         ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
@@ -140,14 +172,16 @@ class GestorRegistro:
             'longitud': longitud,
             'estado': 'exitoso',
             'intentos': intentos,
-            'tiempo_ejecucion': tiempo_ejecucion
+            'tiempo_ejecucion': tiempo_ejecucion,
+            'tipo': tipo
         }
         
         # Agregar a historial completo
         self.registro['historial_completo'].append(entrada)
         
-        # Agregar a historial reciente (para memoria de últimos 5)
-        self.registro['historial_reciente'].append(mensaje_archivo)
+        # Agregar a historial reciente (solo para mensajes bíblicos)
+        if tipo == 'biblico':
+            self.registro['historial_reciente'].append(mensaje_archivo)
         
         # Actualizar contadores
         self.registro['total_publicaciones'] += 1
@@ -158,40 +192,51 @@ class GestorRegistro:
         self.registro['estadisticas']['publicaciones_exitosas'] += 1
         self.registro['estadisticas']['total_intentos'] += intentos
         
+        # Contador por tipo
+        if tipo == 'biblico':
+            self.registro['estadisticas']['publicaciones_biblicas'] += 1
+        elif tipo == 'predicacion':
+            self.registro['estadisticas']['publicaciones_predicaciones'] += 1
+        
         # Actualizar tiempo promedio
         total_pubs = self.registro['estadisticas']['publicaciones_exitosas']
         tiempo_actual = self.registro['estadisticas'].get('tiempo_promedio_publicacion', 0)
         nuevo_promedio = ((tiempo_actual * (total_pubs - 1)) + tiempo_ejecucion) / total_pubs
         self.registro['estadisticas']['tiempo_promedio_publicacion'] = round(nuevo_promedio, 2)
         
-        # Actualizar contador de mensajes
-        contador = self.registro['estadisticas'].get('contador_mensajes', {})
-        contador[mensaje_archivo] = contador.get(mensaje_archivo, 0) + 1
-        self.registro['estadisticas']['contador_mensajes'] = contador
-        
-        # Actualizar mensaje más publicado
-        mensaje_mas_usado = max(contador, key=contador.get)
-        self.registro['estadisticas']['mensaje_mas_publicado'] = mensaje_mas_usado
+        # Actualizar contador de mensajes (solo para bíblicos)
+        if tipo == 'biblico':
+            contador = self.registro['estadisticas'].get('contador_mensajes', {})
+            contador[mensaje_archivo] = contador.get(mensaje_archivo, 0) + 1
+            self.registro['estadisticas']['contador_mensajes'] = contador
+            
+            # Actualizar mensaje más publicado
+            if contador:
+                mensaje_mas_usado = max(contador, key=contador.get)
+                self.registro['estadisticas']['mensaje_mas_publicado'] = mensaje_mas_usado
         
         # Guardar cambios
         self.guardar_registro()
         
-        print(f"✅ Publicación registrada: {mensaje_archivo}")
+        tipo_emoji = "📖" if tipo == 'biblico' else "🎬"
+        print(f"✅ Publicación registrada: {tipo_emoji} {mensaje_archivo}")
     
-    def registrar_error(self, mensaje_archivo, error):
+    def registrar_error(self, mensaje_archivo, error, tipo='biblico'):
         """
         Registra un error durante la publicación
         
         Args:
             mensaje_archivo: Nombre del archivo que se intentó publicar
             error: Descripción del error
+            tipo: 'biblico' o 'predicacion'
         """
         ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         entrada_error = {
             'fecha': ahora,
             'mensaje_archivo': mensaje_archivo,
-            'error': str(error)
+            'error': str(error),
+            'tipo': tipo
         }
         
         self.registro['errores'].append(entrada_error)
@@ -201,6 +246,44 @@ class GestorRegistro:
         self.guardar_registro()
         
         print(f"❌ Error registrado: {mensaje_archivo} - {error}")
+    
+    def registrar_extraccion_predicaciones(self, cantidad_extraida, nuevo_indice, nombre_grupo):
+        """
+        Registra una extracción de predicaciones de WhatsApp
+        
+        Args:
+            cantidad_extraida: Número de predicaciones extraídas
+            nuevo_indice: Nueva posición del índice de catálogo
+            nombre_grupo: Nombre del grupo de WhatsApp
+        """
+        ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Actualizar predicaciones_whatsapp
+        pred = self.registro['predicaciones_whatsapp']
+        
+        # Agregar al historial de extracciones
+        entrada_extraccion = {
+            'fecha': ahora,
+            'grupo': nombre_grupo,
+            'cantidad_extraida': cantidad_extraida,
+            'indice_anterior': pred['indice_catalogo'],
+            'indice_nuevo': nuevo_indice
+        }
+        
+        pred['historial_extracciones'].append(entrada_extraccion)
+        
+        # Actualizar índice y contadores
+        pred['indice_catalogo'] = nuevo_indice
+        pred['total_extraidos'] += cantidad_extraida
+        pred['fecha_ultima_extraccion'] = ahora
+        
+        self.registro['ultima_ejecucion'] = ahora
+        
+        # Guardar cambios
+        self.guardar_registro()
+        
+        print(f"✅ Extracción registrada: {cantidad_extraida} predicaciones")
+        print(f"   Índice actualizado: {nuevo_indice}")
     
     def obtener_estadisticas(self):
         """
@@ -222,6 +305,8 @@ class GestorRegistro:
             'total_publicaciones': self.registro['total_publicaciones'],
             'publicaciones_exitosas': total_exitosas,
             'publicaciones_fallidas': stats.get('publicaciones_fallidas', 0),
+            'publicaciones_biblicas': stats.get('publicaciones_biblicas', 0),
+            'publicaciones_predicaciones': stats.get('publicaciones_predicaciones', 0),
             'tasa_exito': tasa_exito,
             'promedio_intentos': promedio_intentos,
             'tiempo_promedio': stats.get('tiempo_promedio_publicacion', 0),
@@ -239,6 +324,8 @@ class GestorRegistro:
         print(" " * 15 + "📊 ESTADÍSTICAS DEL SISTEMA")
         print("="*60)
         print(f"📈 Total publicaciones:        {stats['total_publicaciones']}")
+        print(f"   📖 Mensajes bíblicos:       {stats['publicaciones_biblicas']}")
+        print(f"   🎬 Predicaciones:           {stats['publicaciones_predicaciones']}")
         print(f"✅ Exitosas:                   {stats['publicaciones_exitosas']}")
         print(f"❌ Fallidas:                   {stats['publicaciones_fallidas']}")
         print(f"🎯 Tasa de éxito:              {stats['tasa_exito']}%")
