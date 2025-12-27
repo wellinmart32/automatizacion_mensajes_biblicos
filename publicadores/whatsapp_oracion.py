@@ -139,28 +139,29 @@ class PublicadorWhatsAppOracion:
             return False
     
     def buscar_chat(self, nombre_chat):
-        """Busca chat por nombre - MÉTODO COPIADO DEL MARKETPLACE"""
+        """Busca chat por nombre - ESCRIBE LETRA POR LETRA"""
         print(f"\n🔍 Buscando chat: {nombre_chat}")
         
         try:
-            # Método marketplace: buscar campo y usar .clear() + .send_keys()
-            campo_busqueda = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true']"))
-            )
-            
+            # MISMO XPATH DEL MARKETPLACE: data-tab='3'
+            campo_busqueda = self.driver.find_element(By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
             campo_busqueda.click()
-            time.sleep(0.5)
+            time.sleep(1)
             
             campo_busqueda.clear()
-            time.sleep(0.3)
+            time.sleep(0.5)
             
-            campo_busqueda.send_keys(nombre_chat)
-            time.sleep(self.ESPERA_BUSQUEDA)
+            # ESCRIBIR LETRA POR LETRA (método publicador_facebook)
+            for caracter in nombre_chat:
+                campo_busqueda.send_keys(caracter)
+                time.sleep(0.05)  # 50ms entre letras
             
-            # Buscar resultado
+            time.sleep(2)  # Esperar que filtre resultados
+            
+            # Buscar resultado - IGUAL AL MARKETPLACE
             try:
                 contacto = WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.XPATH, f"//span[@title='{nombre_chat}']"))
+                    EC.element_to_be_clickable((By.XPATH, f"//span[@title='{nombre_chat}']"))
                 )
                 contacto.click()
                 time.sleep(3)
@@ -168,7 +169,7 @@ class PublicadorWhatsAppOracion:
                 return True
             except:
                 contacto_alt = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{nombre_chat}')]"))
+                    EC.element_to_be_clickable((By.XPATH, f"//span[contains(text(), '{nombre_chat}')]"))
                 )
                 contacto_alt.click()
                 time.sleep(3)
@@ -180,13 +181,13 @@ class PublicadorWhatsAppOracion:
             return False
     
     def enviar_mensaje(self, mensaje):
-        """Envía mensaje en chat activo - MÉTODO COPIADO DEL MARKETPLACE"""
+        """Envía mensaje en chat activo - ESCRIBE LETRA POR LETRA"""
         print(f"\n✍️  Enviando mensaje...")
         
         try:
             time.sleep(2)
             
-            # Método marketplace: buscar campo y usar .send_keys()
+            # Buscar campo de mensaje
             campo_mensaje = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='10']"))
             )
@@ -194,7 +195,11 @@ class PublicadorWhatsAppOracion:
             campo_mensaje.click()
             time.sleep(0.5)
             
-            campo_mensaje.send_keys(mensaje)
+            # ESCRIBIR LETRA POR LETRA (método publicador_facebook)
+            for caracter in mensaje:
+                campo_mensaje.send_keys(caracter)
+                time.sleep(0.05)  # 50ms entre letras
+            
             time.sleep(0.5)
             
             campo_mensaje.send_keys(Keys.ENTER)
