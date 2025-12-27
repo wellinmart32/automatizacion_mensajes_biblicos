@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title Enviar Llamados de Oración - WhatsApp
+title Extraer Predicaciones de WhatsApp
 
 echo.
 echo ============================================================
-echo      PUBLICADOR DE LLAMADOS DE ORACION
-echo             WhatsApp Web - Grupos
+echo      EXTRACTOR DE PREDICACIONES
+echo             Grupo WhatsApp
 echo ============================================================
 echo.
 
-py publicadores\whatsapp_oracion.py
+py extraer_predicaciones_whatsapp.py
 
 echo.
 echo ============================================================

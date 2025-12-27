@@ -1,19 +1,28 @@
 {
   "grupos": [
     {
-      "nombre": "Familia WhatsApp",
+      "nombre": "Milagro House Bacansisimo",
+      "tipo": "grupo",
       "activo": true,
-      "descripcion": "Grupo familiar principal"
+      "descripcion": "Grupo Milagro House"
     },
     {
-      "nombre": "Iglesia Jóvenes",
+      "nombre": "Iglesia del Señor",
+      "tipo": "grupo",
       "activo": true,
-      "descripcion": "Grupo de jóvenes de la iglesia"
+      "descripcion": "Grupo principal de la iglesia"
     },
     {
-      "nombre": "Grupo Oración",
+      "nombre": "Desarrollo Martinez",
+      "tipo": "grupo",
       "activo": true,
-      "descripcion": "Grupo de intercesión"
+      "descripcion": "Grupo Desarrollo Martinez"
+    },
+    {
+      "nombre": "Mercy",
+      "tipo": "individual",
+      "activo": true,
+      "descripcion": "Chat personal con Mercy"
     }
   ]
 }

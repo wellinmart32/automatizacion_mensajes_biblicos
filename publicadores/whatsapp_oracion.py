@@ -3,6 +3,7 @@ import sys
 import time
 import json
 import random
+import platform
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -13,72 +14,96 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
 class PublicadorWhatsAppOracion:
-    """
-    Publicador de llamados de oración en grupos de WhatsApp
-    - Lee mensajes aleatorios desde mensajes_oracion.txt
-    - Lee grupos desde grupos.json
-    - Publica en cada grupo activo
-    """
+    """Envía llamados de oración a grupos/chats de WhatsApp"""
     
     def __init__(self):
         self.driver = None
         self.carpeta_oracion = "llamados-oracion"
         self.archivo_mensajes = os.path.join(self.carpeta_oracion, "mensajes_oracion.txt")
         self.archivo_grupos = os.path.join(self.carpeta_oracion, "grupos.json")
-        self.carpeta_perfil = "perfiles/whatsapp_oracion"
         
-        # Configuración
-        self.ESPERA_ENTRE_GRUPOS = 3  # Segundos entre cada grupo
-        self.ESPERA_CARGA_WHATSAPP = 15  # Segundos para que cargue WhatsApp
-        self.ESPERA_BUSQUEDA = 5  # Segundos para buscar grupo
+        self.ESPERA_ENTRE_GRUPOS = 3
+        self.ESPERA_CARGA_WHATSAPP = 15
+        self.ESPERA_BUSQUEDA = 5
+        
+        self.mensajes_grupos = []
+        self.mensajes_individuales = []
     
     def cargar_mensajes(self):
-        """Carga los mensajes de oración desde el archivo"""
+        """Carga mensajes desde archivo separados por tipo"""
         if not os.path.exists(self.archivo_mensajes):
             raise Exception(f"No se encontró {self.archivo_mensajes}")
         
         with open(self.archivo_mensajes, 'r', encoding='utf-8') as f:
-            mensajes = [linea.strip() for linea in f if linea.strip()]
+            contenido = f.read()
         
-        if not mensajes:
-            raise Exception("El archivo de mensajes está vacío")
+        if '[GRUPOS]' in contenido and '[INDIVIDUALES]' in contenido:
+            partes = contenido.split('[INDIVIDUALES]')
+            seccion_grupos = partes[0].replace('[GRUPOS]', '').strip()
+            seccion_individuales = partes[1].strip()
+            
+            self.mensajes_grupos = [linea.strip() for linea in seccion_grupos.split('\n') if linea.strip()]
+            self.mensajes_individuales = [linea.strip() for linea in seccion_individuales.split('\n') if linea.strip()]
+        else:
+            raise Exception("El archivo debe tener las secciones [GRUPOS] e [INDIVIDUALES]")
         
-        return mensajes
+        if not self.mensajes_grupos or not self.mensajes_individuales:
+            raise Exception("Debe haber al menos un mensaje en cada sección")
+        
+        return True
     
     def cargar_grupos(self):
-        """Carga la lista de grupos desde el archivo JSON"""
+        """Carga lista de chats desde JSON"""
         if not os.path.exists(self.archivo_grupos):
             raise Exception(f"No se encontró {self.archivo_grupos}")
         
         with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
             datos = json.load(f)
         
-        # Filtrar solo grupos activos
-        grupos_activos = [g for g in datos.get('grupos', []) if g.get('activo', False)]
+        chats_activos = [g for g in datos.get('grupos', []) if g.get('activo', False)]
         
-        if not grupos_activos:
-            raise Exception("No hay grupos activos en grupos.json")
+        if not chats_activos:
+            raise Exception("No hay chats activos en grupos.json")
         
-        return grupos_activos
+        return chats_activos
     
-    def seleccionar_mensaje_aleatorio(self, mensajes):
-        """Selecciona un mensaje aleatorio de la lista"""
-        return random.choice(mensajes)
+    def seleccionar_mensaje_aleatorio(self, tipo_chat):
+        """Selecciona mensaje aleatorio según tipo de chat"""
+        if tipo_chat == "grupo":
+            return random.choice(self.mensajes_grupos)
+        elif tipo_chat == "individual":
+            return random.choice(self.mensajes_individuales)
+        else:
+            return random.choice(self.mensajes_grupos)
     
     def iniciar_navegador(self):
-        """Inicia Firefox con perfil personalizado para WhatsApp"""
+        """Inicia Firefox con perfil existente"""
         print("\n🌐 Iniciando Firefox para WhatsApp Web...")
         
         try:
-            # Crear carpeta de perfil si no existe
-            os.makedirs(self.carpeta_perfil, exist_ok=True)
-            
-            # Configurar opciones de Firefox
             opciones = FirefoxOptions()
-            opciones.set_preference("dom.webnotifications.enabled", False)
-            opciones.set_preference("permissions.default.desktop-notification", 2)
             
-            # Crear perfil
+            # Detectar perfil de Firefox
+            if platform.system() == "Windows":
+                ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
+            else:
+                ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
+            
+            # Buscar perfil default-release
+            perfil_path = None
+            if os.path.exists(ruta_perfiles):
+                for carpeta in os.listdir(ruta_perfiles):
+                    if 'default-release' in carpeta:
+                        perfil_path = os.path.join(ruta_perfiles, carpeta)
+                        print(f"   🦊 Usando perfil Firefox: {carpeta}")
+                        break
+            
+            if perfil_path:
+                opciones.add_argument('-profile')
+                opciones.add_argument(perfil_path)
+            else:
+                print("   ⚠️  No se encontró perfil default-release")
+            
             self.driver = webdriver.Firefox(options=opciones)
             self.driver.maximize_window()
             
@@ -90,89 +115,88 @@ class PublicadorWhatsAppOracion:
             return False
     
     def abrir_whatsapp_web(self):
-        """Abre WhatsApp Web y espera a que esté listo"""
+        """Abre WhatsApp Web y espera carga"""
         print("\n📱 Abriendo WhatsApp Web...")
         
         try:
             self.driver.get("https://web.whatsapp.com")
             
-            print(f"   ⏳ Esperando {self.ESPERA_CARGA_WHATSAPP}s a que cargue WhatsApp...")
-            print("   💡 Si es la primera vez, escanea el código QR")
-            
+            print(f"   ⏳ Esperando {self.ESPERA_CARGA_WHATSAPP}s a que cargue...")
             time.sleep(self.ESPERA_CARGA_WHATSAPP)
             
-            # Verificar que cargó (buscar el campo de búsqueda)
             try:
                 WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"))
                 )
-                print("   ✅ WhatsApp Web cargado correctamente")
+                print("   ✅ WhatsApp Web cargado")
                 return True
             except TimeoutException:
-                print("   ⚠️  No se detectó el campo de búsqueda, pero continuando...")
+                print("   ⚠️  No se detectó campo de búsqueda, continuando...")
                 return True
                 
         except Exception as e:
             print(f"   ❌ Error abriendo WhatsApp Web: {e}")
             return False
     
-    def buscar_grupo(self, nombre_grupo):
-        """Busca un grupo por nombre"""
-        print(f"\n🔍 Buscando grupo: {nombre_grupo}")
+    def buscar_chat(self, nombre_chat):
+        """Busca chat por nombre - MÉTODO COPIADO DEL MARKETPLACE"""
+        print(f"\n🔍 Buscando chat: {nombre_chat}")
         
         try:
-            # Buscar el campo de búsqueda
+            # Método marketplace: buscar campo y usar .clear() + .send_keys()
             campo_busqueda = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"))
+                EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true']"))
             )
             
-            # Limpiar búsqueda anterior
             campo_busqueda.click()
-            time.sleep(1)
-            campo_busqueda.send_keys(Keys.CONTROL + "a")
-            campo_busqueda.send_keys(Keys.DELETE)
-            time.sleep(1)
+            time.sleep(0.5)
             
-            # Escribir nombre del grupo
-            campo_busqueda.send_keys(nombre_grupo)
+            campo_busqueda.clear()
+            time.sleep(0.3)
+            
+            campo_busqueda.send_keys(nombre_chat)
             time.sleep(self.ESPERA_BUSQUEDA)
             
-            # Hacer clic en el primer resultado
+            # Buscar resultado
             try:
-                primer_resultado = WebDriverWait(self.driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, f"//span[@title='{nombre_grupo}']"))
+                contacto = WebDriverWait(self.driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, f"//span[@title='{nombre_chat}']"))
                 )
-                primer_resultado.click()
-                time.sleep(2)
-                
-                print(f"   ✅ Grupo encontrado y abierto")
+                contacto.click()
+                time.sleep(3)
+                print(f"   ✅ Chat '{nombre_chat}' abierto")
+                return True
+            except:
+                contacto_alt = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{nombre_chat}')]"))
+                )
+                contacto_alt.click()
+                time.sleep(3)
+                print(f"   ✅ Chat '{nombre_chat}' abierto")
                 return True
                 
-            except TimeoutException:
-                print(f"   ❌ No se encontró el grupo '{nombre_grupo}'")
-                return False
-                
         except Exception as e:
-            print(f"   ❌ Error buscando grupo: {e}")
+            print(f"   ❌ Error buscando chat: {e}")
             return False
     
     def enviar_mensaje(self, mensaje):
-        """Envía un mensaje en el chat activo"""
+        """Envía mensaje en chat activo - MÉTODO COPIADO DEL MARKETPLACE"""
         print(f"\n✍️  Enviando mensaje...")
         
         try:
-            # Buscar el campo de texto
+            time.sleep(2)
+            
+            # Método marketplace: buscar campo y usar .send_keys()
             campo_mensaje = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='10']"))
             )
             
-            # Escribir mensaje
             campo_mensaje.click()
-            time.sleep(1)
-            campo_mensaje.send_keys(mensaje)
-            time.sleep(1)
+            time.sleep(0.5)
             
-            # Enviar (presionar Enter)
+            campo_mensaje.send_keys(mensaje)
+            time.sleep(0.5)
+            
             campo_mensaje.send_keys(Keys.ENTER)
             time.sleep(2)
             
@@ -181,46 +205,46 @@ class PublicadorWhatsAppOracion:
             
         except Exception as e:
             print(f"   ❌ Error enviando mensaje: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
-    def publicar_en_todos_los_grupos(self):
-        """
-        Función principal que publica en todos los grupos
-        """
+    def publicar_en_todos_los_chats(self):
+        """Función principal - publica en todos los chats"""
         print("\n" + "="*70)
         print(" " * 15 + "📱 PUBLICADOR DE LLAMADOS DE ORACIÓN")
-        print(" " * 20 + "WhatsApp Web - Grupos")
+        print(" " * 20 + "WhatsApp Web - Chats")
         print("="*70 + "\n")
         
-        # Cargar datos
         try:
-            mensajes = self.cargar_mensajes()
-            grupos = self.cargar_grupos()
+            self.cargar_mensajes()
+            chats = self.cargar_grupos()
         except Exception as e:
             print(f"❌ Error cargando archivos: {e}")
             return False
         
+        grupos_count = sum(1 for c in chats if c.get('tipo') == 'grupo')
+        individuales_count = sum(1 for c in chats if c.get('tipo') == 'individual')
+        
         print(f"📋 CONFIGURACIÓN:")
-        print(f"   📝 Mensajes disponibles: {len(mensajes)}")
-        print(f"   👥 Grupos activos: {len(grupos)}")
-        print(f"   📁 Archivo mensajes: {self.archivo_mensajes}")
-        print(f"   📁 Archivo grupos: {self.archivo_grupos}")
+        print(f"   📝 Mensajes para grupos: {len(self.mensajes_grupos)}")
+        print(f"   📝 Mensajes para individuales: {len(self.mensajes_individuales)}")
+        print(f"   👥 Grupos activos: {grupos_count}")
+        print(f"   👤 Individuales activos: {individuales_count}")
+        print(f"   📊 Total chats: {len(chats)}")
         
-        # Mostrar grupos
-        print(f"\n👥 GRUPOS A PUBLICAR:")
-        for i, grupo in enumerate(grupos, 1):
-            print(f"   {i}. {grupo['nombre']}")
+        print(f"\n📋 CHATS A PUBLICAR:")
+        for i, chat in enumerate(chats, 1):
+            tipo_emoji = "👥" if chat.get('tipo') == 'grupo' else "👤"
+            print(f"   {i}. {tipo_emoji} {chat['nombre']} ({chat.get('tipo', 'grupo')})")
         
-        # Iniciar navegador
         if not self.iniciar_navegador():
             return False
         
-        # Abrir WhatsApp Web
         if not self.abrir_whatsapp_web():
             self.cerrar_navegador()
             return False
         
-        # Publicar en cada grupo
         exitos = 0
         fallos = 0
         
@@ -228,53 +252,50 @@ class PublicadorWhatsAppOracion:
         print("🚀 INICIANDO PUBLICACIONES")
         print("="*70)
         
-        for i, grupo in enumerate(grupos, 1):
-            nombre_grupo = grupo['nombre']
+        for i, chat in enumerate(chats, 1):
+            nombre_chat = chat['nombre']
+            tipo_chat = chat.get('tipo', 'grupo')
+            tipo_emoji = "👥" if tipo_chat == 'grupo' else "👤"
             
             print(f"\n{'='*70}")
-            print(f"📤 GRUPO {i}/{len(grupos)}: {nombre_grupo}")
+            print(f"📤 CHAT {i}/{len(chats)}: {tipo_emoji} {nombre_chat} ({tipo_chat})")
             print(f"{'='*70}")
             
-            # Seleccionar mensaje aleatorio
-            mensaje = self.seleccionar_mensaje_aleatorio(mensajes)
-            print(f"🎲 Mensaje seleccionado: {mensaje[:50]}...")
+            mensaje = self.seleccionar_mensaje_aleatorio(tipo_chat)
+            print(f"🎲 Mensaje seleccionado: '{mensaje}'")
             
-            # Buscar grupo
-            if not self.buscar_grupo(nombre_grupo):
-                print(f"   ⚠️  Saltando grupo '{nombre_grupo}'")
+            if not self.buscar_chat(nombre_chat):
+                print(f"   ⚠️  Saltando chat '{nombre_chat}'")
                 fallos += 1
                 continue
             
-            # Enviar mensaje
             if self.enviar_mensaje(mensaje):
                 exitos += 1
-                print(f"   ✅ Publicación exitosa en '{nombre_grupo}'")
+                print(f"   ✅ Publicación exitosa en '{nombre_chat}'")
             else:
                 fallos += 1
-                print(f"   ❌ Fallo en '{nombre_grupo}'")
+                print(f"   ❌ Fallo en '{nombre_chat}'")
             
-            # Esperar entre grupos (excepto en el último)
-            if i < len(grupos):
-                print(f"\n   ⏳ Esperando {self.ESPERA_ENTRE_GRUPOS}s antes del siguiente grupo...")
+            if i < len(chats):
+                print(f"\n   ⏳ Esperando {self.ESPERA_ENTRE_GRUPOS}s antes del siguiente chat...")
                 time.sleep(self.ESPERA_ENTRE_GRUPOS)
         
-        # Resumen final
         print("\n" + "="*70)
         print("📊 RESUMEN DE PUBLICACIONES")
         print("="*70)
         print(f"   ✅ Exitosas: {exitos}")
         print(f"   ❌ Fallidas: {fallos}")
-        print(f"   📊 Total grupos: {len(grupos)}")
-        print(f"   🎯 Tasa de éxito: {(exitos/len(grupos)*100):.1f}%")
+        print(f"   📊 Total chats: {len(chats)}")
+        if len(chats) > 0:
+            print(f"   🎯 Tasa de éxito: {(exitos/len(chats)*100):.1f}%")
         print("="*70)
         
-        # Cerrar navegador
         self.cerrar_navegador()
         
         return exitos > 0
     
     def cerrar_navegador(self):
-        """Cierra el navegador"""
+        """Cierra navegador"""
         if self.driver:
             print("\n🔒 Cerrando navegador...")
             try:
@@ -289,7 +310,7 @@ def main():
     publicador = PublicadorWhatsAppOracion()
     
     try:
-        exito = publicador.publicar_en_todos_los_grupos()
+        exito = publicador.publicar_en_todos_los_chats()
         
         if exito:
             print("\n✅ Proceso completado exitosamente")

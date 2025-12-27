@@ -1,20 +1,20 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title Extractor de Predicaciones WhatsApp
+title Configurador del Sistema
 
 echo.
 echo ============================================================
-echo      EXTRACTOR DE PREDICACIONES DE WHATSAPP
-echo           Sistema de Predicaciones Automaticas
+echo      CONFIGURADOR INTERACTIVO
+echo           Sistema de Automatizacion
 echo ============================================================
 echo.
 
-py extraer_predicaciones_whatsapp.py
+py configurador_interactivo.py
 
 echo.
 echo ============================================================
-echo           Proceso finalizado
+echo           Configuracion finalizada
 echo ============================================================
 echo.
 exit

@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title Publicar Solo en Facebook
+title Enviar Solo Llamados de Oración
 
 echo.
 echo ============================================================
-echo      PUBLICADOR SOLO FACEBOOK
-echo        Mensajes Biblicos + Predicaciones
+echo      PUBLICADOR SOLO ORACIONES
+echo             WhatsApp Web - Grupos
 echo ============================================================
 echo.
 
-py flujo_completo_facebook.py
+py publicadores\whatsapp_oracion.py
 
 echo.
 echo ============================================================
