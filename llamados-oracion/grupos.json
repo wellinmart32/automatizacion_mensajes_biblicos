@@ -1,0 +1,19 @@
+{
+  "grupos": [
+    {
+      "nombre": "Familia WhatsApp",
+      "activo": true,
+      "descripcion": "Grupo familiar principal"
+    },
+    {
+      "nombre": "Iglesia Jóvenes",
+      "activo": true,
+      "descripcion": "Grupo de jóvenes de la iglesia"
+    },
+    {
+      "nombre": "Grupo Oración",
+      "activo": true,
+      "descripcion": "Grupo de intercesión"
+    }
+  ]
+}
