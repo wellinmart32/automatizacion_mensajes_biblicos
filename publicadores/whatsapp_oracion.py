@@ -333,7 +333,8 @@ def main():
         publicador.cerrar_navegador()
     
     finally:
-        input("\nPresiona Enter para salir...")
+        print("\n👋 Finalizando programa...")
+        time.sleep(2)  # Espera 2 segundos antes de cerrar
 
 
 if __name__ == "__main__":
