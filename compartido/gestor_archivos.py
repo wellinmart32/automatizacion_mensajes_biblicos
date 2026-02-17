@@ -483,3 +483,25 @@ def obtener_estadisticas_mensajes():
         'existe_carpeta': True,
         'ruta_carpeta': os.path.abspath(carpeta)
     }
+
+
+def guardar_nombre_grupo_whatsapp(nombre_grupo):
+    """Guarda el nombre del grupo de WhatsApp en config_global.txt"""
+    import configparser
+    
+    archivo_config = "config_global.txt"
+    config = configparser.ConfigParser()
+    config.read(archivo_config, encoding='utf-8')
+    
+    if not config.has_section('PREDICACIONES'):
+        config.add_section('PREDICACIONES')
+    
+    config.set('PREDICACIONES', 'nombre_grupo_whatsapp', nombre_grupo)
+    
+    try:
+        with open(archivo_config, 'w', encoding='utf-8') as f:
+            config.write(f)
+        return True
+    except Exception as e:
+        print(f"❌ Error guardando nombre del grupo: {e}")
+        return False

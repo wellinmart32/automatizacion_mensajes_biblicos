@@ -5,7 +5,8 @@ from compartido.gestor_archivos import (
     leer_config_global,
     verificar_y_crear_estructura,
     contar_predicaciones_pendientes,
-    contar_predicaciones_publicadas
+    contar_predicaciones_publicadas,
+    guardar_nombre_grupo_whatsapp
 )
 from extractores.extractor_whatsapp_predicaciones import ExtractorWhatsAppPredicaciones
 from gestor_registro import GestorRegistro
@@ -23,7 +24,6 @@ def mostrar_estado_sistema(gestor, config):
     """Muestra el estado actual del sistema"""
     print("📊 ESTADO DEL SISTEMA:\n")
     
-    # Estadísticas de predicaciones
     predicaciones = gestor.registro.get('predicaciones_whatsapp', {})
     
     indice_actual = predicaciones.get('indice_catalogo', 0)
@@ -34,7 +34,6 @@ def mostrar_estado_sistema(gestor, config):
     print(f"   📦 Total extraídos histórico: {total_extraidos}")
     print(f"   📅 Última extracción: {fecha_ultima}")
     
-    # Contador de archivos
     pendientes = contar_predicaciones_pendientes()
     publicados = contar_predicaciones_publicadas()
     
@@ -42,7 +41,6 @@ def mostrar_estado_sistema(gestor, config):
     print(f"   ⏳ Pendientes: {pendientes} predicaciones")
     print(f"   ✅ Publicados: {publicados} predicaciones")
     
-    # Configuración
     print(f"\n⚙️  CONFIGURACIÓN:")
     print(f"   📱 Grupo WhatsApp: {config['nombre_grupo_whatsapp']}")
     print(f"   📦 Mensajes por extracción: {config['mensajes_por_extraccion']}")
@@ -53,6 +51,23 @@ def mostrar_estado_sistema(gestor, config):
         print(f"   Con {pendientes} pendientes y 4 publicaciones/día:")
         print(f"   Alternando 1:1 = 2 predicaciones/día")
         print(f"   Duración estimada: {pendientes / 2:.1f} días")
+
+
+def verificar_nombre_grupo(config, es_automatico):
+    """Verifica si el nombre del grupo está configurado, si no lo solicita"""
+    if config.get('nombre_grupo_whatsapp') == 'Prédicas' and not es_automatico:
+        print("⚠️  No has configurado el nombre de tu grupo de WhatsApp\n")
+        print("   El nombre debe ser EXACTAMENTE igual a como aparece en WhatsApp")
+        print("   Ejemplo: 'Grupo Predicaciones', 'Iglesia Central', etc.\n")
+        
+        nuevo_nombre = input("📱 Ingresa el nombre de tu grupo de WhatsApp: ").strip()
+        
+        if nuevo_nombre:
+            guardar_nombre_grupo_whatsapp(nuevo_nombre)
+            config['nombre_grupo_whatsapp'] = nuevo_nombre
+            print(f"\n✅ Grupo guardado: {nuevo_nombre}\n")
+        else:
+            print("⚠️  Se usará el nombre por defecto: Prédicas\n")
 
 
 def confirmar_extraccion(config, indice_actual, es_automatico=False):
@@ -70,7 +85,6 @@ def confirmar_extraccion(config, indice_actual, es_automatico=False):
     print(f"   💾 Destino: cola-facebook/pendientes/")
     print("="*70 + "\n")
     
-    # Si es automático, no pedir confirmación
     if es_automatico:
         print("🤖 Modo automático - iniciando inmediatamente...\n")
         return True
@@ -92,14 +106,11 @@ def confirmar_extraccion(config, indice_actual, es_automatico=False):
 def main():
     """Función principal"""
     
-    # Detectar si se ejecuta en modo automático
     es_automatico = len(sys.argv) > 1 and sys.argv[1] == '--auto'
     
-    # Mostrar banner (solo en modo manual)
     if not es_automatico:
         mostrar_banner()
     
-    # Cargar configuración
     try:
         config = leer_config_global()
     except Exception as e:
@@ -108,7 +119,9 @@ def main():
             input("\nPresiona Enter para salir...")
         return
     
-    # Verificar que las predicaciones estén activadas
+    # Verificar nombre del grupo (primera vez)
+    verificar_nombre_grupo(config, es_automatico)
+    
     if not config.get('activar_predicaciones', False):
         print("⚠️  LAS PREDICACIONES ESTÁN DESACTIVADAS")
         print("\n💡 Para activarlas:")
@@ -120,30 +133,23 @@ def main():
             input("Presiona Enter para salir...")
         return
     
-    # Verificar estructura de carpetas
     print("📁 Verificando estructura de carpetas...")
     verificar_y_crear_estructura()
     print()
     
-    # Inicializar gestor de registro
     gestor = GestorRegistro()
     
-    # Mostrar estado
     mostrar_estado_sistema(gestor, config)
     
-    # Obtener índice actual
     predicaciones = gestor.registro.get('predicaciones_whatsapp', {})
     indice_actual = predicaciones.get('indice_catalogo', 0)
     
-    # Confirmar extracción
     if not confirmar_extraccion(config, indice_actual, es_automatico):
         return
     
-    # Inicializar extractor
     extractor = ExtractorWhatsAppPredicaciones()
     
     try:
-        # Ejecutar extracción
         predicaciones_extraidas = extractor.ejecutar(
             nombre_grupo=config['nombre_grupo_whatsapp'],
             cantidad=config['mensajes_por_extraccion'],
@@ -151,7 +157,6 @@ def main():
         )
         
         if predicaciones_extraidas:
-            # Actualizar índice en el registro
             nuevo_indice = indice_actual + config['mensajes_por_extraccion']
             
             gestor.registrar_extraccion_predicaciones(
@@ -168,7 +173,6 @@ def main():
             print(f"💾 Guardadas en: cola-facebook/pendientes/")
             print("="*70)
             
-            # Mostrar estado actualizado
             print("\n📊 ESTADO ACTUALIZADO:")
             pendientes = contar_predicaciones_pendientes()
             publicados = contar_predicaciones_publicadas()
@@ -188,7 +192,7 @@ def main():
                 print("   ⚠️  Alternancia desactivada")
                 print("   Solo se publicarán mensajes bíblicos")
                 print("   Activa alternancia en '2_Configurador.bat'")
-            
+        
         else:
             print("\n⚠️  NO SE EXTRAJO NINGUNA PREDICACIÓN")
             print("\n💡 Posibles causas:")
@@ -208,7 +212,6 @@ def main():
         traceback.print_exc()
     
     finally:
-        # Solo pausar si se ejecuta manualmente (no desde flujo automático)
         if not es_automatico:
             input("\nPresiona Enter para salir...")
 
