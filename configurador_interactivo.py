@@ -1,51 +1,74 @@
 import os
 import configparser
-from compartido.gestor_archivos import leer_config_global
+import shutil
+from compartido.gestor_archivos import contar_articulos
 
 
 class ConfiguradorInteractivo:
-    """Configurador interactivo para el sistema de publicación en Facebook"""
+    """Configurador interactivo para el sistema de Marketplace"""
 
     def __init__(self):
         self.archivo_config = "config_global.txt"
         self.config = configparser.ConfigParser()
         self.cambios_realizados = False
 
-        if os.path.exists(self.archivo_config):
-            self.config.read(self.archivo_config, encoding='utf-8')
-        else:
-            print("⚠️  No existe config_global.txt")
-            return
+        self.defaults = {
+            'GENERAL': {
+                'cantidad_productos': '5',
+                'modo': 'completo'
+            },
+            'EXTRACCION': {
+                'contacto_whatsapp': 'Trabajo John',
+                'auto_scroll': '5',
+                'productos_por_extraccion': '5'
+            },
+            'PUBLICACION': {
+                'auto_publicar': 'si',
+                'tiempo_entre_publicaciones': '10',
+                'max_publicaciones_por_dia': '20',
+                'publicar_todos': 'si'
+            },
+            'SEGURIDAD': {
+                'confirmacion_borrado': 'si',
+                'backup_antes_borrar': 'si'
+            }
+        }
 
     def limpiar_pantalla(self):
-        """Limpia la consola"""
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def mostrar_header(self):
-        """Muestra el encabezado"""
         print("=" * 70)
         print(" " * 15 + "⚙️  CONFIGURADOR DEL SISTEMA")
-        print(" " * 12 + "Publicador Automático - Mensajes Bíblicos")
+        print(" " * 12 + "Publicador Automático - Marketplace")
         print("=" * 70)
         print()
 
     def mostrar_config_actual(self):
-        """Muestra la configuración actual"""
         print("📋 CONFIGURACIÓN ACTUAL:\n")
-
         for seccion in self.config.sections():
             print(f"[{seccion}]")
             for clave, valor in self.config[seccion].items():
-                valor_limpio = valor.split('#')[0].strip()
-                print(f"  {clave} = {valor_limpio}")
+                print(f"  {clave} = {valor}")
             print()
 
+    def cargar_config(self):
+        if os.path.exists(self.archivo_config):
+            self.config.read(self.archivo_config, encoding='utf-8')
+        else:
+            print("⚠️  No existe config_global.txt. Creando configuración por defecto...\n")
+            self.crear_config_defecto()
+
+    def crear_config_defecto(self):
+        for seccion, valores in self.defaults.items():
+            self.config[seccion] = valores
+        self.guardar_config()
+
     def guardar_config(self):
-        """Guarda la configuración en el archivo"""
         try:
             with open(self.archivo_config, 'w', encoding='utf-8') as f:
                 f.write("# ============================================================\n")
-                f.write("# CONFIGURACIÓN GLOBAL - PUBLICADOR AUTOMÁTICO FACEBOOK\n")
+                f.write("# CONFIGURACIÓN GLOBAL DEL SISTEMA - MARKETPLACE\n")
                 f.write("# ============================================================\n\n")
                 self.config.write(f)
             print("\n✅ Configuración guardada exitosamente")
@@ -55,18 +78,7 @@ class ConfiguradorInteractivo:
             print(f"\n❌ Error guardando configuración: {e}")
             return False
 
-    def validar_si_no(self, valor):
-        """Valida que sea 'si' o 'no'"""
-        valor_lower = valor.lower().strip()
-        if valor_lower in ['si', 'sí', 's', 'yes', 'y']:
-            return True, 'si'
-        elif valor_lower in ['no', 'n']:
-            return True, 'no'
-        else:
-            return False, "❌ Debe ser 'si' o 'no'"
-
     def validar_numero_positivo(self, valor, min_val=1, max_val=None):
-        """Valida que sea un número positivo"""
         try:
             num = int(valor)
             if num < min_val:
@@ -77,56 +89,63 @@ class ConfiguradorInteractivo:
         except ValueError:
             return False, "❌ Debe ser un número válido"
 
-    def validar_navegador(self, valor):
-        """Valida que sea firefox o chrome"""
+    def validar_si_no(self, valor):
         valor_lower = valor.lower().strip()
-        if valor_lower in ['firefox', 'chrome']:
-            return True, valor_lower
+        if valor_lower in ['si', 'sí', 's', 'yes', 'y']:
+            return True, 'si'
+        elif valor_lower in ['no', 'n']:
+            return True, 'no'
         else:
-            return False, "❌ Debe ser 'firefox' o 'chrome'"
+            return False, "❌ Debe ser 'si' o 'no'"
 
-    def validar_seleccion(self, valor):
-        """Valida método de selección"""
+    def validar_modo(self, valor):
+        modos_validos = ['completo', 'solo_extraer', 'solo_publicar']
         valor_lower = valor.lower().strip()
-        if valor_lower in ['aleatoria', 'secuencial']:
+        if valor_lower in modos_validos:
             return True, valor_lower
         else:
-            return False, "❌ Debe ser 'aleatoria' o 'secuencial'"
+            return False, f"❌ Debe ser uno de: {', '.join(modos_validos)}"
+
+    def validar_contacto(self, valor):
+        if len(valor.strip()) < 3:
+            return False, "❌ El nombre debe tener al menos 3 caracteres"
+        if len(valor.strip()) > 50:
+            return False, "❌ El nombre no puede exceder 50 caracteres"
+        return True, valor.strip()
 
     def mostrar_ayuda(self):
-        """Muestra explicación de cada opción del menú"""
         self.limpiar_pantalla()
         self.mostrar_header()
         print("❓ AYUDA - ¿QUÉ HACE CADA OPCIÓN?\n")
         print("=" * 70)
 
         print("\n  0. 🔄 REINICIAR SISTEMA")
-        print("     Borra todo el historial y configuración.")
+        print("     Borra todos los productos, historial y perfiles.")
         print("     Útil si quieres empezar desde cero.")
 
         print("\n  1. ⚙️  CONFIGURACIÓN GENERAL")
-        print("     Cambia la carpeta donde están tus mensajes .txt")
-        print("     y el navegador a usar (Firefox o Chrome).")
+        print("     Cantidad de carpetas de productos y")
+        print("     modo de operación (completo, solo extraer, solo publicar).")
 
-        print("\n  2. 📝 CONFIGURACIÓN DE MENSAJES")
-        print("     Define si los mensajes se publican en orden")
-        print("     o de forma aleatoria, y cuántos evitar repetir.")
+        print("\n  2. 📝 CONFIGURACIÓN DE CONTENIDO")
+        print("     Datos del artículo a publicar:")
+        print("     título, precio, categoría, descripción, etc.")
 
         print("\n  3. 🚀 CONFIGURACIÓN DE PUBLICACIÓN")
-        print("     Tiempo de espera entre intentos y")
-        print("     máximo de reintentos si falla algo.")
+        print("     Tiempo entre publicaciones, máximo por día")
+        print("     y si publicar todos los productos o solo el siguiente.")
 
         print("\n  4. 📱 CONFIGURACIÓN DE WHATSAPP")
-        print("     Nombre del grupo de WhatsApp de predicaciones,")
-        print("     cantidad a extraer y si alternar con mensajes bíblicos.")
+        print("     Nombre del contacto en WhatsApp Business")
+        print("     del cual se extraen los productos del catálogo.")
 
         print("\n  5. 🌐 CONFIGURACIÓN DE NAVEGADOR")
-        print("     Si usar tu perfil guardado de Facebook")
-        print("     o abrir una sesión nueva.")
+        print("     Navegador a usar y configuración")
+        print("     del perfil de sesión de Facebook.")
 
-        print("\n  6. 🔒 CONFIGURACIÓN DE LÍMITES")
-        print("     Tiempo mínimo entre publicaciones para")
-        print("     evitar duplicados si se ejecuta dos veces.")
+        print("\n  6. 🔒 CONFIGURACIÓN DE SEGURIDAD")
+        print("     Confirmación antes de borrar carpetas")
+        print("     y si crear backups automáticos.")
 
         print("\n  7. 📋 VER CONFIGURACIÓN COMPLETA")
         print("     Muestra todos los valores actuales")
@@ -146,7 +165,6 @@ class ConfiguradorInteractivo:
         input("\nPresiona Enter para volver al menú...")
 
     def menu_principal(self):
-        """Muestra el menú principal"""
         while True:
             self.limpiar_pantalla()
             self.mostrar_header()
@@ -156,11 +174,11 @@ class ConfiguradorInteractivo:
             print("\n🔧 OPCIONES:\n")
             print("  0.  🔄 Reiniciar sistema desde cero")
             print("  1.  ⚙️  Configuración General")
-            print("  2.  📝 Configuración de Mensajes")
+            print("  2.  📝 Configuración de Contenido (Artículos)")
             print("  3.  🚀 Configuración de Publicación")
-            print("  4.  📱 Configuración de WhatsApp (Predicaciones)")
+            print("  4.  📱 Configuración de WhatsApp (Extracción)")
             print("  5.  🌐 Configuración de Navegador")
-            print("  6.  🔒 Configuración de Límites")
+            print("  6.  🔒 Configuración de Seguridad")
             print("  7.  📋 Ver configuración completa")
             print("  8.  🗓️  Gestión de Tareas Automáticas [FULL]")
             print("  9.  💾 Guardar y salir")
@@ -171,11 +189,11 @@ class ConfiguradorInteractivo:
             opcion = input("\n👉 Selecciona opción: ").strip()
 
             if opcion == '0':
-                self.reiniciar_sistema()
+                self.reiniciar_sistema_completo()
             elif opcion == '1':
                 self.menu_general()
             elif opcion == '2':
-                self.menu_mensajes()
+                self.menu_contenido()
             elif opcion == '3':
                 self.menu_publicacion()
             elif opcion == '4':
@@ -183,7 +201,7 @@ class ConfiguradorInteractivo:
             elif opcion == '5':
                 self.menu_navegador()
             elif opcion == '6':
-                self.menu_limites()
+                self.menu_seguridad()
             elif opcion == '7':
                 self.mostrar_config_actual()
                 input("\nPresiona Enter para volver...")
@@ -198,8 +216,8 @@ class ConfiguradorInteractivo:
                 break
             elif opcion == '10':
                 if self.cambios_realizados:
-                    conf = input("\n⚠️  Hay cambios sin guardar. ¿Salir? (si/no): ")
-                    if conf.lower() in ['si', 'sí', 's']:
+                    confirmar = input("\n⚠️  Hay cambios sin guardar. ¿Salir? (si/no): ")
+                    if confirmar.lower() in ['si', 'sí', 's']:
                         break
                 else:
                     break
@@ -209,51 +227,86 @@ class ConfiguradorInteractivo:
                 print("\n❌ Opción inválida")
                 input("Presiona Enter para continuar...")
 
-    def reiniciar_sistema(self):
-        """Reinicia el sistema desde cero"""
+    def reiniciar_sistema_completo(self):
         self.limpiar_pantalla()
         self.mostrar_header()
         print("🔄 REINICIAR SISTEMA DESDE CERO\n")
-        print("⚠️  ADVERTENCIA: Esto borrará TODO el historial de publicaciones")
-        print("   Los mensajes .txt NO se borrarán\n")
+        print("⚠️  ADVERTENCIA: Esta acción eliminará:\n")
+        print("   ❌ Carpeta ArticulosMarketplace/ (todos los productos)")
+        print("   ❌ Archivo registro_publicaciones.json")
+        print("   ❌ Carpeta perfiles/ (sesiones del navegador)")
+        print("   ❌ Carpeta backups/")
+        print("\n   ✅ Se mantendrá: config_global.txt\n")
+        print("=" * 70)
 
-        confirmar = input("¿Estás seguro? Escribe 'CONFIRMAR' para continuar: ").strip()
+        confirmacion = input("\n¿SEGURO que quieres REINICIAR TODO? (escribe 'SI' en mayúsculas): ")
 
-        if confirmar == 'CONFIRMAR':
-            try:
-                import json
-                if os.path.exists('registro_publicaciones.json'):
-                    os.remove('registro_publicaciones.json')
-                print("\n✅ Sistema reiniciado correctamente")
-                print("   El historial de publicaciones fue borrado")
-            except Exception as e:
-                print(f"\n❌ Error al reiniciar: {e}")
+        if confirmacion == "SI":
+            print("\n🗑️  Eliminando datos del sistema...\n")
+            eliminados = 0
+
+            for elemento in ["ArticulosMarketplace", "perfiles", "backups"]:
+                if os.path.exists(elemento):
+                    try:
+                        shutil.rmtree(elemento)
+                        print(f"  ✔ {elemento}/ eliminado")
+                        eliminados += 1
+                    except Exception as e:
+                        print(f"  ✘ Error eliminando {elemento}/: {e}")
+
+            if os.path.exists("registro_publicaciones.json"):
+                try:
+                    os.remove("registro_publicaciones.json")
+                    print("  ✔ registro_publicaciones.json eliminado")
+                    eliminados += 1
+                except Exception as e:
+                    print(f"  ✘ Error eliminando registro: {e}")
+
+            print(f"\n✅ Sistema reiniciado: {eliminados} elemento(s) eliminado(s)")
         else:
             print("\n❌ Reinicio cancelado")
 
-        input("\nPresiona Enter para volver...")
+        input("\nPresiona Enter para continuar...")
 
     def menu_general(self):
-        """Menú de configuración general"""
         self.limpiar_pantalla()
         self.mostrar_header()
         print("⚙️  CONFIGURACIÓN GENERAL\n")
 
-        print("📁 Carpeta de mensajes")
-        print(f"   Actual: {self.config['GENERAL']['carpeta_mensajes']}")
-        nuevo = input("   Nueva carpeta (Enter para mantener): ").strip()
-        if nuevo:
-            self.config['GENERAL']['carpeta_mensajes'] = nuevo
-            self.cambios_realizados = True
-            print("   ✅ Cambiado")
+        print("📦 Cantidad de productos (carpetas Articulo_X)")
+        carpetas_actuales = contar_articulos()
+        print(f"   Actual: {self.config['GENERAL']['cantidad_productos']}")
+        if carpetas_actuales > 0:
+            print(f"   ℹ️  Carpetas existentes: {carpetas_actuales}")
 
-        print("\n🌐 Navegador (firefox o chrome)")
-        print(f"   Actual: {self.config['GENERAL']['navegador']}")
-        nuevo = input("   Nuevo navegador (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_navegador(nuevo)
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_numero_positivo(nuevo_valor, min_val=1, max_val=50)
             if valido:
-                self.config['GENERAL']['navegador'] = resultado
+                if carpetas_actuales > 0 and resultado < carpetas_actuales:
+                    print(f"\n   ⚠️  ADVERTENCIA: Reducirás de {carpetas_actuales} a {resultado} carpetas")
+                    confirmar = input("   ¿Continuar? (si/no): ")
+                    if confirmar.lower() in ['si', 'sí', 's']:
+                        self.config['GENERAL']['cantidad_productos'] = str(resultado)
+                        self.cambios_realizados = True
+                        print("   ✅ Cambiado")
+                    else:
+                        print("   ❌ Cancelado")
+                else:
+                    self.config['GENERAL']['cantidad_productos'] = str(resultado)
+                    self.cambios_realizados = True
+                    print("   ✅ Cambiado")
+            else:
+                print(f"   {resultado}")
+
+        print("\n🎯 Modo de operación")
+        print(f"   Actual: {self.config['GENERAL']['modo']}")
+        print("   Opciones: completo | solo_extraer | solo_publicar")
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_modo(nuevo_valor)
+            if valido:
+                self.config['GENERAL']['modo'] = resultado
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
             else:
@@ -261,97 +314,94 @@ class ConfiguradorInteractivo:
 
         input("\n✅ Presiona Enter para volver...")
 
-    def menu_mensajes(self):
-        """Menú de configuración de mensajes"""
+    def menu_contenido(self):
         self.limpiar_pantalla()
         self.mostrar_header()
-        print("📝 CONFIGURACIÓN DE MENSAJES\n")
-
-        print("🎲 Método de selección (aleatoria o secuencial)")
-        print(f"   Actual: {self.config['MENSAJES']['seleccion']}")
-        nuevo = input("   Nuevo método (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_seleccion(nuevo)
-            if valido:
-                self.config['MENSAJES']['seleccion'] = resultado
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
-            else:
-                print(f"   {resultado}")
-
-        print("\n💾 Memoria: Últimos N mensajes a evitar")
-        print(f"   Actual: {self.config['MENSAJES']['historial_evitar_repetir']}")
-        print("   (Con 21 mensajes, recomendado: 5)")
-        nuevo = input("   Nuevo valor (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_numero_positivo(nuevo, min_val=0, max_val=20)
-            if valido:
-                self.config['MENSAJES']['historial_evitar_repetir'] = str(resultado)
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
-            else:
-                print(f"   {resultado}")
-
-        print("\n# Agregar hashtags automáticamente")
-        print(f"   Actual: {self.config['MENSAJES']['agregar_hashtags']}")
-        nuevo = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_si_no(nuevo)
-            if valido:
-                self.config['MENSAJES']['agregar_hashtags'] = resultado
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
-            else:
-                print(f"   {resultado}")
-
-        if self.config['MENSAJES']['agregar_hashtags'] == 'si':
-            print("\n📌 Hashtags (separados por comas)")
-            print(f"   Actual: {self.config['MENSAJES']['hashtags']}")
-            nuevo = input("   Nuevos hashtags (Enter para mantener): ").strip()
-            if nuevo:
-                self.config['MENSAJES']['hashtags'] = nuevo
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
-
+        print("📝 CONFIGURACIÓN DE CONTENIDO (Artículos)\n")
+        print("   ℹ️  Los datos de cada artículo se configuran en:")
+        print("   ArticulosMarketplace/Articulo_X/datos.txt\n")
+        print("   Campos disponibles:")
+        print("   • titulo    - Nombre del producto")
+        print("   • precio    - Precio en USD")
+        print("   • categoria - Categoría de Marketplace")
+        print("   • estado    - Nuevo / Usado")
+        print("   • descripcion - Descripción del producto")
+        print("   • ubicacion - Ciudad/ubicación")
+        print("   • etiquetas - Palabras clave")
+        print("\n   💡 Próximamente: editor visual de artículos")
         input("\n✅ Presiona Enter para volver...")
 
     def menu_publicacion(self):
-        """Menú de configuración de publicación"""
         self.limpiar_pantalla()
         self.mostrar_header()
         print("🚀 CONFIGURACIÓN DE PUBLICACIÓN\n")
 
-        print("⏱️  Tiempo entre intentos (segundos)")
-        print(f"   Actual: {self.config['PUBLICACION']['tiempo_entre_intentos']}")
-        nuevo = input("   Nuevo valor (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_numero_positivo(nuevo, min_val=1, max_val=30)
+        print("🤖 Publicar automáticamente después de extraer")
+        print(f"   Actual: {self.config['PUBLICACION']['auto_publicar']}")
+        nuevo_valor = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_si_no(nuevo_valor)
             if valido:
-                self.config['PUBLICACION']['tiempo_entre_intentos'] = str(resultado)
+                self.config['PUBLICACION']['auto_publicar'] = resultado
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
             else:
                 print(f"   {resultado}")
 
-        print("\n🔄 Máximo de intentos por publicación")
-        print(f"   Actual: {self.config['PUBLICACION']['max_intentos_por_publicacion']}")
-        nuevo = input("   Nuevo valor (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_numero_positivo(nuevo, min_val=1, max_val=10)
+        print("\n⏱️  Tiempo entre publicaciones (segundos)")
+        print(f"   Actual: {self.config['PUBLICACION']['tiempo_entre_publicaciones']}")
+        print("   ℹ️  Recomendado: 10-30 segundos")
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_numero_positivo(nuevo_valor, min_val=5, max_val=300)
             if valido:
-                self.config['PUBLICACION']['max_intentos_por_publicacion'] = str(resultado)
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
+                if resultado < 10:
+                    print("\n   ⚠️  ADVERTENCIA: Menos de 10s puede causar detección de spam")
+                    confirmar = input("   ¿Continuar? (si/no): ")
+                    if confirmar.lower() in ['si', 'sí', 's']:
+                        self.config['PUBLICACION']['tiempo_entre_publicaciones'] = str(resultado)
+                        self.cambios_realizados = True
+                        print("   ✅ Cambiado")
+                    else:
+                        print("   ❌ Cancelado")
+                else:
+                    self.config['PUBLICACION']['tiempo_entre_publicaciones'] = str(resultado)
+                    self.cambios_realizados = True
+                    print("   ✅ Cambiado")
             else:
                 print(f"   {resultado}")
 
-        print("\n⏳ Espera después de publicar (segundos)")
-        print(f"   Actual: {self.config['PUBLICACION']['espera_despues_publicar']}")
-        nuevo = input("   Nuevo valor (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_numero_positivo(nuevo, min_val=1, max_val=30)
+        print("\n📈 Máximo de publicaciones por día")
+        print(f"   Actual: {self.config['PUBLICACION']['max_publicaciones_por_dia']}")
+        print("   ℹ️  Recomendado: 10-30 (evitar bloqueo)")
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_numero_positivo(nuevo_valor, min_val=1, max_val=100)
             if valido:
-                self.config['PUBLICACION']['espera_despues_publicar'] = str(resultado)
+                if resultado > 50:
+                    print("\n   ⚠️  ADVERTENCIA: Más de 50 diarias puede causar bloqueo")
+                    confirmar = input("   ¿Continuar? (si/no): ")
+                    if confirmar.lower() in ['si', 'sí', 's']:
+                        self.config['PUBLICACION']['max_publicaciones_por_dia'] = str(resultado)
+                        self.cambios_realizados = True
+                        print("   ✅ Cambiado")
+                    else:
+                        print("   ❌ Cancelado")
+                else:
+                    self.config['PUBLICACION']['max_publicaciones_por_dia'] = str(resultado)
+                    self.cambios_realizados = True
+                    print("   ✅ Cambiado")
+            else:
+                print(f"   {resultado}")
+
+        print("\n📋 Publicar todos los productos disponibles")
+        print(f"   Actual: {self.config['PUBLICACION']['publicar_todos']}")
+        print("   si = Publica todos | no = Solo publica el siguiente")
+        nuevo_valor = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_si_no(nuevo_valor)
+            if valido:
+                self.config['PUBLICACION']['publicar_todos'] = resultado
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
             else:
@@ -360,116 +410,99 @@ class ConfiguradorInteractivo:
         input("\n✅ Presiona Enter para volver...")
 
     def menu_whatsapp(self):
-        """Menú de configuración de WhatsApp (predicaciones)"""
         self.limpiar_pantalla()
         self.mostrar_header()
-        print("📱 CONFIGURACIÓN DE WHATSAPP (Predicaciones)\n")
+        print("📱 CONFIGURACIÓN DE WHATSAPP (Extracción)\n")
 
-        nombre_actual = self.config.get('PREDICACIONES', 'nombre_grupo_whatsapp', fallback='Prédicas')
-        print("👥 Nombre del grupo de WhatsApp")
-        print(f"   Actual: {nombre_actual}")
+        print("👤 Nombre del contacto en WhatsApp")
+        print(f"   Actual: {self.config['EXTRACCION']['contacto_whatsapp']}")
         print("   ⚠️  Debe ser EXACTAMENTE igual a como aparece en WhatsApp")
-        nuevo = input("   Nuevo nombre (Enter para mantener): ").strip()
-        if nuevo:
-            if not self.config.has_section('PREDICACIONES'):
-                self.config.add_section('PREDICACIONES')
-            self.config.set('PREDICACIONES', 'nombre_grupo_whatsapp', nuevo)
-            self.cambios_realizados = True
-            print("   ✅ Cambiado")
-
-        cantidad_actual = self.config.get('PREDICACIONES', 'mensajes_por_extraccion', fallback='10')
-        print("\n📦 Cantidad de predicaciones a extraer por vez")
-        print(f"   Actual: {cantidad_actual}")
-        nuevo = input("   Nuevo valor (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_numero_positivo(nuevo, min_val=1, max_val=50)
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_contacto(nuevo_valor)
             if valido:
-                if not self.config.has_section('PREDICACIONES'):
-                    self.config.add_section('PREDICACIONES')
-                self.config.set('PREDICACIONES', 'mensajes_por_extraccion', str(resultado))
+                self.config['EXTRACCION']['contacto_whatsapp'] = resultado
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
             else:
                 print(f"   {resultado}")
 
-        alternar_actual = self.config.get('PREDICACIONES', 'alternar_con_predicaciones', fallback='si')
-        print("\n🔀 Alternar mensajes bíblicos con predicaciones")
-        print(f"   Actual: {alternar_actual}")
-        print("   (si = publica 1 bíblico, 1 predicación, 1 bíblico...)")
-        nuevo = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_si_no(nuevo)
+        print("\n📜 Auto scroll (veces que hace scroll en catálogo)")
+        print(f"   Actual: {self.config['EXTRACCION']['auto_scroll']}")
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_numero_positivo(nuevo_valor, min_val=1, max_val=20)
             if valido:
-                if not self.config.has_section('PREDICACIONES'):
-                    self.config.add_section('PREDICACIONES')
-                self.config.set('PREDICACIONES', 'alternar_con_predicaciones', resultado)
+                self.config['EXTRACCION']['auto_scroll'] = str(resultado)
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
+            else:
+                print(f"   {resultado}")
+
+        print("\n📦 Productos por extracción")
+        print(f"   Actual: {self.config['EXTRACCION']['productos_por_extraccion']}")
+        cantidad_max = int(self.config['GENERAL']['cantidad_productos'])
+        print(f"   ℹ️  Máximo recomendado: {cantidad_max} (según cantidad_productos)")
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_numero_positivo(nuevo_valor, min_val=1, max_val=50)
+            if valido:
+                if resultado > cantidad_max:
+                    print(f"\n   ⚠️  ADVERTENCIA: Extraerás {resultado} pero solo hay {cantidad_max} carpetas")
+                    confirmar = input("   ¿Continuar? (si/no): ")
+                    if confirmar.lower() in ['si', 'sí', 's']:
+                        self.config['EXTRACCION']['productos_por_extraccion'] = str(resultado)
+                        self.cambios_realizados = True
+                        print("   ✅ Cambiado")
+                    else:
+                        print("   ❌ Cancelado")
+                else:
+                    self.config['EXTRACCION']['productos_por_extraccion'] = str(resultado)
+                    self.cambios_realizados = True
+                    print("   ✅ Cambiado")
             else:
                 print(f"   {resultado}")
 
         input("\n✅ Presiona Enter para volver...")
 
     def menu_navegador(self):
-        """Menú de configuración del navegador"""
         self.limpiar_pantalla()
         self.mostrar_header()
-        print("🌐 CONFIGURACIÓN DEL NAVEGADOR\n")
-
-        print("👤 Usar perfil existente del navegador")
-        print(f"   Actual: {self.config['NAVEGADOR']['usar_perfil_existente']}")
-        print("   (si = usa tu sesión de Facebook guardada)")
-        nuevo = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_si_no(nuevo)
-            if valido:
-                self.config['NAVEGADOR']['usar_perfil_existente'] = resultado
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
-            else:
-                print(f"   {resultado}")
-
-        print("\n🖥️  Maximizar ventana al iniciar")
-        print(f"   Actual: {self.config['NAVEGADOR']['maximizar_ventana']}")
-        nuevo = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_si_no(nuevo)
-            if valido:
-                self.config['NAVEGADOR']['maximizar_ventana'] = resultado
-                self.cambios_realizados = True
-                print("   ✅ Cambiado")
-            else:
-                print(f"   {resultado}")
-
+        print("🌐 CONFIGURACIÓN DE NAVEGADOR\n")
+        print("   ℹ️  El sistema usa Chrome con tu perfil guardado")
+        print("   para mantener la sesión de Facebook activa.\n")
+        print("   💡 Si tienes problemas con la sesión:")
+        print("   • Cierra Chrome completamente")
+        print("   • Ejecuta la app nuevamente")
+        print("   • Inicia sesión en Facebook cuando se abra el navegador")
         input("\n✅ Presiona Enter para volver...")
 
-    def menu_limites(self):
-        """Menú de configuración de límites"""
+    def menu_seguridad(self):
         self.limpiar_pantalla()
         self.mostrar_header()
-        print("🔒 CONFIGURACIÓN DE LÍMITES\n")
+        print("🔒 CONFIGURACIÓN DE SEGURIDAD\n")
 
-        print("⏰ Tiempo mínimo entre publicaciones (segundos)")
-        print(f"   Actual: {self.config['LIMITES']['tiempo_minimo_entre_publicaciones_segundos']}")
-        print("   (Evita duplicados si se ejecuta 2 veces seguidas)")
-        nuevo = input("   Nuevo valor (Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_numero_positivo(nuevo, min_val=30, max_val=600)
+        print("⏱️  Confirmación antes de borrar carpetas")
+        print(f"   Actual: {self.config['SEGURIDAD']['confirmacion_borrado']}")
+        print("   si = Countdown de 5-10s | no = Borra inmediatamente")
+        nuevo_valor = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_si_no(nuevo_valor)
             if valido:
-                self.config['LIMITES']['tiempo_minimo_entre_publicaciones_segundos'] = str(resultado)
+                self.config['SEGURIDAD']['confirmacion_borrado'] = resultado
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
             else:
                 print(f"   {resultado}")
 
-        print("\n🔓 Permitir forzar publicación manual")
-        print(f"   Actual: {self.config['LIMITES']['permitir_forzar_publicacion_manual']}")
-        print("   (si = permite saltarse el tiempo mínimo en ejecución manual)")
-        nuevo = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
-        if nuevo:
-            valido, resultado = self.validar_si_no(nuevo)
+        print("\n💾 Crear backup antes de borrar carpetas")
+        print(f"   Actual: {self.config['SEGURIDAD']['backup_antes_borrar']}")
+        print("   si = Guarda backup en 'backups/' | no = Borra directo")
+        nuevo_valor = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_si_no(nuevo_valor)
             if valido:
-                self.config['LIMITES']['permitir_forzar_publicacion_manual'] = resultado
+                self.config['SEGURIDAD']['backup_antes_borrar'] = resultado
                 self.cambios_realizados = True
                 print("   ✅ Cambiado")
             else:
@@ -478,7 +511,6 @@ class ConfiguradorInteractivo:
         input("\n✅ Presiona Enter para volver...")
 
     def menu_tareas_automaticas(self):
-        """Menú de gestión de tareas automáticas [FULL]"""
         self.limpiar_pantalla()
         self.mostrar_header()
         print("🗓️  GESTIÓN DE TAREAS AUTOMÁTICAS\n")
@@ -489,17 +521,16 @@ class ConfiguradorInteractivo:
         input("\n✅ Presiona Enter para volver...")
 
     def ejecutar(self):
-        """Ejecuta el configurador"""
         try:
+            self.cargar_config()
             self.menu_principal()
         except KeyboardInterrupt:
-            print("\n\n❌ Configuración cancelada")
+            print("\n\n❌ Configuración cancelada por el usuario")
         except Exception as e:
             print(f"\n❌ Error: {e}")
 
 
 def main():
-    """Función principal"""
     configurador = ConfiguradorInteractivo()
     configurador.ejecutar()
 
