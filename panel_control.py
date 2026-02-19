@@ -278,15 +278,18 @@ class PanelControl:
             frame = tk.Frame(ventana, bg="white", padx=30, pady=20)
             frame.pack(fill='both', expand=True, padx=20, pady=20)
             
+            # Obtener fecha última publicación del registro directamente
+            fecha_ultima = gestor.registro.get('fecha_ultima_publicacion', 'Nunca')
+            
             items = [
                 ("📈 Total publicaciones:", str(stats.get('total_publicaciones', 0))),
-                ("📖 Mensajes bíblicos:", str(stats.get('mensajes_biblicos', 0))),
-                ("🎬 Predicaciones:", str(stats.get('predicaciones', 0))),
-                ("✅ Exitosas:", str(stats.get('exitosas', 0))),
-                ("❌ Fallidas:", str(stats.get('fallidas', 0))),
+                ("📖 Mensajes bíblicos:", str(stats.get('publicaciones_biblicas', 0))),
+                ("🎬 Predicaciones:", str(stats.get('publicaciones_predicaciones', 0))),
+                ("✅ Exitosas:", str(stats.get('publicaciones_exitosas', 0))),
+                ("❌ Fallidas:", str(stats.get('publicaciones_fallidas', 0))),
                 ("🎯 Tasa éxito:", f"{stats.get('tasa_exito', 0):.1f}%"),
                 ("⏱️ Tiempo promedio:", f"{stats.get('tiempo_promedio', 0):.1f}s"),
-                ("📅 Última publicación:", stats.get('fecha_ultima', 'Nunca'))
+                ("📅 Última publicación:", fecha_ultima)
             ]
             
             for i, (label, valor) in enumerate(items):

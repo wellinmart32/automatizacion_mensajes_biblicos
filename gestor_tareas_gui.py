@@ -12,7 +12,7 @@ class GestorTareasGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("🗓️ Gestor de Tareas Automáticas")
-        self.root.geometry("800x600")
+        self.root.geometry("900x600")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
         
@@ -132,19 +132,21 @@ class GestorTareasGUI:
         scrollbar = ttk.Scrollbar(frame_lista)
         scrollbar.pack(side='right', fill='y')
         
-        # Treeview - simplificado
+        # Treeview con 3 columnas
         self.tree = ttk.Treeview(
             frame_lista,
-            columns=('nombre', 'estado'),
+            columns=('nombre', 'proxima', 'estado'),
             show='headings',
             yscrollcommand=scrollbar.set,
             height=15
         )
         
         self.tree.heading('nombre', text='Nombre de Tarea')
+        self.tree.heading('proxima', text='Próxima Ejecución')
         self.tree.heading('estado', text='Estado')
         
-        self.tree.column('nombre', width=550)
+        self.tree.column('nombre', width=400)
+        self.tree.column('proxima', width=250)
         self.tree.column('estado', width=150)
         
         self.tree.pack(side='left', fill='both', expand=True)
@@ -190,9 +192,10 @@ class GestorTareasGUI:
             tareas_encontradas = False
             for linea in lineas[1:]:  # Skip header
                 partes = linea.split('","')
-                if len(partes) >= 2:
+                if len(partes) >= 3:
                     nombre = partes[0].replace('"', '').strip()
-                    estado = partes[1].replace('"', '').strip() if len(partes) > 1 else 'N/A'
+                    proxima = partes[1].replace('"', '').strip() if len(partes) > 1 else 'N/A'
+                    estado = partes[2].replace('"', '').strip() if len(partes) > 2 else 'N/A'
                     
                     # Solo nuestras tareas
                     if self.prefijo_tarea in nombre:
@@ -208,11 +211,11 @@ class GestorTareasGUI:
                         else:
                             estado_texto = estado
                         
-                        self.tree.insert('', 'end', values=(nombre_corto, estado_texto))
+                        self.tree.insert('', 'end', values=(nombre_corto, proxima, estado_texto))
                         tareas_encontradas = True
             
             if not tareas_encontradas:
-                self.tree.insert('', 'end', values=('No hay tareas programadas', ''))
+                self.tree.insert('', 'end', values=('No hay tareas programadas', '', ''))
         
         except Exception as e:
             messagebox.showerror("Error", f"Error cargando tareas:\n{e}")
