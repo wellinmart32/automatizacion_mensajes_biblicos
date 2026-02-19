@@ -234,7 +234,15 @@ def main():
     finally:
         publicador.cerrar_navegador()
     
-    input("\nPresiona Enter para salir...")
+    print("\n" + "="*70)
+    print("✅ Proceso completado - La ventana se cerrará en 10 segundos...")
+    print("="*70)
+
+    import time
+    for i in range(10, 0, -1):
+        print(f"\rCerrando en {i} segundos...", end='', flush=True)
+        time.sleep(1)
+    print("\r" + " " * 50 + "\r", end='')  # Limpiar línea
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 import configparser
+from gestor_licencias import GestorLicencias
 
 
 class WizardPrimeraVez:
@@ -31,6 +32,7 @@ class WizardPrimeraVez:
             'usar_perfil': 'si',
             'usar_ejemplos': False
         }
+        self.gestor_licencias = GestorLicencias()
 
         self._mostrar_paso()
 
@@ -299,16 +301,28 @@ class WizardPrimeraVez:
         frame = tk.Frame(self.root, bg="#f0f0f0")
         frame.pack(fill='both', expand=True, padx=40, pady=30)
 
-        tk.Label(
-            frame,
-            text="La aplicación necesita mensajes para publicar.",
-            font=("Segoe UI", 11),
-            bg="#f0f0f0"
-        ).pack(pady=(0, 20))
+        # Verificar si ya hay mensajes
+        mensajes_existentes = len([f for f in os.listdir('mensajes') if f.endswith('.txt')]) if os.path.exists('mensajes') else 0
+
+        if mensajes_existentes > 0:
+            tk.Label(
+                frame,
+                text=f"✅ Ya tienes {mensajes_existentes} mensajes creados",
+                font=("Segoe UI", 12, "bold"),
+                bg="#f0f0f0",
+                fg="#28a745"
+            ).pack(pady=(0, 20))
+        else:
+            tk.Label(
+                frame,
+                text="La aplicación necesita mensajes para publicar.",
+                font=("Segoe UI", 11),
+                bg="#f0f0f0"
+            ).pack(pady=(0, 20))
 
         tk.Label(
             frame,
-            text="Puedes:",
+            text="Opciones:",
             font=("Segoe UI", 10, "bold"),
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 10))
@@ -326,7 +340,7 @@ class WizardPrimeraVez:
         
         tk.Label(
             frame_op1,
-            text="Abre el gestor y crea 3-5 mensajes personalizados",
+            text="Abre el gestor y crea mensajes personalizados",
             font=("Segoe UI", 9),
             bg="white",
             fg="gray"
@@ -341,33 +355,34 @@ class WizardPrimeraVez:
             command=self._abrir_gestor_mensajes
         ).pack(anchor='w', padx=15, pady=(0, 10))
 
-        # Opción 2
-        frame_op2 = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
-        frame_op2.pack(fill='x', pady=(0, 15), padx=20)
-        
-        tk.Label(
-            frame_op2,
-            text="📋 Usar mensajes de ejemplo",
-            font=("Segoe UI", 10, "bold"),
-            bg="white"
-        ).pack(anchor='w', padx=15, pady=(10, 5))
-        
-        tk.Label(
-            frame_op2,
-            text="Instala 5 mensajes bíblicos de ejemplo",
-            font=("Segoe UI", 9),
-            bg="white",
-            fg="gray"
-        ).pack(anchor='w', padx=15, pady=(0, 10))
-        
-        tk.Button(
-            frame_op2,
-            text="Usar Ejemplos",
-            font=("Segoe UI", 9),
-            bg="#28a745",
-            fg="white",
-            command=self._usar_ejemplos
-        ).pack(anchor='w', padx=15, pady=(0, 10))
+        if mensajes_existentes == 0:
+            # Opción 2 - solo si no hay mensajes
+            frame_op2 = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
+            frame_op2.pack(fill='x', pady=(0, 15), padx=20)
+            
+            tk.Label(
+                frame_op2,
+                text="📋 Usar mensajes de ejemplo",
+                font=("Segoe UI", 10, "bold"),
+                bg="white"
+            ).pack(anchor='w', padx=15, pady=(10, 5))
+            
+            tk.Label(
+                frame_op2,
+                text="Instala 5 mensajes bíblicos de ejemplo para comenzar",
+                font=("Segoe UI", 9),
+                bg="white",
+                fg="gray"
+            ).pack(anchor='w', padx=15, pady=(0, 10))
+            
+            tk.Button(
+                frame_op2,
+                text="Usar Ejemplos",
+                font=("Segoe UI", 9),
+                bg="#28a745",
+                fg="white",
+                command=self._usar_ejemplos
+            ).pack(anchor='w', padx=15, pady=(0, 10))
 
         # Botones
         frame_btn = tk.Frame(self.root, bg="#f0f0f0", pady=20)
@@ -421,7 +436,7 @@ class WizardPrimeraVez:
         resumen_frame = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
         resumen_frame.pack(fill='x', pady=(0, 20))
 
-        licencia_texto = "TRIAL" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia']
+        licencia_texto = "TRIAL" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia'][:20] + "..."
         mensajes_count = len([f for f in os.listdir('mensajes') if f.endswith('.txt')]) if os.path.exists('mensajes') else 0
 
         items = [
@@ -482,8 +497,9 @@ class WizardPrimeraVez:
     def _validar_licencia(self):
         codigo = self.entry_licencia.get().strip()
         if codigo:
-            # Aquí iría la validación real con el backend
             self.datos_config['codigo_licencia'] = codigo
+            # Guardar en gestor de licencias
+            self.gestor_licencias.guardar_codigo_licencia(codigo)
         self._siguiente()
 
     def _guardar_config_basica(self):
@@ -495,13 +511,18 @@ class WizardPrimeraVez:
         try:
             import subprocess
             subprocess.Popen(['python', 'gestor_mensajes_gui.py'])
-            messagebox.showinfo("Info", "El gestor de mensajes se abrió en una nueva ventana.\n\nCrea al menos 3 mensajes y luego presiona 'Siguiente'.")
+            messagebox.showinfo("Info", "El gestor de mensajes se abrió en una nueva ventana.\n\nCrea al menos 1 mensaje y luego presiona 'Siguiente'.")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el gestor: {e}")
 
     def _usar_ejemplos(self):
         try:
             os.makedirs('mensajes', exist_ok=True)
+            
+            # Verificar si ya existen archivos
+            archivos_existentes = [f for f in os.listdir('mensajes') if f.startswith('ejemplo-') and f.endswith('.txt')]
+            numero_inicio = len(archivos_existentes) + 1
+            
             ejemplos = [
                 "Confía en el Señor con todo tu corazón y no te apoyes en tu propia prudencia. - Proverbios 3:5",
                 "Todo lo puedo en Cristo que me fortalece. - Filipenses 4:13",
@@ -510,12 +531,15 @@ class WizardPrimeraVez:
                 "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito. - Juan 3:16"
             ]
             
-            for i, texto in enumerate(ejemplos, 1):
-                with open(f'mensajes/mensaje-{i:03d}.txt', 'w', encoding='utf-8') as f:
+            archivos_creados = []
+            for i, texto in enumerate(ejemplos, numero_inicio):
+                nombre_archivo = f'ejemplo-{i:03d}.txt'
+                with open(f'mensajes/{nombre_archivo}', 'w', encoding='utf-8') as f:
                     f.write(texto)
+                archivos_creados.append(nombre_archivo)
             
             self.datos_config['usar_ejemplos'] = True
-            messagebox.showinfo("✅ Éxito", "Se instalaron 5 mensajes de ejemplo correctamente")
+            messagebox.showinfo("✅ Éxito", f"Se instalaron {len(ejemplos)} mensajes de ejemplo:\n\n" + "\n".join(archivos_creados))
         except Exception as e:
             messagebox.showerror("Error", f"No se pudieron crear los ejemplos: {e}")
 
@@ -528,43 +552,62 @@ class WizardPrimeraVez:
         self._siguiente()
 
     def _crear_config_completa(self):
-        """Crea el archivo config_global.txt con la configuración inicial"""
+        """Crea el archivo config_global.txt con la configuración inicial completa"""
         config = configparser.ConfigParser()
         
         config['GENERAL'] = {
             'nombre_proyecto': 'Publicador Automático Facebook',
             'carpeta_mensajes': 'mensajes',
             'navegador': self.datos_config['navegador'],
-            'modo_debug': 'no'
+            'modo_debug': 'si'
         }
         
         config['MENSAJES'] = {
             'seleccion': 'aleatoria',
             'historial_evitar_repetir': '5',
+            'formato_fecha': 'no',
             'agregar_hashtags': 'no',
-            'hashtags': '#Fe,#Biblia'
+            'hashtags': '#Fe,#Biblia,#Reflexión',
+            'agregar_firma': 'no',
+            'texto_firma': 'Publicado automáticamente'
         }
         
         config['PUBLICACION'] = {
             'tiempo_entre_intentos': '3',
             'max_intentos_por_publicacion': '3',
-            'espera_despues_publicar': '5'
+            'espera_despues_publicar': '5',
+            'verificar_publicacion_exitosa': 'si',
+            'espera_estabilizacion_modal': '3'
         }
         
         config['NAVEGADOR'] = {
             'usar_perfil_existente': self.datos_config['usar_perfil'],
+            'carpeta_perfil_custom': 'perfiles/facebook_publicador',
+            'desactivar_notificaciones': 'si',
             'maximizar_ventana': 'si'
         }
         
         config['LIMITES'] = {
             'tiempo_minimo_entre_publicaciones_segundos': '120',
+            'permitir_duplicados': 'no',
             'permitir_forzar_publicacion_manual': 'si'
         }
         
         config['PREDICACIONES'] = {
             'activar_predicaciones': 'no',
+            'alternar_con_predicaciones': 'no',
             'nombre_grupo_whatsapp': 'Prédicas',
-            'mensajes_por_extraccion': '10'
+            'mensajes_por_extraccion': '10',
+            'agregar_introduccion_predica': 'si',
+            'texto_introduccion_predica': '⏰ Vale la pena ver esto',
+            'agregar_hashtags_predicaciones': 'no',
+            'hashtags_predicaciones': '',
+            'tiempo_espera_previsualizacion': '12',
+            'usar_estrategia_optimizada_enlaces': 'si'
+        }
+        
+        config['DEBUG'] = {
+            'modo_debug': 'detallado'
         }
         
         with open('config_global.txt', 'w', encoding='utf-8') as f:
