@@ -2,6 +2,8 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 import configparser
+import re
+import subprocess
 from gestor_licencias import GestorLicencias
 
 
@@ -33,6 +35,8 @@ class WizardPrimeraVez:
             'usar_ejemplos': False
         }
         self.gestor_licencias = GestorLicencias()
+        self.licencia_validada = False
+        self.tipo_licencia = None
 
         self._mostrar_paso()
 
@@ -140,25 +144,85 @@ class WizardPrimeraVez:
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 10))
 
+        # Frame para el entry y el formato
+        entry_frame = tk.Frame(frame, bg="#f0f0f0")
+        entry_frame.pack(pady=(0, 5))
+        
         self.entry_licencia = tk.Entry(
-            frame,
-            font=("Segoe UI", 12),
-            width=35
+            entry_frame,
+            font=("Segoe UI", 12, "bold"),
+            width=20,
+            justify='center'
         )
-        self.entry_licencia.pack(pady=(0, 20))
+        self.entry_licencia.pack()
         self.entry_licencia.focus()
         
-        # Auto-mayúsculas mientras escribe
-        def auto_mayusculas(event):
-            contenido = self.entry_licencia.get()
-            mayus = contenido.upper()
-            if contenido != mayus:
-                pos = self.entry_licencia.index(tk.INSERT)
-                self.entry_licencia.delete(0, tk.END)
-                self.entry_licencia.insert(0, mayus)
-                self.entry_licencia.icursor(pos)
+        # Label de formato esperado
+        self.label_formato = tk.Label(
+            frame,
+            text="Formato: XXX-XXXXXX-XXXXX",
+            font=("Segoe UI", 9),
+            bg="#f0f0f0",
+            fg="gray"
+        )
+        self.label_formato.pack(pady=(0, 20))
         
-        self.entry_licencia.bind('<KeyRelease>', auto_mayusculas)
+        # Forzar mayúsculas en cada tecla presionada
+        def insertar_mayuscula(event):
+            if event.char and event.char.isalpha():
+                # Insertar la versión en mayúsculas
+                pos = self.entry_licencia.index(tk.INSERT)
+                self.entry_licencia.insert(pos, event.char.upper())
+                return "break"
+        
+        # Auto-formateo con KeyRelease
+        def auto_formateo(event):
+            # Obtener contenido actual
+            contenido = self.entry_licencia.get().upper()
+            
+            # Quitar guiones y caracteres no válidos
+            solo_alfanum = re.sub(r'[^A-Z0-9]', '', contenido)
+            
+            # Resetear validación al editar
+            if len(solo_alfanum) != 14:
+                self.licencia_validada = False
+                self.tipo_licencia = None
+            
+            # LÍMITE ESTRICTO: Cortar en 14 caracteres
+            if len(solo_alfanum) > 14:
+                solo_alfanum = solo_alfanum[:14]
+            
+            # Aplicar formato XXX-XXXXXX-XXXXX
+            if len(solo_alfanum) <= 3:
+                formateado = solo_alfanum
+            elif len(solo_alfanum) <= 9:
+                formateado = f"{solo_alfanum[:3]}-{solo_alfanum[3:]}"
+            else:
+                formateado = f"{solo_alfanum[:3]}-{solo_alfanum[3:9]}-{solo_alfanum[9:]}"
+            
+            # Solo actualizar si cambió
+            if formateado != contenido:
+                self.entry_licencia.delete(0, tk.END)
+                self.entry_licencia.insert(0, formateado)
+                # Cursor al final
+                self.entry_licencia.icursor(tk.END)
+            
+            # Verificar licencia cuando tenga 14 caracteres
+            if len(solo_alfanum) == 14:
+                self._verificar_licencia_tiempo_real(formateado)
+            elif len(solo_alfanum) > 0:
+                self.label_formato.config(fg="#ffc107", text=f"⚠ Faltan {14 - len(solo_alfanum)} caracteres")
+                self.licencia_validada = False
+                self.tipo_licencia = None
+            else:
+                self.label_formato.config(fg="gray", text="Formato: XXX-XXXXXX-XXXXX")
+                self.licencia_validada = False
+                self.tipo_licencia = None
+        
+        # Bind para mayúsculas instantáneas
+        self.entry_licencia.bind('<Key>', insertar_mayuscula)
+        # Bind con KeyRelease para formateo
+        self.entry_licencia.bind('<KeyRelease>', auto_formateo)
 
         tk.Label(
             frame,
@@ -202,6 +266,105 @@ class WizardPrimeraVez:
             command=self._validar_licencia
         ).pack(side='right', padx=(10, 40))
 
+    def _verificar_licencia_tiempo_real(self, codigo):
+        """Verifica la licencia en tiempo real cuando se completa"""
+        # Mostrar "Verificando..."
+        self.label_formato.config(fg="gray", text="⏳ Verificando...")
+        self.root.update()
+        
+        try:
+            # Quitar guiones para validar longitud real
+            codigo_limpio = re.sub(r'[^A-Z0-9]', '', codigo)
+            
+            # FORZAR LÍMITE ESTRICTO
+            if len(codigo_limpio) != 14:
+                self.label_formato.config(
+                    fg="#dc3545",
+                    text="❌ FORMATO INCORRECTO"
+                )
+                self.licencia_validada = False
+                self.tipo_licencia = None
+                return
+            
+            # Formatear correctamente
+            codigo_formateado = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
+            
+            # Limpiar cache antes de verificar nueva licencia
+            # Esto evita que use cache de licencias anteriores
+            try:
+                import json
+                from pathlib import Path
+                if os.name == 'nt':
+                    base_path = Path(os.environ.get('USERPROFILE', '~'))
+                else:
+                    base_path = Path.home()
+                archivo_config = base_path / '.config' / 'AutomaPro' / 'MensajesBiblicos' / 'config.json'
+                
+                if archivo_config.exists():
+                    with open(archivo_config, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                    # Eliminar cache de licencia pero mantener código guardado
+                    if 'datos_licencia' in config:
+                        del config['datos_licencia']
+                        with open(archivo_config, 'w', encoding='utf-8') as f:
+                            json.dump(config, f, indent=2, ensure_ascii=False)
+            except:
+                pass  # Si falla, continuar igual
+            
+            # Verificar contra backend (sin cache)
+            resultado = self.gestor_licencias.verificar_licencia(codigo_formateado, mostrar_mensajes=False)
+            
+            if resultado['valida']:
+                if resultado.get('developer_permanente'):
+                    # Licencia MASTER - OCULTAR que es MASTER
+                    self.label_formato.config(
+                        fg="#28a745",
+                        text="✅ LICENCIA FULL VÁLIDA"
+                    )
+                    self.licencia_validada = True
+                    self.tipo_licencia = 'MASTER'
+                elif resultado.get('tipo') == 'FULL':
+                    # Licencia FULL
+                    self.label_formato.config(
+                        fg="#28a745",
+                        text="✅ LICENCIA FULL VÁLIDA"
+                    )
+                    self.licencia_validada = True
+                    self.tipo_licencia = 'FULL'
+                elif resultado.get('tipo') == 'TRIAL':
+                    # Licencia TRIAL
+                    dias = resultado.get('diasRestantes', 0)
+                    self.label_formato.config(
+                        fg="#ffc107",
+                        text=f"✅ LICENCIA TRIAL ({dias} días restantes)"
+                    )
+                    self.licencia_validada = True
+                    self.tipo_licencia = 'TRIAL'
+                else:
+                    # Tipo desconocido = inválida
+                    self.label_formato.config(
+                        fg="#dc3545",
+                        text="❌ LICENCIA INVÁLIDA"
+                    )
+                    self.licencia_validada = False
+                    self.tipo_licencia = None
+            else:
+                # Licencia inválida
+                self.label_formato.config(
+                    fg="#dc3545",
+                    text="❌ LICENCIA INVÁLIDA"
+                )
+                self.licencia_validada = False
+                self.tipo_licencia = None
+        except Exception as e:
+            print(f"Error verificando licencia: {e}")
+            self.label_formato.config(
+                fg="#dc3545",
+                text="❌ Error al verificar"
+            )
+            self.licencia_validada = False
+            self.tipo_licencia = None
+
     def _paso_configuracion(self):
         """Paso 2: Configuración básica"""
         # Header
@@ -226,7 +389,7 @@ class WizardPrimeraVez:
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 5))
 
-        self.var_navegador = tk.StringVar(value="firefox")
+        self.var_navegador = tk.StringVar(value=self.datos_config.get('navegador', 'firefox'))
         frame_nav = tk.Frame(frame, bg="#f0f0f0")
         frame_nav.pack(anchor='w', pady=(0, 20))
         
@@ -257,7 +420,7 @@ class WizardPrimeraVez:
             fg="gray"
         ).pack(anchor='w', pady=(0, 5))
 
-        self.var_perfil = tk.StringVar(value="si")
+        self.var_perfil = tk.StringVar(value=self.datos_config.get('usar_perfil', 'si'))
         frame_perfil = tk.Frame(frame, bg="#f0f0f0")
         frame_perfil.pack(anchor='w', pady=(0, 20))
         
@@ -421,6 +584,33 @@ class WizardPrimeraVez:
 
     def _paso_finalizar(self):
         """Paso 4: Finalizar configuración"""
+        # Ajustar tamaño de ventana según tipo de licencia
+        if self.tipo_licencia in ['FULL', 'MASTER']:
+            nueva_altura = 720
+        else:
+            nueva_altura = 500
+        
+        # Redimensionar y recentrar FORZADO
+        nueva_ancho = 600
+        
+        # Primero cambiar tamaño
+        self.root.geometry(f"{nueva_ancho}x{nueva_altura}")
+        
+        # Forzar actualización para obtener dimensiones reales
+        self.root.update_idletasks()
+        
+        # Calcular posición centrada
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width - nueva_ancho) // 2
+        y = (screen_height - nueva_altura) // 2
+        
+        # Aplicar posición centrada
+        self.root.geometry(f'{nueva_ancho}x{nueva_altura}+{x}+{y}')
+        
+        # Forzar actualización visual
+        self.root.update()
+        
         # Header
         header = tk.Frame(self.root, bg="#28a745", pady=15)
         header.pack(fill='x')
@@ -434,7 +624,7 @@ class WizardPrimeraVez:
 
         # Contenido
         frame = tk.Frame(self.root, bg="#f0f0f0")
-        frame.pack(fill='both', expand=True, padx=40, pady=30)
+        frame.pack(fill='both', expand=True, padx=40, pady=20)
 
         tk.Label(
             frame,
@@ -442,13 +632,13 @@ class WizardPrimeraVez:
             font=("Segoe UI", 14, "bold"),
             bg="#f0f0f0",
             fg="#28a745"
-        ).pack(pady=(0, 20))
+        ).pack(pady=(0, 15))
 
         # Resumen
         resumen_frame = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
-        resumen_frame.pack(fill='x', pady=(0, 20))
+        resumen_frame.pack(fill='x', pady=(0, 15))
 
-        licencia_texto = "TRIAL" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia'][:20] + "..."
+        licencia_texto = "TRIAL" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia']
         mensajes_count = len([f for f in os.listdir('mensajes') if f.endswith('.txt')]) if os.path.exists('mensajes') else 0
 
         items = [
@@ -459,16 +649,86 @@ class WizardPrimeraVez:
 
         for label, valor in items:
             item_frame = tk.Frame(resumen_frame, bg="white")
-            item_frame.pack(fill='x', padx=15, pady=5)
+            item_frame.pack(fill='x', padx=15, pady=3)
             tk.Label(item_frame, text=label, font=("Segoe UI", 10, "bold"), bg="white", width=20, anchor='w').pack(side='left')
             tk.Label(item_frame, text=valor, font=("Segoe UI", 10), bg="white", anchor='w').pack(side='left')
+
+        # Sección de tareas automáticas (solo FULL/MASTER)
+        if self.tipo_licencia in ['FULL', 'MASTER']:
+            # Separador
+            separator = tk.Frame(frame, bg="#e0e0e0", height=2)
+            separator.pack(fill='x', pady=15)
+            
+            # Título sección
+            tk.Label(
+                frame,
+                text="🗓️ PROGRAMACIÓN AUTOMÁTICA (FULL)",
+                font=("Segoe UI", 11, "bold"),
+                bg="#f0f0f0",
+                fg="#1a73e8"
+            ).pack(pady=(0, 8))
+            
+            tk.Label(
+                frame,
+                text="¿Quieres que configuremos 4 publicaciones automáticas de mensajes bíblicos?",
+                font=("Segoe UI", 9),
+                bg="#f0f0f0"
+            ).pack(pady=(0, 8))
+            
+            # Frame con horarios propuestos
+            horarios_frame = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
+            horarios_frame.pack(fill='x', pady=(0, 10))
+            
+            tk.Label(
+                horarios_frame,
+                text="Horarios propuestos:",
+                font=("Segoe UI", 9, "bold"),
+                bg="white",
+                fg="gray"
+            ).pack(anchor='w', padx=15, pady=(8, 3))
+            
+            horarios_texto = [
+                "📅 Lunes y Jueves - 09:00 AM",
+                "📅 Martes y Viernes - 02:00 PM", 
+                "📅 Miércoles - 06:00 PM",
+                "📅 Sábado - 11:00 AM"
+            ]
+            
+            for horario in horarios_texto:
+                tk.Label(
+                    horarios_frame,
+                    text=horario,
+                    font=("Segoe UI", 9),
+                    bg="white",
+                    anchor='w'
+                ).pack(anchor='w', padx=30, pady=1)
+            
+            tk.Label(
+                horarios_frame,
+                text="📖 Solo mensajes bíblicos (predicaciones se gestionan por separado)",
+                font=("Segoe UI", 8),
+                bg="white",
+                fg="gray",
+                anchor='w'
+            ).pack(anchor='w', padx=30, pady=(3, 8))
+            
+            # Checkbox para activar
+            self.var_crear_tareas = tk.BooleanVar(value=True)
+            tk.Checkbutton(
+                frame,
+                text="✓ Sí, crear tareas automáticas",
+                variable=self.var_crear_tareas,
+                font=("Segoe UI", 10, "bold"),
+                bg="#f0f0f0",
+                fg="#28a745"
+            ).pack(anchor='w', pady=(0, 8))
 
         tk.Label(
             frame,
             text="¿Quieres hacer la primera publicación ahora mismo?",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
             bg="#f0f0f0"
-        ).pack(pady=(20, 10))
+        ).pack(pady=(10, 5))
 
         # Botones
         frame_btn = tk.Frame(self.root, bg="#f0f0f0", pady=20)
@@ -504,23 +764,47 @@ class WizardPrimeraVez:
 
     def _usar_trial(self):
         self.datos_config['codigo_licencia'] = ''
+        self.licencia_validada = True
+        self.tipo_licencia = 'TRIAL'
         self._siguiente()
 
     def _validar_licencia(self):
         codigo = self.entry_licencia.get().strip().upper()
         
-        # Formatear: quitar guiones, convertir mayúsculas, agregar guiones
-        if codigo:
-            # Quitar guiones existentes
-            codigo_limpio = codigo.replace('-', '')
-            
-            # Si tiene el formato correcto de cantidad de caracteres, formatear
-            # Formato esperado: LIC-MASTER-WELLI (3-6-5 caracteres)
-            if len(codigo_limpio) >= 10:
-                codigo = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
-            
-            self.datos_config['codigo_licencia'] = codigo
-            self.gestor_licencias.guardar_codigo_licencia(codigo)
+        # Si está vacío, debe usar TRIAL
+        if not codigo:
+            messagebox.showwarning(
+                "Campo Vacío",
+                "Debes ingresar un código de licencia o presionar 'Usar TRIAL'."
+            )
+            return
+        
+        # Quitar guiones para validar
+        codigo_limpio = re.sub(r'[^A-Z0-9]', '', codigo)
+        
+        # Validar formato (exactamente 14 caracteres)
+        if len(codigo_limpio) != 14:
+            messagebox.showerror(
+                "Formato Incorrecto",
+                f"El código debe tener exactamente 14 caracteres.\n\n"
+                f"Formato: XXX-XXXXXX-XXXXX\n"
+                f"Tienes: {len(codigo_limpio)} caracteres"
+            )
+            return
+        
+        # Validar que la licencia haya sido verificada
+        if not self.licencia_validada:
+            messagebox.showerror(
+                "Licencia Inválida",
+                "El código ingresado no es válido.\n\n"
+                "Por favor verifica el código o usa TRIAL."
+            )
+            return
+        
+        # Formatear correctamente
+        codigo = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
+        self.datos_config['codigo_licencia'] = codigo
+        self.gestor_licencias.guardar_codigo_licencia(codigo)
         
         self._siguiente()
 
@@ -531,7 +815,6 @@ class WizardPrimeraVez:
 
     def _abrir_gestor_mensajes(self):
         try:
-            import subprocess
             subprocess.Popen(['python', 'gestor_mensajes_gui.py'])
             messagebox.showinfo("Info", "El gestor de mensajes se abrió en una nueva ventana.\n\nCrea al menos 1 mensaje y luego presiona 'Siguiente'.")
         except Exception as e:
@@ -638,7 +921,83 @@ class WizardPrimeraVez:
             f.write("# ============================================================\n\n")
             config.write(f)
 
+    def _crear_tareas_predeterminadas(self):
+        """Crea las 4 tareas automáticas predeterminadas"""
+        try:
+            ruta_script = os.path.abspath("publicar_facebook.py")
+            prefijo = "AutomaPro_MensajesBiblicos"
+            
+            # Definir las 4 tareas
+            tareas = [
+                {
+                    'nombre': f"{prefijo}_LunesJueves",
+                    'dias': 'MON,THU',
+                    'hora': '09:00'
+                },
+                {
+                    'nombre': f"{prefijo}_MartesViernes",
+                    'dias': 'TUE,FRI',
+                    'hora': '14:00'
+                },
+                {
+                    'nombre': f"{prefijo}_Miercoles",
+                    'dias': 'WED',
+                    'hora': '18:00'
+                },
+                {
+                    'nombre': f"{prefijo}_Sabado",
+                    'dias': 'SAT',
+                    'hora': '11:00'
+                }
+            ]
+            
+            tareas_creadas = 0
+            errores = []
+            
+            for tarea in tareas:
+                comando = [
+                    'schtasks',
+                    '/Create',
+                    '/TN', tarea['nombre'],
+                    '/TR', f'python "{ruta_script}"',
+                    '/SC', 'WEEKLY',
+                    '/D', tarea['dias'],
+                    '/ST', tarea['hora'],
+                    '/F'
+                ]
+                
+                resultado = subprocess.run(
+                    comando,
+                    capture_output=True,
+                    text=True
+                )
+                
+                if resultado.returncode == 0:
+                    tareas_creadas += 1
+                else:
+                    errores.append(tarea['nombre'])
+            
+            if tareas_creadas > 0:
+                messagebox.showinfo(
+                    "✅ Tareas Creadas",
+                    f"Se crearon {tareas_creadas} tareas automáticas correctamente.\n\n"
+                    f"Puedes verlas y editarlas desde el Panel de Control."
+                )
+            
+            if errores:
+                messagebox.showwarning(
+                    "⚠️ Advertencia",
+                    f"No se pudieron crear {len(errores)} tareas:\n" + "\n".join(errores)
+                )
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"Error creando tareas automáticas:\n{e}")
+
     def _finalizar_sin_publicar(self):
+        # Crear tareas automáticas si está activado
+        if hasattr(self, 'var_crear_tareas') and self.var_crear_tareas.get():
+            self._crear_tareas_predeterminadas()
+        
         messagebox.showinfo(
             "✅ Configuración Completada",
             "¡Todo listo!\n\nPuedes ejecutar 'Mensajes Bíblicos' cuando quieras publicar.\n\nO usa 'Panel de Control' para gestionar tu aplicación."
@@ -647,15 +1006,61 @@ class WizardPrimeraVez:
 
     def _publicar_ahora(self):
         try:
-            import subprocess
+            # Crear tareas automáticas si está activado
+            if hasattr(self, 'var_crear_tareas') and self.var_crear_tareas.get():
+                self._crear_tareas_predeterminadas()
+            
             subprocess.Popen(['python', 'publicar_facebook.py'])
-            messagebox.showinfo(
-                "▶️ Publicando",
-                "Se abrirá el navegador y comenzará la publicación.\n\nEsto puede tomar unos segundos..."
+            self._mostrar_notificacion(
+                "✅ Publicación Iniciada",
+                "El navegador se abrirá en unos segundos..."
             )
-            self.root.destroy()
+            # Cerrar wizard después de 2 segundos para que se vea la notificación
+            self.root.after(2000, self.root.destroy)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo iniciar la publicación: {e}")
+
+    def _mostrar_notificacion(self, titulo, mensaje, duracion=3000):
+        """Muestra notificación Toast que se cierra sola"""
+        toast = tk.Toplevel(self.root)
+        toast.overrideredirect(True)
+        toast.attributes('-topmost', True)
+        
+        # Posicionar en esquina inferior derecha
+        ancho = 350
+        alto = 100
+        x = toast.winfo_screenwidth() - ancho - 20
+        y = toast.winfo_screenheight() - alto - 60
+        toast.geometry(f'{ancho}x{alto}+{x}+{y}')
+        
+        # Frame
+        frame = tk.Frame(toast, bg="#28a745", relief='raised', borderwidth=2)
+        frame.pack(fill='both', expand=True)
+        
+        # Título
+        tk.Label(
+            frame,
+            text=titulo,
+            font=("Segoe UI", 11, "bold"),
+            bg="#28a745",
+            fg="white"
+        ).pack(pady=(10, 5))
+        
+        # Mensaje
+        tk.Label(
+            frame,
+            text=mensaje,
+            font=("Segoe UI", 9),
+            bg="#28a745",
+            fg="white",
+            wraplength=300
+        ).pack(pady=(0, 10))
+        
+        # Cerrar automáticamente
+        toast.after(duracion, toast.destroy)
+        
+        # Permitir cerrar con clic
+        frame.bind('<Button-1>', lambda e: toast.destroy())
 
     def ejecutar(self):
         self.root.mainloop()
