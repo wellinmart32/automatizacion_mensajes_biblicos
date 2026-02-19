@@ -1,7 +1,6 @@
 import os
 import configparser
-import shutil
-from compartido.gestor_archivos import contar_articulos
+from compartido.gestor_archivos import leer_config_global
 
 
 class ConfiguradorInteractivo:
@@ -165,6 +164,7 @@ class ConfiguradorInteractivo:
         input("\nPresiona Enter para volver al menú...")
 
     def menu_principal(self):
+        """Muestra el menú principal"""
         while True:
             self.limpiar_pantalla()
             self.mostrar_header()
@@ -174,26 +174,31 @@ class ConfiguradorInteractivo:
             print("\n🔧 OPCIONES:\n")
             print("  0.  🔄 Reiniciar sistema desde cero")
             print("  1.  ⚙️  Configuración General")
-            print("  2.  📝 Configuración de Contenido (Artículos)")
+            print("  2.  📝 Configuración de Mensajes")
             print("  3.  🚀 Configuración de Publicación")
-            print("  4.  📱 Configuración de WhatsApp (Extracción)")
+            print("  4.  📱 Configuración de WhatsApp (Predicaciones)")
             print("  5.  🌐 Configuración de Navegador")
-            print("  6.  🔒 Configuración de Seguridad")
+            print("  6.  🔒 Configuración de Límites")
             print("  7.  📋 Ver configuración completa")
             print("  8.  🗓️  Gestión de Tareas Automáticas [FULL]")
             print("  9.  💾 Guardar y salir")
             print("  10. ❌ Salir sin guardar")
+            print("\n" + "─" * 70)
+            print("  🖥️  INTERFACES GRÁFICAS:\n")
+            print("  G.  🎨 Abrir Configurador Gráfico")
+            print("  M.  📄 Abrir Gestor de Mensajes")
+            print("\n" + "=" * 70)
             print("  ?   ❓ Ayuda - ¿Qué hace cada opción?")
             print("\n" + "=" * 70)
 
             opcion = input("\n👉 Selecciona opción: ").strip()
 
             if opcion == '0':
-                self.reiniciar_sistema_completo()
+                self.reiniciar_sistema()
             elif opcion == '1':
                 self.menu_general()
             elif opcion == '2':
-                self.menu_contenido()
+                self.menu_mensajes()
             elif opcion == '3':
                 self.menu_publicacion()
             elif opcion == '4':
@@ -201,7 +206,7 @@ class ConfiguradorInteractivo:
             elif opcion == '5':
                 self.menu_navegador()
             elif opcion == '6':
-                self.menu_seguridad()
+                self.menu_limites()
             elif opcion == '7':
                 self.mostrar_config_actual()
                 input("\nPresiona Enter para volver...")
@@ -216,11 +221,15 @@ class ConfiguradorInteractivo:
                 break
             elif opcion == '10':
                 if self.cambios_realizados:
-                    confirmar = input("\n⚠️  Hay cambios sin guardar. ¿Salir? (si/no): ")
-                    if confirmar.lower() in ['si', 'sí', 's']:
+                    conf = input("\n⚠️  Hay cambios sin guardar. ¿Salir? (si/no): ")
+                    if conf.lower() in ['si', 'sí', 's']:
                         break
                 else:
                     break
+            elif opcion.upper() == 'G':
+                self.abrir_configurador_grafico()
+            elif opcion.upper() == 'M':
+                self.abrir_gestor_mensajes()
             elif opcion == '?':
                 self.mostrar_ayuda()
             else:
@@ -519,6 +528,30 @@ class ConfiguradorInteractivo:
         print("   la aplicación se ejecute automáticamente cada día.\n")
         print("   💡 Próximamente disponible en versión FULL")
         input("\n✅ Presiona Enter para volver...")
+
+    def abrir_configurador_grafico(self):
+        """Abre el configurador gráfico"""
+        print("\n🎨 Abriendo configurador gráfico...")
+        try:
+            import subprocess
+            subprocess.Popen(['python', 'configurador_gui.py'])
+            print("✅ Configurador gráfico abierto en nueva ventana")
+            input("\nPresiona Enter para continuar...")
+        except Exception as e:
+            print(f"❌ Error al abrir configurador gráfico: {e}")
+            input("\nPresiona Enter para continuar...")
+
+    def abrir_gestor_mensajes(self):
+        """Abre el gestor de mensajes"""
+        print("\n📄 Abriendo gestor de mensajes...")
+        try:
+            import subprocess
+            subprocess.Popen(['python', 'gestor_mensajes_gui.py'])
+            print("✅ Gestor de mensajes abierto en nueva ventana")
+            input("\nPresiona Enter para continuar...")
+        except Exception as e:
+            print(f"❌ Error al abrir gestor de mensajes: {e}")
+            input("\nPresiona Enter para continuar...")
 
     def ejecutar(self):
         try:

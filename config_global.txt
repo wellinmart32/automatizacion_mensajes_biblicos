@@ -39,14 +39,12 @@ desactivar_notificaciones = si
 maximizar_ventana = si
 
 [PREDICACIONES]
-activar_predicaciones = si
-alternar_con_predicaciones = si
+activar_predicaciones = no
+alternar_con_predicaciones = no
 nombre_grupo_whatsapp = Prédicas
 mensajes_por_extraccion = 10
 agregar_introduccion_predica = si
 texto_introduccion_predica = ⏰ Vale la pena ver esto
-
-
 agregar_hashtags_predicaciones = no
 hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
