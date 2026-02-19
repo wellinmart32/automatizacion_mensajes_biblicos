@@ -147,6 +147,18 @@ class WizardPrimeraVez:
         )
         self.entry_licencia.pack(pady=(0, 20))
         self.entry_licencia.focus()
+        
+        # Auto-mayúsculas mientras escribe
+        def auto_mayusculas(event):
+            contenido = self.entry_licencia.get()
+            mayus = contenido.upper()
+            if contenido != mayus:
+                pos = self.entry_licencia.index(tk.INSERT)
+                self.entry_licencia.delete(0, tk.END)
+                self.entry_licencia.insert(0, mayus)
+                self.entry_licencia.icursor(pos)
+        
+        self.entry_licencia.bind('<KeyRelease>', auto_mayusculas)
 
         tk.Label(
             frame,
@@ -495,11 +507,21 @@ class WizardPrimeraVez:
         self._siguiente()
 
     def _validar_licencia(self):
-        codigo = self.entry_licencia.get().strip()
+        codigo = self.entry_licencia.get().strip().upper()
+        
+        # Formatear: quitar guiones, convertir mayúsculas, agregar guiones
         if codigo:
+            # Quitar guiones existentes
+            codigo_limpio = codigo.replace('-', '')
+            
+            # Si tiene el formato correcto de cantidad de caracteres, formatear
+            # Formato esperado: LIC-MASTER-WELLI (3-6-5 caracteres)
+            if len(codigo_limpio) >= 10:
+                codigo = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
+            
             self.datos_config['codigo_licencia'] = codigo
-            # Guardar en gestor de licencias
             self.gestor_licencias.guardar_codigo_licencia(codigo)
+        
         self._siguiente()
 
     def _guardar_config_basica(self):

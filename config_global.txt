@@ -8,18 +8,6 @@ carpeta_mensajes = mensajes
 navegador = firefox
 modo_debug = si
 
-[PUBLICACION]
-tiempo_entre_intentos = 3
-max_intentos_por_publicacion = 3
-espera_despues_publicar = 5
-verificar_publicacion_exitosa = si
-espera_estabilizacion_modal = 3
-
-[LIMITES]
-tiempo_minimo_entre_publicaciones_segundos = 120
-permitir_duplicados = no
-permitir_forzar_publicacion_manual = si
-
 [MENSAJES]
 seleccion = aleatoria
 historial_evitar_repetir = 5
@@ -29,14 +17,23 @@ hashtags = #Fe,#Biblia,#Reflexión
 agregar_firma = no
 texto_firma = Publicado automáticamente
 
-[DEBUG]
-modo_debug = detallado
+[PUBLICACION]
+tiempo_entre_intentos = 3
+max_intentos_por_publicacion = 3
+espera_despues_publicar = 5
+verificar_publicacion_exitosa = si
+espera_estabilizacion_modal = 3
 
 [NAVEGADOR]
 usar_perfil_existente = si
 carpeta_perfil_custom = perfiles/facebook_publicador
 desactivar_notificaciones = si
 maximizar_ventana = si
+
+[LIMITES]
+tiempo_minimo_entre_publicaciones_segundos = 120
+permitir_duplicados = no
+permitir_forzar_publicacion_manual = si
 
 [PREDICACIONES]
 activar_predicaciones = no
@@ -49,3 +46,7 @@ agregar_hashtags_predicaciones = no
 hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
 usar_estrategia_optimizada_enlaces = si
+
+[DEBUG]
+modo_debug = detallado
+
