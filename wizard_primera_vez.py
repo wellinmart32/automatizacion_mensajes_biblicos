@@ -260,7 +260,7 @@ class WizardPrimeraVez:
             frame_btn,
             text="Siguiente ▶️",
             font=("Segoe UI", 10, "bold"),
-            bg="#1a73e8",
+            bg="#28a745",
             fg="white",
             width=12,
             command=self._validar_licencia
@@ -290,7 +290,6 @@ class WizardPrimeraVez:
             codigo_formateado = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
             
             # Limpiar cache antes de verificar nueva licencia
-            # Esto evita que use cache de licencias anteriores
             try:
                 import json
                 from pathlib import Path
@@ -309,7 +308,7 @@ class WizardPrimeraVez:
                         with open(archivo_config, 'w', encoding='utf-8') as f:
                             json.dump(config, f, indent=2, ensure_ascii=False)
             except:
-                pass  # Si falla, continuar igual
+                pass
             
             # Verificar contra backend (sin cache)
             resultado = self.gestor_licencias.verificar_licencia(codigo_formateado, mostrar_mensajes=False)
@@ -453,7 +452,7 @@ class WizardPrimeraVez:
             frame_btn,
             text="Siguiente ▶️",
             font=("Segoe UI", 10, "bold"),
-            bg="#1a73e8",
+            bg="#28a745",
             fg="white",
             width=12,
             command=self._guardar_config_basica
@@ -486,6 +485,14 @@ class WizardPrimeraVez:
                 font=("Segoe UI", 12, "bold"),
                 bg="#f0f0f0",
                 fg="#28a745"
+            ).pack(pady=(0, 10))
+            
+            tk.Label(
+                frame,
+                text="Puedes crear más mensajes o continuar con los que tienes.",
+                font=("Segoe UI", 9),
+                bg="#f0f0f0",
+                fg="gray"
             ).pack(pady=(0, 20))
         else:
             tk.Label(
@@ -493,29 +500,30 @@ class WizardPrimeraVez:
                 text="La aplicación necesita mensajes para publicar.",
                 font=("Segoe UI", 11),
                 bg="#f0f0f0"
+            ).pack(pady=(0, 10))
+            
+            tk.Label(
+                frame,
+                text="Elige una de las opciones para continuar:",
+                font=("Segoe UI", 9),
+                bg="#f0f0f0",
+                fg="gray"
             ).pack(pady=(0, 20))
 
-        tk.Label(
-            frame,
-            text="Opciones:",
-            font=("Segoe UI", 10, "bold"),
-            bg="#f0f0f0"
-        ).pack(anchor='w', pady=(0, 10))
-
-        # Opción 1
+        # Opción 1: Crear mensajes
         frame_op1 = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
         frame_op1.pack(fill='x', pady=(0, 15), padx=20)
         
         tk.Label(
             frame_op1,
-            text="📝 Crear mis propios mensajes ahora",
+            text="📝 Crear mensajes personalizados",
             font=("Segoe UI", 10, "bold"),
             bg="white"
         ).pack(anchor='w', padx=15, pady=(10, 5))
         
         tk.Label(
             frame_op1,
-            text="Abre el gestor y crea mensajes personalizados",
+            text="Abre el gestor y crea tus propios mensajes bíblicos",
             font=("Segoe UI", 9),
             bg="white",
             fg="gray"
@@ -523,15 +531,15 @@ class WizardPrimeraVez:
         
         tk.Button(
             frame_op1,
-            text="Abrir Gestor de Mensajes",
-            font=("Segoe UI", 9),
+            text="🖊️ Abrir Gestor de Mensajes",
+            font=("Segoe UI", 9, "bold"),
             bg="#1a73e8",
             fg="white",
             command=self._abrir_gestor_mensajes
         ).pack(anchor='w', padx=15, pady=(0, 10))
 
         if mensajes_existentes == 0:
-            # Opción 2 - solo si no hay mensajes
+            # Opción 2: Ejemplos (solo si no hay mensajes)
             frame_op2 = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
             frame_op2.pack(fill='x', pady=(0, 15), padx=20)
             
@@ -544,7 +552,7 @@ class WizardPrimeraVez:
             
             tk.Label(
                 frame_op2,
-                text="Instala 5 mensajes bíblicos de ejemplo para comenzar",
+                text="Instala 5 mensajes bíblicos de ejemplo para comenzar rápidamente",
                 font=("Segoe UI", 9),
                 bg="white",
                 fg="gray"
@@ -552,8 +560,8 @@ class WizardPrimeraVez:
             
             tk.Button(
                 frame_op2,
-                text="Usar Ejemplos",
-                font=("Segoe UI", 9),
+                text="✨ Usar Ejemplos",
+                font=("Segoe UI", 9, "bold"),
                 bg="#28a745",
                 fg="white",
                 command=self._usar_ejemplos
@@ -569,6 +577,7 @@ class WizardPrimeraVez:
             font=("Segoe UI", 10),
             bg="#e0e0e0",
             width=12,
+            pady=2,
             command=self._anterior
         ).pack(side='left', padx=(40, 10))
 
@@ -576,9 +585,10 @@ class WizardPrimeraVez:
             frame_btn,
             text="Siguiente ▶️",
             font=("Segoe UI", 10, "bold"),
-            bg="#1a73e8",
+            bg="#28a745",
             fg="white",
             width=12,
+            pady=2,
             command=self._verificar_mensajes
         ).pack(side='right', padx=(10, 40))
 
@@ -926,6 +936,9 @@ class WizardPrimeraVez:
         try:
             ruta_script = os.path.abspath("publicar_facebook.py")
             prefijo = "AutomaPro_MensajesBiblicos"
+            directorio_trabajo = os.path.dirname(ruta_script)
+            
+            comando_tarea = f'cmd /c "cd /d "{directorio_trabajo}" && py "{ruta_script}""'
             
             # Definir las 4 tareas
             tareas = [
@@ -959,7 +972,7 @@ class WizardPrimeraVez:
                     'schtasks',
                     '/Create',
                     '/TN', tarea['nombre'],
-                    '/TR', f'python "{ruta_script}"',
+                    '/TR', comando_tarea,
                     '/SC', 'WEEKLY',
                     '/D', tarea['dias'],
                     '/ST', tarea['hora'],
@@ -978,10 +991,10 @@ class WizardPrimeraVez:
                     errores.append(tarea['nombre'])
             
             if tareas_creadas > 0:
-                messagebox.showinfo(
-                    "✅ Tareas Creadas",
-                    f"Se crearon {tareas_creadas} tareas automáticas correctamente.\n\n"
-                    f"Puedes verlas y editarlas desde el Panel de Control."
+                self._mostrar_toast(
+                    f"✅ Se crearon {tareas_creadas} tareas automáticas\n\nPuedes verlas en el Gestor de Tareas",
+                    duracion=4000,
+                    color="#28a745"
                 )
             
             if errores:
@@ -997,12 +1010,19 @@ class WizardPrimeraVez:
         # Crear tareas automáticas si está activado
         if hasattr(self, 'var_crear_tareas') and self.var_crear_tareas.get():
             self._crear_tareas_predeterminadas()
-        
-        messagebox.showinfo(
-            "✅ Configuración Completada",
-            "¡Todo listo!\n\nPuedes ejecutar 'Mensajes Bíblicos' cuando quieras publicar.\n\nO usa 'Panel de Control' para gestionar tu aplicación."
+            # Esperar a que se muestre el toast de tareas
+            self.root.after(4500, lambda: self._mostrar_mensaje_final_y_cerrar())
+        else:
+            self._mostrar_mensaje_final_y_cerrar()
+
+    def _mostrar_mensaje_final_y_cerrar(self):
+        """Muestra el mensaje final como toast y cierra el wizard"""
+        self._mostrar_toast(
+            "¡Todo listo!\n\nPuedes ejecutar 'Mensajes Bíblicos' cuando quieras publicar.",
+            duracion=3000,
+            color="#28a745"
         )
-        self.root.destroy()
+        self.root.after(3000, self.root.destroy)
 
     def _publicar_ahora(self):
         try:
@@ -1011,56 +1031,44 @@ class WizardPrimeraVez:
                 self._crear_tareas_predeterminadas()
             
             subprocess.Popen(['python', 'publicar_facebook.py'])
-            self._mostrar_notificacion(
-                "✅ Publicación Iniciada",
-                "El navegador se abrirá en unos segundos..."
+            self._mostrar_toast(
+                "✅ Publicación Iniciada\n\nEl navegador se abrirá en unos segundos...",
+                duracion=3000,
+                color="#28a745"
             )
-            # Cerrar wizard después de 2 segundos para que se vea la notificación
-            self.root.after(2000, self.root.destroy)
+            # Cerrar wizard después de 3 segundos
+            self.root.after(3000, self.root.destroy)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo iniciar la publicación: {e}")
 
-    def _mostrar_notificacion(self, titulo, mensaje, duracion=3000):
-        """Muestra notificación Toast que se cierra sola"""
+    def _mostrar_toast(self, mensaje, duracion=3000, color="#28a745"):
+        """Muestra notificación toast que desaparece automáticamente"""
         toast = tk.Toplevel(self.root)
+        toast.withdraw()
         toast.overrideredirect(True)
-        toast.attributes('-topmost', True)
         
-        # Posicionar en esquina inferior derecha
-        ancho = 350
-        alto = 100
-        x = toast.winfo_screenwidth() - ancho - 20
-        y = toast.winfo_screenheight() - alto - 60
-        toast.geometry(f'{ancho}x{alto}+{x}+{y}')
+        frame = tk.Frame(toast, bg=color, padx=20, pady=15)
+        frame.pack()
         
-        # Frame
-        frame = tk.Frame(toast, bg="#28a745", relief='raised', borderwidth=2)
-        frame.pack(fill='both', expand=True)
-        
-        # Título
-        tk.Label(
-            frame,
-            text=titulo,
-            font=("Segoe UI", 11, "bold"),
-            bg="#28a745",
-            fg="white"
-        ).pack(pady=(10, 5))
-        
-        # Mensaje
         tk.Label(
             frame,
             text=mensaje,
-            font=("Segoe UI", 9),
-            bg="#28a745",
+            font=("Segoe UI", 11),
+            bg=color,
             fg="white",
-            wraplength=300
-        ).pack(pady=(0, 10))
+            justify='center'
+        ).pack()
         
-        # Cerrar automáticamente
+        toast.update_idletasks()
+        width = toast.winfo_width()
+        height = toast.winfo_height()
+        x = (toast.winfo_screenwidth() // 2) - (width // 2)
+        y = toast.winfo_screenheight() - height - 50
+        
+        toast.geometry(f'+{x}+{y}')
+        toast.deiconify()
+        
         toast.after(duracion, toast.destroy)
-        
-        # Permitir cerrar con clic
-        frame.bind('<Button-1>', lambda e: toast.destroy())
 
     def ejecutar(self):
         self.root.mainloop()

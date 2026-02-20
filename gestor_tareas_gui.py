@@ -13,7 +13,7 @@ class GestorTareasGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("🗓️ Gestor de Tareas Automáticas")
-        self.root.geometry("800x600")
+        self.root.geometry("900x600")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
         
@@ -65,7 +65,8 @@ class GestorTareasGUI:
             text=mensaje,
             font=("Segoe UI", 11),
             bg=color,
-            fg="white"
+            fg="white",
+            justify='center'
         ).pack()
         
         toast.update_idletasks()
@@ -117,59 +118,43 @@ class GestorTareasGUI:
             fg="white"
         ).pack()
 
+        # Toolbar simplificada
         toolbar = tk.Frame(self.root, bg="#f0f0f0", pady=15)
         toolbar.pack(fill='x', padx=20)
         
         tk.Button(
             toolbar,
             text="➕ Nueva Tarea",
-            font=("Segoe UI", 10, "bold"),
-            bg="#28a745",
+            font=("Segoe UI", 11, "bold"),
+            bg="#1a73e8",
             fg="white",
-            width=15,
+            width=20,
             command=self._nueva_tarea
         ).pack(side='left', padx=(0, 10))
         
         tk.Button(
             toolbar,
-            text="✏️ Editar",
-            font=("Segoe UI", 10),
-            bg="#ffc107",
-            width=12,
-            command=self._editar_tarea
-        ).pack(side='left', padx=(0, 10))
-        
-        tk.Button(
-            toolbar,
             text="🔄 Actualizar",
-            font=("Segoe UI", 10),
-            bg="#17a2b8",
-            fg="white",
-            width=12,
+            font=("Segoe UI", 11),
+            bg="#e0e0e0",
+            width=15,
             command=self._cargar_tareas
-        ).pack(side='left', padx=(0, 10))
-        
-        tk.Button(
-            toolbar,
-            text="🗑️ Eliminar",
-            font=("Segoe UI", 10),
-            bg="#dc3545",
-            fg="white",
-            width=12,
-            command=self._eliminar_tarea
         ).pack(side='left')
 
+        # Tabla
         frame_lista = tk.Frame(self.root, bg="#f0f0f0")
-        frame_lista.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+        frame_lista.pack(fill='both', expand=True, padx=20, pady=(0, 15))
         
         scrollbar = ttk.Scrollbar(frame_lista)
         scrollbar.pack(side='right', fill='y')
         
+        columnas = ('nombre', 'dias', 'proxima', 'estado')
         self.tree = ttk.Treeview(
             frame_lista,
-            columns=('nombre', 'dias', 'proxima', 'estado'),
+            columns=columnas,
             show='headings',
-            yscrollcommand=scrollbar.set
+            yscrollcommand=scrollbar.set,
+            selectmode='browse'
         )
         
         self.tree.heading('nombre', text='Nombre de Tarea')
@@ -179,13 +164,46 @@ class GestorTareasGUI:
         
         self.tree.column('nombre', width=300)
         self.tree.column('dias', width=100)
-        self.tree.column('proxima', width=200)
-        self.tree.column('estado', width=100)
+        self.tree.column('proxima', width=250)
+        self.tree.column('estado', width=150)
         
         self.tree.pack(fill='both', expand=True)
         scrollbar.config(command=self.tree.yview)
         
         self.tree.bind('<Double-1>', lambda e: self._editar_tarea())
+
+        # Botones de acción ABAJO
+        acciones_frame = tk.Frame(self.root, bg="#f0f0f0")
+        acciones_frame.pack(fill='x', padx=20, pady=(0, 15))
+        
+        tk.Button(
+            acciones_frame,
+            text="📋 Ver Detalles",
+            font=("Segoe UI", 10),
+            bg="#17a2b8",
+            fg="white",
+            width=15,
+            command=self._ver_detalles
+        ).pack(side='left', padx=(0, 10))
+        
+        tk.Button(
+            acciones_frame,
+            text="✏️ Editar",
+            font=("Segoe UI", 10),
+            bg="#ffc107",
+            width=12,
+            command=self._editar_tarea
+        ).pack(side='left', padx=(0, 10))
+        
+        tk.Button(
+            acciones_frame,
+            text="🗑️ Eliminar",
+            font=("Segoe UI", 10),
+            bg="#dc3545",
+            fg="white",
+            width=12,
+            command=self._eliminar_tarea
+        ).pack(side='left')
 
     def _cargar_tareas(self):
         """Carga las tareas programadas del sistema"""
@@ -194,7 +212,7 @@ class GestorTareasGUI:
         
         try:
             resultado = subprocess.run(
-                ['schtasks', '/Query', '/FO', 'LIST'],
+                ['schtasks', '/Query', '/FO', 'CSV'],
                 capture_output=True,
                 text=True,
                 encoding='cp850',
@@ -205,35 +223,36 @@ class GestorTareasGUI:
                 self.tree.insert('', 'end', values=('Error cargando tareas', '', '', ''))
                 return
             
-            tareas_encontradas = []
-            lineas = resultado.stdout.split('\n')
+            lineas = resultado.stdout.strip().split('\n')
+            tareas_encontradas = False
             
-            tarea_actual = None
-            for linea in lineas:
-                linea = linea.strip()
-                
-                if linea.startswith('Nombre de tarea:'):
-                    nombre_tarea = linea.split(':', 1)[1].strip()
+            for linea in lineas[1:]:
+                partes = linea.split('","')
+                if len(partes) >= 3:
+                    nombre = partes[0].replace('"', '').strip()
+                    proxima = partes[1].replace('"', '').strip() if len(partes) > 1 else 'N/A'
+                    estado_raw = partes[2].replace('"', '').strip() if len(partes) > 2 else 'N/A'
                     
-                    if self.prefijo_tarea in nombre_tarea:
-                        tarea_actual = nombre_tarea
-                
-                elif tarea_actual and linea.startswith('Estado:'):
-                    estado = linea.split(':', 1)[1].strip()
-                    
-                    detalles = self._obtener_detalles_tarea(tarea_actual)
-                    
-                    proxima_ejecucion = detalles.get('Hora próxima ejecución', 'N/A')
-                    dias_texto = self._extraer_dias_cortos(detalles)
-                    
-                    tareas_encontradas.append((tarea_actual, dias_texto, proxima_ejecucion, estado))
-                    tarea_actual = None
+                    if self.prefijo_tarea in nombre:
+                        nombre_corto = nombre.split('\\')[-1]
+                        
+                        detalles = self._obtener_detalles_tarea(nombre_corto)
+                        dias_texto = self._extraer_dias_cortos(detalles) if detalles else 'N/A'
+                        
+                        if 'Ready' in estado_raw or 'Listo' in estado_raw:
+                            estado = '✅ Activa'
+                        elif 'Disabled' in estado_raw or 'Deshabilitado' in estado_raw:
+                            estado = '⏸️ Pausada'
+                        elif 'Running' in estado_raw or 'En ejecución' in estado_raw:
+                            estado = '▶️ En ejecución'
+                        else:
+                            estado = estado_raw
+                        
+                        self.tree.insert('', 'end', values=(nombre_corto, dias_texto, proxima, estado))
+                        tareas_encontradas = True
             
             if not tareas_encontradas:
                 self.tree.insert('', 'end', values=('No hay tareas programadas', '', '', ''))
-            else:
-                for tarea in tareas_encontradas:
-                    self.tree.insert('', 'end', values=tarea)
         
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar tareas:\n{e}")
@@ -241,8 +260,10 @@ class GestorTareasGUI:
     def _obtener_detalles_tarea(self, nombre_tarea):
         """Obtiene detalles de una tarea específica"""
         try:
+            nombre_completo = f"{self.prefijo_tarea}_{nombre_tarea}" if not nombre_tarea.startswith(self.prefijo_tarea) else nombre_tarea
+            
             resultado = subprocess.run(
-                ['schtasks', '/Query', '/TN', nombre_tarea, '/FO', 'LIST', '/V'],
+                ['schtasks', '/Query', '/TN', nombre_completo, '/FO', 'LIST', '/V'],
                 capture_output=True,
                 text=True,
                 encoding='cp850',
@@ -250,24 +271,40 @@ class GestorTareasGUI:
             )
             
             if resultado.returncode != 0:
-                return {}
+                return None
             
             detalles = {}
             for linea in resultado.stdout.split('\n'):
+                linea = linea.strip()
                 if ':' in linea:
-                    clave, valor = linea.split(':', 1)
-                    detalles[clave.strip()] = valor.strip()
+                    partes = linea.split(':', 1)
+                    clave = partes[0].strip()
+                    valor = partes[1].strip() if len(partes) > 1 else ''
+                    
+                    if 'Hora de inicio' in clave or 'Start Time' in clave:
+                        detalles['horario'] = valor
+                    elif 'Tipo de programación' in clave or 'Schedule Type' in clave:
+                        detalles['frecuencia'] = valor
+                    elif 'Estado' in clave or 'Status' in clave:
+                        detalles['estado'] = valor
+                    elif 'Días' in clave or 'Days' in clave:
+                        detalles['dias'] = valor
+                    elif 'Hora próxima ejecución' in clave or 'Next Run Time' in clave:
+                        detalles['Hora próxima ejecución'] = valor
             
             return detalles
         
         except Exception as e:
             print(f"Error obteniendo detalles: {e}")
-            return {}
+            return None
 
     def _extraer_dias_cortos(self, detalles):
         """Extrae días en formato corto (LMXJV)"""
-        tipo_prog = detalles.get('Tipo de programación', '').lower()
-        dias = detalles.get('Días', '')
+        if not detalles:
+            return 'N/A'
+        
+        tipo_prog = detalles.get('frecuencia', '').lower()
+        dias = detalles.get('dias', '')
         
         if 'diaria' in tipo_prog or 'daily' in tipo_prog:
             return 'Diario'
@@ -288,6 +325,92 @@ class GestorTareasGUI:
                 dias_cortos.append(esp)
         
         return ''.join(dias_cortos) if dias_cortos else 'Semanal'
+
+    def _ver_detalles(self):
+        """Muestra detalles completos de la tarea seleccionada"""
+        seleccion = self.tree.selection()
+        
+        if not seleccion:
+            messagebox.showwarning("Aviso", "Selecciona una tarea para ver detalles")
+            return
+        
+        item = self.tree.item(seleccion[0])
+        nombre_tarea = item['values'][0]
+        
+        if nombre_tarea == 'No hay tareas programadas':
+            return
+        
+        if nombre_tarea.startswith('\\'):
+            nombre_tarea = nombre_tarea[1:]
+        
+        detalles = self._obtener_detalles_tarea(nombre_tarea)
+        
+        if not detalles:
+            messagebox.showerror("Error", "No se pudieron obtener los detalles")
+            return
+        
+        ventana = tk.Toplevel(self.root)
+        ventana.title(f"Detalles: {nombre_tarea}")
+        ventana.geometry("500x400")
+        ventana.configure(bg="#f0f0f0")
+        ventana.transient(self.root)
+        
+        ventana.update_idletasks()
+        x = (ventana.winfo_screenwidth() // 2) - 250
+        y = (ventana.winfo_screenheight() // 2) - 200
+        ventana.geometry(f'500x400+{x}+{y}')
+        
+        header = tk.Frame(ventana, bg="#1a73e8", pady=15)
+        header.pack(fill='x')
+        tk.Label(
+            header,
+            text=f"📋 {nombre_tarea}",
+            font=("Segoe UI", 12, "bold"),
+            bg="#1a73e8",
+            fg="white"
+        ).pack()
+        
+        contenido = tk.Frame(ventana, bg="white", relief='solid', borderwidth=1)
+        contenido.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        detalles_mostrar = [
+            ("Horario:", detalles.get('horario', 'N/A')),
+            ("Frecuencia:", detalles.get('frecuencia', 'N/A')),
+            ("Días:", detalles.get('dias', 'N/A')),
+            ("Estado:", detalles.get('estado', 'N/A')),
+            ("Próxima ejecución:", detalles.get('Hora próxima ejecución', 'N/A'))
+        ]
+        
+        for etiqueta, valor in detalles_mostrar:
+            item_frame = tk.Frame(contenido, bg="white")
+            item_frame.pack(fill='x', padx=15, pady=5)
+            
+            tk.Label(
+                item_frame,
+                text=etiqueta,
+                font=("Segoe UI", 10, "bold"),
+                bg="white",
+                width=20,
+                anchor='w'
+            ).pack(side='left')
+            
+            tk.Label(
+                item_frame,
+                text=valor,
+                font=("Segoe UI", 10),
+                bg="white",
+                anchor='w'
+            ).pack(side='left')
+        
+        tk.Button(
+            ventana,
+            text="Cerrar",
+            font=("Segoe UI", 10),
+            bg="#6c757d",
+            fg="white",
+            command=ventana.destroy,
+            width=15
+        ).pack(pady=(0, 20))
 
     def _editar_tarea(self):
         """Abre diálogo para editar tarea seleccionada"""
@@ -312,7 +435,7 @@ class GestorTareasGUI:
             messagebox.showerror("Error", "No se pudieron obtener los detalles de la tarea")
             return
         
-        horario_actual = detalles.get('Hora de inicio', '09:00:00')
+        horario_actual = detalles.get('horario', '09:00:00')
         try:
             hora_parts = horario_actual.split(':')
             hora_inicial = hora_parts[0]
@@ -321,8 +444,8 @@ class GestorTareasGUI:
             hora_inicial = '09'
             minuto_inicial = '00'
         
-        tipo_programacion = detalles.get('Tipo de programación', '').lower()
-        dias_actuales = detalles.get('Días', '')
+        tipo_programacion = detalles.get('frecuencia', '').lower()
+        dias_actuales = detalles.get('dias', '')
         
         es_diaria = 'diaria' in tipo_programacion or 'daily' in tipo_programacion
 
@@ -339,7 +462,7 @@ class GestorTareasGUI:
 
     def _nueva_tarea(self):
         """Abre diálogo para crear nueva tarea"""
-        nombre_auto = f"{self.prefijo_tarea}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+        nombre_auto = f"Tarea_{datetime.now().strftime('%Y%m%d_%H%M')}"
         
         self._mostrar_formulario_tarea(
             titulo="➕ Nueva Tarea Automática",
@@ -362,8 +485,8 @@ class GestorTareasGUI:
         ventana.grab_set()
         
         ventana.update_idletasks()
-        x = (ventana.winfo_screenwidth() // 2) - (300)
-        y = (ventana.winfo_screenheight() // 2) - (300)
+        x = (ventana.winfo_screenwidth() // 2) - 300
+        y = (ventana.winfo_screenheight() // 2) - 300
         ventana.geometry(f'600x600+{x}+{y}')
         
         header = tk.Frame(ventana, bg=color_header, pady=15)
@@ -424,7 +547,7 @@ class GestorTareasGUI:
         for corto, completo in dias_labels:
             var = tk.BooleanVar(value=corto in dias_seleccionados)
             dias_vars[corto] = var
-            tk.Checkbutton(frame_dias, text=completo, variable=var, bg="#f0f0f0").pack(anchor='w', pady=1)
+            tk.Checkbutton(frame_dias, text=completo, variable=var, bg="#f0f0f0").pack(side='left', padx=(0, 10))
         
         tk.Label(form, text="Horario (HH:MM formato 24h):", font=("Segoe UI", 10, "bold"), bg="#f0f0f0").pack(anchor='w', pady=(5, 3))
         
@@ -594,7 +717,7 @@ class GestorTareasGUI:
                 
                 if not ya_mostro_aviso:
                     detalles = self._obtener_detalles_tarea(nombre_completo)
-                    proxima = detalles.get('Hora próxima ejecución', 'próximamente')
+                    proxima = detalles.get('Hora próxima ejecución', 'próximamente') if detalles else 'próximamente'
                     
                     self._mostrar_toast(f"✅ Tarea programada para {proxima}")
             else:
@@ -642,9 +765,9 @@ class GestorTareasGUI:
             
             if resultado.returncode == 0:
                 self._cargar_tareas()
-                self._mostrar_toast(f"✅ Tarea eliminada correctamente")
+                self._mostrar_toast("✅ Tarea eliminada correctamente")
             else:
-                messagebox.showerror("❌ Error", f"No se pudo eliminar la tarea")
+                messagebox.showerror("❌ Error", "No se pudo eliminar la tarea")
         
         except Exception as e:
             messagebox.showerror("❌ Error", f"Error eliminando tarea:\n{e}")
