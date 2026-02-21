@@ -46,7 +46,8 @@ def verificar_licencia_inicio():
     
     # Trial activo
     if resultado.get('tipo') == 'TRIAL':
-        DialogosLicencia.mostrar_banner_trial(resultado.get('dias_restantes'))
+        dias = resultado.get('dias_restantes')
+        print(f"\n⚠️  MODO TRIAL - Quedan {dias} días\n")
     
     # Full - mostrar mensaje de bienvenida
     if resultado.get('tipo') == 'FULL':

@@ -25,6 +25,7 @@ Source: "dist\WizardMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "config_global.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "compartido\*"; DestDir: "{app}\compartido"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "publicadores\*"; DestDir: "{app}\publicadores"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "mensajes\*"; DestDir: "{app}\mensajes"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
 Name: "{app}\mensajes"

@@ -134,7 +134,9 @@ def main():
         if not puede_publicar:
             print(f"⏸️  NO SE PUEDE PUBLICAR AHORA: {mensaje}")
         else:
-            ejecutar_script("publicar_facebook.py", "Publicación en Facebook")
+            # Importar y llamar directamente en lugar de subprocess
+            from publicar_facebook import main as publicar_main
+            publicar_main()
     else:
         print("⛔ Módulo Facebook desactivado - saltando...")
 
@@ -143,7 +145,8 @@ def main():
         print("\n" + "="*70)
         print("📱 MÓDULO: ENVÍO DE ORACIONES WHATSAPP")
         print("="*70 + "\n")
-        ejecutar_script("publicadores/whatsapp_oracion.py", "Envío de Oraciones WhatsApp", modo_auto=False)
+        from publicadores.whatsapp_oracion import main as oraciones_main
+        oraciones_main()
     else:
         print("⛔ Módulo oraciones WhatsApp desactivado - saltando...")
 
