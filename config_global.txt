@@ -1,16 +1,12 @@
 # ============================================================
 # CONFIGURACIÓN GLOBAL - PUBLICADOR AUTOMÁTICO FACEBOOK
 # ============================================================
+
 [GENERAL]
 nombre_proyecto = Publicador Automático Facebook
 carpeta_mensajes = mensajes
 navegador = firefox
 modo_debug = si
-
-[MODULOS]
-publicar_facebook = si
-enviar_oraciones_whatsapp = no
-extraer_predicaciones_whatsapp = no
 
 [MENSAJES]
 seleccion = aleatoria
@@ -47,9 +43,10 @@ mensajes_por_extraccion = 10
 agregar_introduccion_predica = si
 texto_introduccion_predica = ⏰ Vale la pena ver esto
 agregar_hashtags_predicaciones = no
-hashtags_predicaciones =
+hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
 usar_estrategia_optimizada_enlaces = si
 
 [DEBUG]
 modo_debug = detallado
+

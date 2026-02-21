@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import configparser
 import re
+import sys
 import subprocess
 from gestor_licencias import GestorLicencias
 
@@ -825,8 +826,28 @@ class WizardPrimeraVez:
 
     def _abrir_gestor_mensajes(self):
         try:
-            subprocess.Popen(['python', 'gestor_mensajes_gui.py'])
-            messagebox.showinfo("Info", "El gestor de mensajes se abrió en una nueva ventana.\n\nCrea al menos 1 mensaje y luego presiona 'Siguiente'.")
+            es_full = self.tipo_licencia in ['FULL', 'MASTER']
+
+            if es_full:
+                # FULL/MASTER: abrir GUI de gestión
+                gestor_exe = os.path.join(os.path.dirname(sys.executable), 'GestorMensajes.exe')
+                if os.path.exists(gestor_exe):
+                    subprocess.Popen([gestor_exe])
+                    messagebox.showinfo("📝 Gestor de Mensajes", "El gestor se abrió en una nueva ventana.\n\nCrea tus mensajes y luego presiona 'Siguiente'.")
+                else:
+                    messagebox.showwarning("Aviso", "El gestor de mensajes no se encontró.\nAbriendo carpeta de mensajes.")
+                    subprocess.Popen(['explorer', os.path.abspath('mensajes')])
+            else:
+                # TRIAL: abrir carpeta del Explorador
+                carpeta = os.path.abspath('mensajes')
+                os.makedirs(carpeta, exist_ok=True)
+                subprocess.Popen(['explorer', carpeta])
+                messagebox.showinfo(
+                    "📁 Carpeta de Mensajes",
+                    "Se abrió la carpeta de mensajes.\n\n"
+                    "Agrega archivos .txt con tus mensajes bíblicos\n"
+                    "y luego presiona 'Siguiente'."
+                )
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el gestor: {e}")
 

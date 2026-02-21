@@ -529,6 +529,56 @@ class ConfiguradorInteractivo:
         print("   💡 Próximamente disponible en versión FULL")
         input("\n✅ Presiona Enter para volver...")
 
+    def menu_limites(self):
+        """Menú de configuración de límites"""
+        self.limpiar_pantalla()
+        self.mostrar_header()
+        print("🔒 CONFIGURACIÓN DE LÍMITES\n")
+
+        # Tiempo mínimo entre publicaciones
+        print("⏱️  Tiempo mínimo entre publicaciones (segundos)")
+        print(f"   Actual: {self.config['LIMITES']['tiempo_minimo_entre_publicaciones_segundos']}")
+        print("   ℹ️  Recomendado: 120 segundos (2 minutos)")
+        nuevo_valor = input("   Nuevo valor (Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_numero_positivo(nuevo_valor, min_val=30, max_val=3600)
+            if valido:
+                self.config['LIMITES']['tiempo_minimo_entre_publicaciones_segundos'] = str(resultado)
+                self.cambios_realizados = True
+                print("   ✅ Cambiado")
+            else:
+                print(f"   {resultado}")
+
+        # Permitir duplicados
+        print("\n🔄 Permitir publicar mensajes duplicados")
+        print(f"   Actual: {self.config['LIMITES']['permitir_duplicados']}")
+        print("   si = Puede repetir mensajes | no = Evita repetir")
+        nuevo_valor = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_si_no(nuevo_valor)
+            if valido:
+                self.config['LIMITES']['permitir_duplicados'] = resultado
+                self.cambios_realizados = True
+                print("   ✅ Cambiado")
+            else:
+                print(f"   {resultado}")
+
+        # Forzar publicación manual
+        print("\n💪 Permitir forzar publicación manual")
+        print(f"   Actual: {self.config['LIMITES']['permitir_forzar_publicacion_manual']}")
+        print("   si = Permite ignorar límites | no = Respeta siempre los límites")
+        nuevo_valor = input("   Nuevo valor (si/no, Enter para mantener): ").strip()
+        if nuevo_valor:
+            valido, resultado = self.validar_si_no(nuevo_valor)
+            if valido:
+                self.config['LIMITES']['permitir_forzar_publicacion_manual'] = resultado
+                self.cambios_realizados = True
+                print("   ✅ Cambiado")
+            else:
+                print(f"   {resultado}")
+
+        input("\n✅ Presiona Enter para volver al menú principal...")
+
     def abrir_configurador_grafico(self):
         """Abre el configurador gráfico"""
         print("\n🎨 Abriendo configurador gráfico...")
