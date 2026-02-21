@@ -135,7 +135,6 @@ def main():
     
     if not estado_licencia:
         print("\n❌ No se pudo verificar la licencia. Cerrando aplicación...")
-        input("\nPresiona Enter para salir...")
         return
     
     # Mostrar banner
@@ -146,7 +145,6 @@ def main():
         config = leer_config_global()
     except Exception as e:
         print(f"❌ Error leyendo configuración: {e}")
-        input("\nPresiona Enter para salir...")
         return
     
     # Mostrar configuración
@@ -165,7 +163,6 @@ def main():
     if not gestor.puede_publicar_ahora(config.get('max_publicaciones_por_dia', 20)):
         print(f"\n⚠️  Ya se alcanzó el límite de {config.get('max_publicaciones_por_dia', 20)} publicaciones hoy")
         print("   Intenta mañana o aumenta el límite en config_global.txt")
-        input("\nPresiona Enter para salir...")
         return
     
     # Obtener contenido a publicar
@@ -175,7 +172,6 @@ def main():
         ruta_video, titulo = contenido_data
         if not ruta_video:
             print("❌ No hay predicaciones pendientes")
-            input("\nPresiona Enter para salir...")
             return
         print(f"\n📹 Publicando predicación: {titulo}")
         contenido = ruta_video
@@ -184,7 +180,6 @@ def main():
         contenido, nombre_archivo = contenido_data
         if not contenido:
             print("❌ No hay mensajes disponibles")
-            input("\nPresiona Enter para salir...")
             return
         print(f"\n📖 Mensaje seleccionado: {nombre_archivo}")
     
@@ -233,17 +228,16 @@ def main():
     
     finally:
         publicador.cerrar_navegador()
-    
-    print("\n" + "="*70)
-    print("✅ Proceso completado - La ventana se cerrará en 10 segundos...")
-    print("="*70)
-
-    import time
-    for i in range(10, 0, -1):
-        print(f"\rCerrando en {i} segundos...", end='', flush=True)
-        time.sleep(1)
-    print("\r" + " " * 50 + "\r", end='')  # Limpiar línea
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n❌ Proceso cancelado por el usuario\n")
+        sys.exit(0)
+    except Exception as e:
+        import traceback
+        print(f"\n❌ Error inesperado: {e}")
+        traceback.print_exc()
+        input("\nPresiona Enter para cerrar...")

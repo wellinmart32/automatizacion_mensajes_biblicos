@@ -27,6 +27,11 @@ def leer_config_global():
         'navegador': config['GENERAL']['navegador'].lower(),
         'modo_debug': config['GENERAL']['modo_debug'].lower() == 'si',
         
+        # [MODULOS]
+        'modulo_facebook': config['MODULOS']['publicar_facebook'].lower() == 'si' if config.has_option('MODULOS', 'publicar_facebook') else True,
+        'modulo_oraciones': config['MODULOS']['enviar_oraciones_whatsapp'].lower() == 'si' if config.has_option('MODULOS', 'enviar_oraciones_whatsapp') else False,
+        'modulo_predicaciones': config['MODULOS']['extraer_predicaciones_whatsapp'].lower() == 'si' if config.has_option('MODULOS', 'extraer_predicaciones_whatsapp') else False,
+
         # [PUBLICACION]
         'tiempo_entre_intentos': int(config['PUBLICACION']['tiempo_entre_intentos']),
         'max_intentos_por_publicacion': int(config['PUBLICACION']['max_intentos_por_publicacion']),
