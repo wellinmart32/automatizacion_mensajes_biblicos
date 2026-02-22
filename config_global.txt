@@ -9,11 +9,11 @@ navegador = firefox
 modo_debug = si
 
 [MENSAJES]
-seleccion = aleatoria
+seleccion = aleatorio
 historial_evitar_repetir = 5
 formato_fecha = no
 agregar_hashtags = no
-hashtags = #Fe,#Biblia,#Reflexión
+hashtags = #Fe,#Biblia
 agregar_firma = no
 texto_firma = Publicado automáticamente
 
@@ -46,7 +46,11 @@ agregar_hashtags_predicaciones = no
 hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
 usar_estrategia_optimizada_enlaces = si
+navegador = firefox
 
 [DEBUG]
 modo_debug = detallado
+
+[ORACIONES]
+navegador = firefox
 

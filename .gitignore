@@ -9,8 +9,15 @@
 # Ignorar registro de publicaciones (contiene historial)
 registro_publicaciones.json
 
+# Ignorar grupos reales de WhatsApp (datos personales)
+# El cliente recibe grupos.ejemplo.json como plantilla
+llamados-oracion/grupos.json
+
 # Ignorar carpeta de perfiles de navegador (contiene sesiones)
 perfiles/
+
+# Instalador compilado (binario grande, se regenera)
+installer_output/
 
 # Ignorar cola de predicaciones (contenido dinámico)
 # Solo ignorar archivos, no las carpetas
@@ -195,10 +202,6 @@ tramp
 # ARCHIVOS DE CONFIGURACIÓN LOCAL
 # ============================================================
 
-# Configuraciones locales (no commitear si tienes versiones personalizadas)
-# config_local.txt
-# secrets.txt
-# credentials.json
 .env
 .env.local
 
@@ -206,7 +209,6 @@ tramp
 # MANTENER MÓDULOS EN GIT
 # ============================================================
 
-# Mantener archivos __init__.py
 !compartido/__init__.py
 !extractores/__init__.py
 !publicadores/__init__.py
@@ -226,10 +228,10 @@ chromedriver.log
 geckodriver.log
 selenium-debug.log
 
-# Node modules (por si se agregan herramientas JS)
+# Node modules
 node_modules/
 
-# Archivos de base de datos (por si se agregan en el futuro)
+# Archivos de base de datos
 *.db
 *.sqlite
 *.sqlite3

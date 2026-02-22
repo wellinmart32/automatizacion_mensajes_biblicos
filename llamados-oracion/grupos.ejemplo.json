@@ -1,0 +1,22 @@
+{
+  "grupos": [
+    {
+      "nombre": "Nombre exacto del grupo aqui",
+      "tipo": "grupo",
+      "activo": true,
+      "descripcion": "Ejemplo: grupo de oracion de tu iglesia"
+    },
+    {
+      "nombre": "Otro Grupo de Oracion",
+      "tipo": "grupo",
+      "activo": false,
+      "descripcion": "Ejemplo desactivado - cambiar activo a true para usar"
+    },
+    {
+      "nombre": "Nombre Contacto Individual",
+      "tipo": "individual",
+      "activo": true,
+      "descripcion": "Ejemplo: chat personal con un hermano/a"
+    }
+  ]
+}

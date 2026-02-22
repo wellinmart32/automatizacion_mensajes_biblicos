@@ -21,7 +21,12 @@ Name: "desktopicon"; Description: "Crear icono en el Escritorio"; GroupDescripti
 [Files]
 Source: "dist\MensajesBiblicos.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\GestorTareasMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\PanelControl.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\GestorMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\WizardMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\ConfiguradorMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\OracionesWhatsApp.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\ExtractorPredicaciones.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "config_global.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "compartido\*"; DestDir: "{app}\compartido"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "publicadores\*"; DestDir: "{app}\publicadores"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -32,11 +37,11 @@ Name: "{app}\mensajes"
 Name: "{app}\perfiles"
 
 [Icons]
-Name: "{group}\Mensajes Biblicos"; Filename: "{app}\MensajesBiblicos.exe"
-Name: "{group}\Gestor de Tareas"; Filename: "{app}\GestorTareasMensajes.exe"
-Name: "{group}\Configuracion Inicial"; Filename: "{app}\WizardMensajes.exe"
-Name: "{commondesktop}\Mensajes Biblicos"; Filename: "{app}\MensajesBiblicos.exe"; Tasks: desktopicon
-Name: "{commondesktop}\Gestor Mensajes"; Filename: "{app}\GestorTareasMensajes.exe"; Tasks: desktopicon
+Name: "{autoprograms}\Mensajes Bíblicos\Mensajes Bíblicos"; Filename: "{app}\MensajesBiblicos.exe"
+Name: "{autoprograms}\Mensajes Bíblicos\Panel de Control"; Filename: "{app}\PanelControl.exe"
+Name: "{autoprograms}\Mensajes Bíblicos\Wizard de Configuración"; Filename: "{app}\WizardMensajes.exe"
+Name: "{autodesktop}\Mensajes Bíblicos"; Filename: "{app}\MensajesBiblicos.exe"; Tasks: desktopicon
+Name: "{autodesktop}\Panel de Control MB"; Filename: "{app}\PanelControl.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\WizardMensajes.exe"; Description: "Ejecutar configuracion inicial"; Flags: nowait postinstall skipifsilent

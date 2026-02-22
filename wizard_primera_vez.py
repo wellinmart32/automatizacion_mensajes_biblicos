@@ -227,7 +227,7 @@ class WizardPrimeraVez:
 
         tk.Label(
             frame,
-            text="Si no tienes código, puedes usar la versión TRIAL\n"
+            text="Si no tienes código, puedes usar la versión Prueba\n"
                  "(limitada a 5 mensajes por día)",
             font=("Segoe UI", 9),
             bg="#f0f0f0",
@@ -250,7 +250,7 @@ class WizardPrimeraVez:
 
         tk.Button(
             frame_btn,
-            text="Usar TRIAL",
+            text="Usar Prueba",
             font=("Segoe UI", 10),
             bg="#ffc107",
             width=12,
@@ -319,7 +319,7 @@ class WizardPrimeraVez:
                     # Licencia MASTER - OCULTAR que es MASTER
                     self.label_formato.config(
                         fg="#28a745",
-                        text="✅ LICENCIA FULL VÁLIDA"
+                        text="✅ LICENCIA COMPLETA VÁLIDA"
                     )
                     self.licencia_validada = True
                     self.tipo_licencia = 'MASTER'
@@ -327,7 +327,7 @@ class WizardPrimeraVez:
                     # Licencia FULL
                     self.label_formato.config(
                         fg="#28a745",
-                        text="✅ LICENCIA FULL VÁLIDA"
+                        text="✅ LICENCIA COMPLETA VÁLIDA"
                     )
                     self.licencia_validada = True
                     self.tipo_licencia = 'FULL'
@@ -336,7 +336,7 @@ class WizardPrimeraVez:
                     dias = resultado.get('diasRestantes', 0)
                     self.label_formato.config(
                         fg="#ffc107",
-                        text=f"✅ LICENCIA TRIAL ({dias} días restantes)"
+                        text=f"✅ LICENCIA PRUEBA ({dias} días restantes)"
                     )
                     self.licencia_validada = True
                     self.tipo_licencia = 'TRIAL'
@@ -649,7 +649,7 @@ class WizardPrimeraVez:
         resumen_frame = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
         resumen_frame.pack(fill='x', pady=(0, 15))
 
-        licencia_texto = "TRIAL" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia']
+        licencia_texto = "PRUEBA" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia']
         mensajes_count = len([f for f in os.listdir('mensajes') if f.endswith('.txt')]) if os.path.exists('mensajes') else 0
 
         items = [
@@ -673,7 +673,7 @@ class WizardPrimeraVez:
             # Título sección
             tk.Label(
                 frame,
-                text="🗓️ PROGRAMACIÓN AUTOMÁTICA (FULL)",
+                text="🗓️ PROGRAMACIÓN AUTOMÁTICA (COMPLETA)",
                 font=("Segoe UI", 11, "bold"),
                 bg="#f0f0f0",
                 fg="#1a73e8"
@@ -786,7 +786,7 @@ class WizardPrimeraVez:
         if not codigo:
             messagebox.showwarning(
                 "Campo Vacío",
-                "Debes ingresar un código de licencia o presionar 'Usar TRIAL'."
+                "Debes ingresar un código de licencia o presionar 'Usar Prueba'."
             )
             return
         
@@ -808,7 +808,7 @@ class WizardPrimeraVez:
             messagebox.showerror(
                 "Licencia Inválida",
                 "El código ingresado no es válido.\n\n"
-                "Por favor verifica el código o usa TRIAL."
+                "Por favor verifica el código o usa Prueba."
             )
             return
         

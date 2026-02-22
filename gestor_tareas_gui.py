@@ -288,7 +288,17 @@ class GestorTareasGUI:
                     elif 'Estado' in clave or 'Status' in clave:
                         detalles['estado'] = valor
                     elif 'Días' in clave or 'Days' in clave:
-                        detalles['dias'] = valor
+                        # Traducir días de inglés a español
+                        dias_eng_esp = {
+                            'Mon': 'Lun', 'Tue': 'Mar', 'Wed': 'Mié',
+                            'Thu': 'Jue', 'Fri': 'Vie', 'Sat': 'Sáb', 'Sun': 'Dom',
+                            'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles',
+                            'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+                        }
+                        valor_traducido = valor
+                        for eng, esp in dias_eng_esp.items():
+                            valor_traducido = valor_traducido.replace(eng, esp)
+                        detalles['dias'] = valor_traducido
                     elif 'Hora próxima ejecución' in clave or 'Next Run Time' in clave:
                         detalles['Hora próxima ejecución'] = valor
             
