@@ -39,8 +39,7 @@ class ConfiguradorGUI:
     def _guardar_config(self):
         """Guarda los cambios en el archivo"""
         try:
-            # Facebook
-            self.config['GENERAL']['carpeta_mensajes'] = self.var_carpeta.get()
+            # Facebook — carpeta_mensajes no se toca, es fija
             self.config['GENERAL']['navegador'] = self.var_nav_facebook.get()
 
             # Mensajes
@@ -156,10 +155,6 @@ class ConfiguradorGUI:
         tk.Label(tab_fb, text="Configuración para publicar mensajes bíblicos en Facebook automáticamente",
                  font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
 
-        self._seccion(tab_fb, "📁 Carpeta de mensajes (.txt)")
-        self.var_carpeta = tk.StringVar(value=self._get('GENERAL', 'carpeta_mensajes', 'mensajes'))
-        tk.Entry(tab_fb, textvariable=self.var_carpeta, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
-
         self._seccion(tab_fb, "🌐 Navegador para publicar en Facebook")
         self.var_nav_facebook = tk.StringVar(value=self._get('GENERAL', 'navegador', 'firefox'))
         self._radio_navegador(tab_fb, self.var_nav_facebook)
@@ -184,7 +179,6 @@ class ConfiguradorGUI:
                  font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
 
         self._seccion(tab_mensajes, "🎲 Método de selección de mensajes")
-        # Garantizar valor por defecto si config está vacío
         sel_valor = self._get('MENSAJES', 'seleccion', 'aleatorio')
         if sel_valor not in ['aleatorio', 'secuencial']:
             sel_valor = 'aleatorio'
@@ -206,7 +200,7 @@ class ConfiguradorGUI:
         self.var_hashtags = tk.StringVar(value=self._get('MENSAJES', 'agregar_hashtags', 'no'))
         self._radio_si_no(tab_mensajes, self.var_hashtags)
 
-        self._seccion(tab_mensajes, "📌 Hashtags (separados por comas)")
+        self._seccion(tab_mensajes, "📎 Hashtags (separados por comas)")
         self.var_hashtags_texto = tk.StringVar(value=self._get('MENSAJES', 'hashtags', '#Fe,#Biblia'))
         tk.Entry(tab_mensajes, textvariable=self.var_hashtags_texto, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
 
@@ -230,7 +224,7 @@ class ConfiguradorGUI:
         self.var_grupo_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'nombre_grupo_whatsapp', ''))
         tk.Entry(tab_pred, textvariable=self.var_grupo_predicaciones, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
 
-        self._seccion(tab_pred, "📩 Predicaciones a extraer por vez")
+        self._seccion(tab_pred, "📦 Predicaciones a extraer por vez")
         self.var_mensajes_extraccion = tk.StringVar(value=self._get('PREDICACIONES', 'mensajes_por_extraccion', '10'))
         tk.Spinbox(tab_pred, from_=1, to=50, textvariable=self.var_mensajes_extraccion, width=8, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
 
@@ -250,7 +244,6 @@ class ConfiguradorGUI:
         self.var_nav_oraciones = tk.StringVar(value=self._get('ORACIONES', 'navegador', 'firefox'))
         self._radio_navegador(tab_ora, self.var_nav_oraciones)
 
-        # Info sobre grupos de oraciones
         frame_info = tk.Frame(tab_ora, bg="#e8f4fd", relief='solid', borderwidth=1)
         frame_info.pack(fill='x', padx=20, pady=(15, 0))
         tk.Label(frame_info,

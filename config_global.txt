@@ -4,8 +4,8 @@
 
 [GENERAL]
 nombre_proyecto = Publicador Automático Facebook
-carpeta_mensajes = mensajes
-navegador = firefox
+carpeta_mensajes = mosajes
+navegador = chrome
 modo_debug = si
 
 [MENSAJES]

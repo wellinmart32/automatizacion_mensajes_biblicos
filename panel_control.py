@@ -44,7 +44,7 @@ class PanelControl:
         return os.path.join(base, nombre)
 
     def _verificar_licencia(self):
-        """Verifica licencia — usa caché si no hay código guardado (caso PRUEBA)"""
+        """Verifica licencia — usa caché si no hay código guardado (caso TRIAL)"""
         codigo = self.gestor_licencias.obtener_codigo_guardado()
 
         if not codigo:
@@ -109,7 +109,7 @@ class PanelControl:
             pady=4
         ).pack(pady=(8, 0))
 
-        # Banner upgrade (solo PRUEBA)
+        # Banner upgrade (solo TRIAL)
         if not es_full:
             banner = tk.Frame(self.root, bg="#fff3cd", pady=8)
             banner.pack(fill='x')
@@ -157,7 +157,7 @@ class PanelControl:
                         self._gestionar_tareas, row=2, col=0, color="#28a745")
         else:
             self._boton(grid, "🔒\nTareas Automáticas", "Solo versión Completa",
-                        self._abrir_upgrade, row=2, col=0, color="#9e9e9e")
+                        self._mostrar_mensaje_upgrade, row=2, col=0, color="#9e9e9e")
 
         self._boton(grid, "❓\nAyuda", "Cómo usar el sistema",
                     self._mostrar_ayuda, row=2, col=1)
@@ -199,7 +199,6 @@ class PanelControl:
         ventana.transient(self.root)
         ventana.grab_set()
 
-        # Centrar
         ventana.withdraw()
         ventana.update_idletasks()
         x = (ventana.winfo_screenwidth() // 2) - 250
@@ -225,7 +224,6 @@ class PanelControl:
             fg="white"
         ).pack()
 
-        # Contenedor botones
         frame = tk.Frame(ventana, bg="#f0f0f0")
         frame.pack(fill='both', expand=True, padx=20, pady=15)
 
@@ -236,10 +234,10 @@ class PanelControl:
         )
         hay_predicaciones = os.path.exists(cola) and len(os.listdir(cola)) > 0
 
-        # Acción 1 — Publicar en Facebook (siempre disponible)
+        # Acción 1 — siempre disponible
         tk.Button(
             frame,
-            text="▶️  Publicar en Facebook",
+            text="▶️  Publicar Mensaje Bíblico en Facebook",
             font=("Segoe UI", 11, "bold"),
             bg="#1a73e8",
             fg="white",
@@ -251,11 +249,11 @@ class PanelControl:
             command=lambda: [ventana.destroy(), self._publicar_facebook()]
         ).pack(fill='x', pady=(0, 8))
 
-        # Acción 2 — Enviar Oraciones WhatsApp
+        # Acción 2 — Enviar Oraciones por WhatsApp
         if es_full:
             tk.Button(
                 frame,
-                text="📱  Enviar Oraciones WhatsApp",
+                text="📱  Enviar Oraciones por WhatsApp",
                 font=("Segoe UI", 11, "bold"),
                 bg="#25D366",
                 fg="white",
@@ -269,7 +267,7 @@ class PanelControl:
         else:
             tk.Button(
                 frame,
-                text="🔒  Enviar Oraciones WhatsApp — Solo versión Completa",
+                text="🔒  Enviar Oraciones por WhatsApp — Solo versión Completa",
                 font=("Segoe UI", 11),
                 bg="#e0e0e0",
                 fg="#9e9e9e",
@@ -277,10 +275,10 @@ class PanelControl:
                 anchor='w',
                 padx=15,
                 pady=8,
-                command=self._abrir_upgrade
+                command=self._mostrar_mensaje_upgrade
             ).pack(fill='x', pady=(0, 8))
 
-        # Acción 3 — Extraer Predicaciones
+        # Acción 3 — Extraer Predicaciones de WhatsApp
         if es_full:
             tk.Button(
                 frame,
@@ -306,7 +304,7 @@ class PanelControl:
                 anchor='w',
                 padx=15,
                 pady=8,
-                command=self._abrir_upgrade
+                command=self._mostrar_mensaje_upgrade
             ).pack(fill='x', pady=(0, 8))
 
         # Acción 4 — Publicar Predicaciones en Facebook
@@ -337,10 +335,9 @@ class PanelControl:
                 anchor='w',
                 padx=15,
                 pady=8,
-                command=self._abrir_upgrade
+                command=self._mostrar_mensaje_upgrade
             ).pack(fill='x', pady=(0, 8))
 
-        # Botón cerrar
         tk.Button(
             frame,
             text="Cerrar",
@@ -353,7 +350,6 @@ class PanelControl:
     # ==================== ACCIONES ====================
 
     def _publicar_facebook(self):
-        """Publica mensaje bíblico en Facebook"""
         try:
             exe = self._exe("MensajesBiblicos.exe")
             if os.path.exists(exe):
@@ -365,7 +361,6 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo iniciar la publicación:\n{e}")
 
     def _enviar_oraciones(self):
-        """Envía oraciones a grupos de WhatsApp"""
         try:
             exe = self._exe("OracionesWhatsApp.exe")
             if os.path.exists(exe):
@@ -378,7 +373,6 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo iniciar el módulo:\n{e}")
 
     def _extraer_predicaciones(self):
-        """Extrae predicaciones del grupo de WhatsApp"""
         try:
             exe = self._exe("ExtractorPredicaciones.exe")
             if os.path.exists(exe):
@@ -390,7 +384,6 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo iniciar el módulo:\n{e}")
 
     def _publicar_predicaciones(self):
-        """Publica predicaciones extraídas en Facebook"""
         try:
             exe = self._exe("MensajesBiblicos.exe")
             if os.path.exists(exe):
@@ -403,7 +396,6 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo publicar:\n{e}")
 
     def _sin_predicaciones(self):
-        """Aviso cuando no hay predicaciones extraídas"""
         messagebox.showinfo(
             "Sin predicaciones",
             "No hay predicaciones extraídas.\n\n"
@@ -412,7 +404,6 @@ class PanelControl:
         )
 
     def _abrir_configurador(self):
-        """Abre el configurador GUI"""
         try:
             exe = self._exe("ConfiguradorMensajes.exe")
             if os.path.exists(exe):
@@ -423,7 +414,6 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
 
     def _abrir_gestor_mensajes(self):
-        """Abre el gestor de mensajes"""
         try:
             exe = self._exe("GestorMensajes.exe")
             if os.path.exists(exe):
@@ -434,7 +424,6 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo abrir el gestor:\n{e}")
 
     def _gestionar_tareas(self):
-        """Abre gestión de tareas automáticas"""
         try:
             exe = self._exe("GestorTareasMensajes.exe")
             if os.path.exists(exe):
@@ -445,9 +434,24 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo abrir el gestor de tareas:\n{e}")
 
     def _abrir_upgrade(self):
-        """Abre la página de compra"""
-        import webbrowser
-        webbrowser.open("https://automapro.com/mensajes-biblicos")
+        """Abre la página de compra — pendiente de URL real"""
+        messagebox.showinfo(
+            "⬆️ Versión Completa",
+            "Para adquirir la versión Completa visita:\n\nautomapro.com\n\n"
+            "Desbloquea WhatsApp, tareas automáticas y publicación de predicaciones."
+        )
+
+    def _mostrar_mensaje_upgrade(self):
+        """Muestra mensaje cuando el usuario intenta acceder a función premium"""
+        messagebox.showinfo(
+            "🔒 Función Premium",
+            "Esta función está disponible solo en la versión Completa.\n\n"
+            "Adquiérela en automapro.com para desbloquear:\n"
+            "• Enviar Oraciones por WhatsApp\n"
+            "• Extraer Predicaciones de WhatsApp\n"
+            "• Publicar Predicaciones en Facebook\n"
+            "• Tareas Automáticas"
+        )
 
     def _ver_estadisticas(self):
         """Muestra ventana de estadísticas"""
@@ -458,13 +462,14 @@ class PanelControl:
 
             ventana = tk.Toplevel(self.root)
             ventana.title("📊 Estadísticas")
-            ventana.geometry("400x320")
+            ventana.geometry("400x370")
+            ventana.resizable(False, False)
             ventana.configure(bg="#f0f0f0")
             ventana.withdraw()
             ventana.update_idletasks()
             x = (ventana.winfo_screenwidth() // 2) - 200
-            y = (ventana.winfo_screenheight() // 2) - 160
-            ventana.geometry(f'400x320+{x}+{y}')
+            y = (ventana.winfo_screenheight() // 2) - 185
+            ventana.geometry(f'400x370+{x}+{y}')
             ventana.deiconify()
 
             header = tk.Frame(ventana, bg="#1a73e8", pady=12)
@@ -486,26 +491,31 @@ class PanelControl:
 
             for label, valor in items:
                 row = tk.Frame(frame, bg="white")
-                row.pack(fill='x', pady=4)
+                row.pack(fill='x', pady=5)
                 tk.Label(row, text=label, font=("Segoe UI", 10, "bold"),
                          bg="white", anchor='w', width=25).pack(side='left')
                 tk.Label(row, text=valor, font=("Segoe UI", 10),
                          bg="white", anchor='w').pack(side='left')
 
-            tk.Button(ventana, text="Cerrar", font=("Segoe UI", 10),
-                      bg="#6c757d", fg="white",
-                      command=ventana.destroy).pack(pady=(0, 15))
+            tk.Button(
+                ventana,
+                text="Cerrar",
+                font=("Segoe UI", 10),
+                bg="#6c757d",
+                fg="white",
+                width=12,
+                command=ventana.destroy
+            ).pack(pady=15)
 
         except Exception as e:
             messagebox.showerror("❌ Error", f"Error mostrando estadísticas:\n{e}")
 
     def _mostrar_ayuda(self):
-        """Muestra ayuda básica"""
         messagebox.showinfo("❓ Ayuda - Mensajes Bíblicos",
             "📘 GUÍA RÁPIDA\n\n"
             "⚡ ACCIONES\n"
-            "   Publicar en Facebook → publica mensaje bíblico\n"
-            "   Oraciones WhatsApp → envía llamados de oración\n"
+            "   Publicar Mensaje Bíblico → publica mensaje en Facebook\n"
+            "   Enviar Oraciones por WhatsApp → envía llamados de oración\n"
             "   Extraer Predicaciones → trae mensajes de tu grupo\n"
             "   Publicar Predicaciones → sube lo extraído a Facebook\n\n"
             "⚙ GESTIÓN\n"

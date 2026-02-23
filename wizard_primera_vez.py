@@ -777,6 +777,13 @@ class WizardPrimeraVez:
         self.datos_config['codigo_licencia'] = ''
         self.licencia_validada = True
         self.tipo_licencia = 'TRIAL'
+        self.gestor_licencias._guardar_cache_local({
+            'tipo': 'TRIAL',
+            'valida': True,
+            'expirada': False,
+            'diasRestantes': 30,
+            'es_developer_permanente': False
+        })
         self._siguiente()
 
     def _validar_licencia(self):
@@ -1003,7 +1010,8 @@ class WizardPrimeraVez:
                 resultado = subprocess.run(
                     comando,
                     capture_output=True,
-                    text=True
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW
                 )
                 
                 if resultado.returncode == 0:
