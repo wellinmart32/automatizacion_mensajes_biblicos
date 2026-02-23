@@ -145,12 +145,12 @@ class PanelControl:
         self._boton(grid, "⚡\nAcciones", "Publicar y automatizar",
                     self._abrir_acciones, row=0, col=0, color="#e65100")
         self._boton(grid, "⚙️\nConfigurador", "Ajustar configuración",
-                    self._abrir_configurador, row=0, col=1)
+                    self._abrir_configurador, row=0, col=1, en_hilo=True)
 
         # Fila 1
         if es_full:
             self._boton(grid, "📝\nMensajes", "Crear y editar mensajes",
-                        self._abrir_gestor_mensajes, row=1, col=0)
+                        self._abrir_gestor_mensajes, row=1, col=0, en_hilo=True)
         else:
             self._boton(grid, "📝\nMensajes", "Ver tus mensajes",
                         self._abrir_carpeta_mensajes, row=1, col=0)
@@ -160,7 +160,7 @@ class PanelControl:
         # Fila 2
         if es_full:
             self._boton(grid, "🗓️\nTareas Automáticas", "Programar publicaciones",
-                        self._gestionar_tareas, row=2, col=0, color="#28a745")
+                        self._gestionar_tareas, row=2, col=0, color="#28a745", en_hilo=True)
         else:
             self._boton(grid, "🔒\nTareas Automáticas", "Solo versión Completa",
                         self._mostrar_mensaje_upgrade, row=2, col=0, color="#9e9e9e")
@@ -172,38 +172,63 @@ class PanelControl:
         self._boton(grid, "❌\nSalir", "Cerrar panel",
                     self.root.destroy, row=3, col=0, color="#dc3545")
 
-    def _bloquear_grid(self, segundos=3):
-        """Bloquea todos los botones del grid y muestra cursor de espera"""
+    def _bloquear_grid(self):
+        """Bloquea todos los botones del grid"""
         self.root.config(cursor="wait")
         for frame, widgets in self._botones_grid:
-            frame.config(cursor="")
+            frame.config(cursor="", bg="#e0e0e0")
             for w in widgets:
+                w.config(bg="#e0e0e0")
                 w.unbind('<Button-1>')
                 w.unbind('<Enter>')
                 w.unbind('<Leave>')
-        self.root.after(segundos * 1000, self._desbloquear_grid)
+            frame.unbind('<Button-1>')
+            frame.unbind('<Enter>')
+            frame.unbind('<Leave>')
 
     def _desbloquear_grid(self):
         """Restaura todos los botones del grid"""
         self.root.config(cursor="")
         for frame, widgets in self._botones_grid:
-            frame.config(cursor="hand2")
+            frame.config(cursor="hand2", bg="white")
             cmd = frame._cmd
-            frame.bind('<Button-1>', lambda e, c=cmd: c())
-            frame.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
-            frame.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
+            en_hilo = frame._en_hilo
             for w in widgets:
-                w.bind('<Button-1>', lambda e, c=cmd: c())
+                w.config(bg="white")
+                accion = (lambda c=cmd: self._lanzar_en_hilo(c)) if en_hilo else cmd
+                w.bind('<Button-1>', lambda e, a=accion: a())
                 w.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
                 w.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
+            accion = (lambda c=cmd: self._lanzar_en_hilo(c)) if en_hilo else cmd
+            frame.bind('<Button-1>', lambda e, a=accion: a())
+            frame.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
+            frame.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
 
-    def _boton(self, parent, texto, subtexto, comando, row, col, color="#1a73e8"):
+    def _lanzar_en_hilo(self, cmd):
+        """Para subprocesos: bloquea grid, corre en hilo, desbloquea al terminar"""
+        self._bloquear_grid()
+        import threading
+        def _hilo():
+            try:
+                cmd()
+            finally:
+                self.root.after(0, self._desbloquear_grid)
+        threading.Thread(target=_hilo, daemon=True).start()
+
+    def _centrar_ventana(self, ventana, ancho, alto):
+        """Centra una ventana en pantalla antes de mostrarla"""
+        x = (ventana.winfo_screenwidth() // 2) - (ancho // 2)
+        y = (ventana.winfo_screenheight() // 2) - (alto // 2)
+        ventana.geometry(f'{ancho}x{alto}+{x}+{y}')
+
+    def _boton(self, parent, texto, subtexto, comando, row, col, color="#1a73e8", en_hilo=False):
         """Crea un botón estilizado en el grid"""
         frame = tk.Frame(parent, bg="white", relief='solid', borderwidth=1, cursor="hand2")
         frame.grid(row=row, column=col, padx=8, pady=8, sticky='nsew')
         parent.grid_rowconfigure(row, weight=1)
         parent.grid_columnconfigure(col, weight=1)
-        frame._cmd = comando  # Guardar referencia al comando
+        frame._cmd = comando
+        frame._en_hilo = en_hilo
 
         lbl1 = tk.Label(frame, text=texto, font=("Segoe UI", 13, "bold"), bg="white", fg=color)
         lbl1.pack(expand=True, pady=(12, 3))
@@ -211,12 +236,9 @@ class PanelControl:
         lbl2 = tk.Label(frame, text=subtexto, font=("Segoe UI", 8), bg="white", fg="gray")
         lbl2.pack(expand=True, pady=(0, 12))
 
-        def _ejecutar(cmd=comando):
-            self._bloquear_grid(segundos=3)
-            cmd()
-
+        accion = (lambda c=comando: self._lanzar_en_hilo(c)) if en_hilo else comando
         for w in [frame, lbl1, lbl2]:
-            w.bind('<Button-1>', lambda e, c=_ejecutar: c())
+            w.bind('<Button-1>', lambda e, a=accion: a())
             w.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
             w.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
 
@@ -230,19 +252,12 @@ class PanelControl:
         es_full = tipo_licencia in ['FULL', 'MASTER'] or self.licencia.get('developer_permanente')
 
         ventana = tk.Toplevel(self.root)
+        ventana.withdraw()
         ventana.title("⚡ Acciones")
-        ventana.geometry("500x420")
         ventana.resizable(False, False)
         ventana.configure(bg="#f0f0f0")
         ventana.transient(self.root)
         ventana.grab_set()
-
-        ventana.withdraw()
-        ventana.update_idletasks()
-        x = (ventana.winfo_screenwidth() // 2) - 250
-        y = (ventana.winfo_screenheight() // 2) - 210
-        ventana.geometry(f'500x420+{x}+{y}')
-        ventana.deiconify()
 
         # Header
         header = tk.Frame(ventana, bg="#e65100", pady=12)
@@ -386,6 +401,9 @@ class PanelControl:
             command=ventana.destroy
         ).pack(pady=15)
 
+        self._centrar_ventana(ventana, 500, 420)
+        ventana.deiconify()
+
     # ==================== ACCIONES ====================
 
     def _publicar_facebook(self):
@@ -446,9 +464,9 @@ class PanelControl:
         try:
             exe = self._exe("ConfiguradorMensajes.exe")
             if os.path.exists(exe):
-                subprocess.Popen([exe])
+                subprocess.run([exe])
             else:
-                subprocess.Popen([sys.executable, "configurador_gui.py"])
+                subprocess.run([sys.executable, "configurador_gui.py"])
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
 
@@ -473,9 +491,9 @@ class PanelControl:
         try:
             exe = self._exe("GestorMensajes.exe")
             if os.path.exists(exe):
-                subprocess.Popen([exe])
+                subprocess.run([exe])
             else:
-                subprocess.Popen([sys.executable, "gestor_mensajes_gui.py"])
+                subprocess.run([sys.executable, "gestor_mensajes_gui.py"])
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo abrir el gestor:\n{e}")
 
@@ -483,9 +501,9 @@ class PanelControl:
         try:
             exe = self._exe("GestorTareasMensajes.exe")
             if os.path.exists(exe):
-                subprocess.Popen([exe])
+                subprocess.run([exe])
             else:
-                subprocess.Popen([sys.executable, "gestor_tareas_gui.py"])
+                subprocess.run([sys.executable, "gestor_tareas_gui.py"])
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo abrir el gestor de tareas:\n{e}")
 
@@ -517,16 +535,10 @@ class PanelControl:
             fecha_ultima = gestor.registro.get('ultima_publicacion', {}).get('fecha', 'Nunca')
 
             ventana = tk.Toplevel(self.root)
+            ventana.withdraw()
             ventana.title("📊 Estadísticas")
-            ventana.geometry("400x370")
             ventana.resizable(False, False)
             ventana.configure(bg="#f0f0f0")
-            ventana.withdraw()
-            ventana.update_idletasks()
-            x = (ventana.winfo_screenwidth() // 2) - 200
-            y = (ventana.winfo_screenheight() // 2) - 185
-            ventana.geometry(f'400x370+{x}+{y}')
-            ventana.deiconify()
 
             header = tk.Frame(ventana, bg="#1a73e8", pady=12)
             header.pack(fill='x')
@@ -562,6 +574,9 @@ class PanelControl:
                 width=12,
                 command=ventana.destroy
             ).pack(pady=15)
+
+            self._centrar_ventana(ventana, 400, 370)
+            ventana.deiconify()
 
         except Exception as e:
             messagebox.showerror("❌ Error", f"Error mostrando estadísticas:\n{e}")

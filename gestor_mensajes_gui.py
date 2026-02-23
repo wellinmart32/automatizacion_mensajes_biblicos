@@ -181,22 +181,31 @@ class GestorMensajesGUI:
         frame_btn_editor = tk.Frame(panel_der, bg="#f0f0f0")
         frame_btn_editor.pack(fill='x', pady=(8, 0))
 
+        frame_btn_izq = tk.Frame(frame_btn_editor, bg="#f0f0f0")
+        frame_btn_izq.pack(side='left')
+        frame_btn_der = tk.Frame(frame_btn_editor, bg="#f0f0f0")
+        frame_btn_der.pack(side='right')
+
         tk.Button(
-            frame_btn_editor,
+            frame_btn_izq,
             text="🗑️ Limpiar",
             font=("Segoe UI", 9),
             bg="#e0e0e0",
+            height=2,
+            width=12,
             command=self._limpiar_editor
-        ).pack(side='left', padx=(0, 5), ipady=6)
+        ).pack()
 
         tk.Button(
-            frame_btn_editor,
+            frame_btn_der,
             text="💾 Guardar mensaje",
             font=("Segoe UI", 10, "bold"),
             bg="#1a73e8",
             fg="white",
+            height=2,
+            width=16,
             command=self._guardar_mensaje
-        ).pack(side='right', ipady=6)
+        ).pack()
 
     def _cargar_mensajes(self):
         """Carga la lista de mensajes desde la carpeta"""

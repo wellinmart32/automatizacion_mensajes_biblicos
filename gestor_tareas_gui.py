@@ -83,18 +83,23 @@ class GestorTareasGUI:
     def _verificar_licencia_full(self):
         """Verifica que la licencia sea FULL o MASTER"""
         codigo = self.gestor_licencias.obtener_codigo_guardado()
-        
+
+        # Sin código — intentar desde caché
         if not codigo:
+            cache = self.gestor_licencias._obtener_cache_local()
+            if cache and cache.get('valida'):
+                tipo = cache.get('tipo', 'TRIAL')
+                return tipo in ['FULL', 'MASTER'] or cache.get('es_developer_permanente', False)
             return False
-        
+
         resultado = self.gestor_licencias.verificar_licencia(codigo, mostrar_mensajes=False)
-        
+
         if not resultado['valida']:
             return False
-        
+
         if resultado.get('developer_permanente') or resultado.get('tipo') == 'FULL':
             return True
-        
+
         return False
 
     def _construir_ui(self):
