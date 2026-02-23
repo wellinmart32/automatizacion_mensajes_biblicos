@@ -99,22 +99,20 @@ class GestorMensajesGUI:
         tk.Button(
             frame_btn_lista,
             text="✚ Nuevo",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
             bg="#1a73e8",
             fg="white",
-            height=2,
             command=self._nuevo_mensaje
-        ).pack(side='left', expand=True, fill='x', padx=(0, 2))
+        ).pack(side='left', expand=True, fill='x', padx=(0, 2), ipady=6)
 
         tk.Button(
             frame_btn_lista,
             text="🗑️ Eliminar",
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 10),
             bg="#dc3545",
             fg="white",
-            height=2,
             command=self._eliminar_mensaje
-        ).pack(side='left', expand=True, fill='x', padx=(2, 0))
+        ).pack(side='left', expand=True, fill='x', padx=(2, 0), ipady=6)
 
         # ==================== PANEL DERECHO (editor) ====================
         panel_der = tk.Frame(panel, bg="#f0f0f0")
@@ -146,11 +144,43 @@ class GestorMensajesGUI:
         )
         self.lbl_archivo.pack(side='left', padx=5)
 
+        # Panel derecho — botones primero con side='bottom' para que no desaparezcan
+        frame_btn_editor = tk.Frame(panel_der, bg="#f0f0f0")
+        frame_btn_editor.pack(side='bottom', fill='x', pady=(8, 0))
+
+        tk.Button(
+            frame_btn_editor,
+            text="🗑️ Limpiar",
+            font=("Segoe UI", 10),
+            bg="#e0e0e0",
+            width=12,
+            command=self._limpiar_editor
+        ).pack(side='left', padx=(0, 5), ipady=6)
+
+        tk.Button(
+            frame_btn_editor,
+            text="💾 Guardar mensaje",
+            font=("Segoe UI", 10, "bold"),
+            bg="#1a73e8",
+            fg="white",
+            width=16,
+            command=self._guardar_mensaje
+        ).pack(side='right', ipady=6)
+
         frame_texto = tk.Frame(panel_der, bg="#f0f0f0")
         frame_texto.pack(fill='both', expand=True)
 
         scrollbar_texto = tk.Scrollbar(frame_texto)
         scrollbar_texto.pack(side='right', fill='y')
+
+        self.lbl_chars = tk.Label(
+            frame_texto,
+            text="0 caracteres",
+            font=("Segoe UI", 8),
+            fg="gray",
+            bg="#f0f0f0"
+        )
+        self.lbl_chars.pack(side='bottom', anchor='e', pady=(1, 0))
 
         self.texto = tk.Text(
             frame_texto,
@@ -166,46 +196,7 @@ class GestorMensajesGUI:
         self.texto.pack(fill='both', expand=True)
         scrollbar_texto.config(command=self.texto.yview)
 
-        self.lbl_chars = tk.Label(
-            panel_der,
-            text="0 caracteres",
-            font=("Segoe UI", 8),
-            fg="gray",
-            bg="#f0f0f0"
-        )
-        self.lbl_chars.pack(anchor='e', pady=(2, 0))
-
         self.texto.bind('<KeyRelease>', self._actualizar_contador_chars)
-
-        # Botones editor — altura fija para que no se achiquen
-        frame_btn_editor = tk.Frame(panel_der, bg="#f0f0f0")
-        frame_btn_editor.pack(fill='x', pady=(8, 0))
-
-        frame_btn_izq = tk.Frame(frame_btn_editor, bg="#f0f0f0")
-        frame_btn_izq.pack(side='left')
-        frame_btn_der = tk.Frame(frame_btn_editor, bg="#f0f0f0")
-        frame_btn_der.pack(side='right')
-
-        tk.Button(
-            frame_btn_izq,
-            text="🗑️ Limpiar",
-            font=("Segoe UI", 9),
-            bg="#e0e0e0",
-            height=2,
-            width=12,
-            command=self._limpiar_editor
-        ).pack()
-
-        tk.Button(
-            frame_btn_der,
-            text="💾 Guardar mensaje",
-            font=("Segoe UI", 10, "bold"),
-            bg="#1a73e8",
-            fg="white",
-            height=2,
-            width=16,
-            command=self._guardar_mensaje
-        ).pack()
 
     def _cargar_mensajes(self):
         """Carga la lista de mensajes desde la carpeta"""
@@ -344,11 +335,10 @@ class GestorMensajesGUI:
             messagebox.showerror("❌ Error", f"Error al eliminar: {e}")
 
     def _limpiar_editor(self):
-        """Limpia el editor"""
+        """Limpia solo el texto del editor, sin deseleccionar de la lista"""
         self.texto.delete('1.0', tk.END)
-        self.lbl_archivo.config(text="(ninguno seleccionado)", fg="gray")
-        self.lista.selection_clear(0, tk.END)
         self._actualizar_contador_chars()
+        self.texto.focus_set()
 
     def _actualizar_contador_chars(self, event=None):
         """Actualiza el contador de caracteres"""

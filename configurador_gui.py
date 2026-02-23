@@ -40,7 +40,25 @@ class ConfiguradorGUI:
         self.root.deiconify()
 
         self._cargar_config()
+        self.es_full = self._verificar_licencia_full()
         self._construir_ui()
+
+    def _verificar_licencia_full(self):
+        """Verifica si la licencia es FULL/MASTER desde caché o código guardado"""
+        try:
+            from gestor_licencias import GestorLicencias
+            gl = GestorLicencias()
+            codigo = gl.obtener_codigo_guardado()
+            if not codigo:
+                cache = gl._obtener_cache_local()
+                if cache and cache.get('valida'):
+                    tipo = cache.get('tipo', 'TRIAL')
+                    return tipo in ['FULL', 'MASTER'] or cache.get('es_developer_permanente', False)
+                return False
+            resultado = gl.verificar_licencia(codigo, mostrar_mensajes=False)
+            return resultado.get('valida') and (resultado.get('tipo') == 'FULL' or resultado.get('developer_permanente'))
+        except Exception:
+            return False
 
     def _cargar_config(self):
         """Carga la configuración desde archivo"""
@@ -65,18 +83,20 @@ class ConfiguradorGUI:
             self.config['PUBLICACION']['max_intentos_por_publicacion'] = self.var_max_intentos.get()
             self.config['PUBLICACION']['espera_despues_publicar'] = self.var_espera.get()
 
-            # Predicaciones
-            if not self.config.has_section('PREDICACIONES'):
-                self.config.add_section('PREDICACIONES')
-            self.config['PREDICACIONES']['nombre_grupo_whatsapp'] = self.var_grupo_predicaciones.get()
-            self.config['PREDICACIONES']['mensajes_por_extraccion'] = self.var_mensajes_extraccion.get()
-            self.config['PREDICACIONES']['alternar_con_predicaciones'] = self.var_alternar.get()
-            self.config['PREDICACIONES']['navegador'] = self.var_nav_predicaciones.get()
+            # Predicaciones — solo si es FULL
+            if self.es_full:
+                if not self.config.has_section('PREDICACIONES'):
+                    self.config.add_section('PREDICACIONES')
+                self.config['PREDICACIONES']['nombre_grupo_whatsapp'] = self.var_grupo_predicaciones.get()
+                self.config['PREDICACIONES']['mensajes_por_extraccion'] = self.var_mensajes_extraccion.get()
+                self.config['PREDICACIONES']['alternar_con_predicaciones'] = self.var_alternar.get()
+                self.config['PREDICACIONES']['navegador'] = self.var_nav_predicaciones.get()
 
-            # Oraciones
-            if not self.config.has_section('ORACIONES'):
-                self.config.add_section('ORACIONES')
-            self.config['ORACIONES']['navegador'] = self.var_nav_oraciones.get()
+            # Oraciones — solo si es FULL
+            if self.es_full:
+                if not self.config.has_section('ORACIONES'):
+                    self.config.add_section('ORACIONES')
+                self.config['ORACIONES']['navegador'] = self.var_nav_oraciones.get()
 
             # Navegador general
             self.config['NAVEGADOR']['usar_perfil_existente'] = self.var_usar_perfil.get()
@@ -225,75 +245,91 @@ class ConfiguradorGUI:
         tab_pred = ttk.Frame(notebook)
         notebook.add(tab_pred, text="🎬 Predicaciones")
 
-        tk.Label(tab_pred,
-                 text="Configuración para extraer predicaciones de un grupo de WhatsApp",
-                 font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
+        if not self.es_full:
+            tk.Label(tab_pred, text="🔒 Función disponible en versión Completa",
+                     font=("Segoe UI", 12, "bold"), fg="#dc3545", bg="#f0f0f0").pack(pady=(30, 5))
+            tk.Label(tab_pred, text="Extrae y publica predicaciones automáticamente desde WhatsApp.\nAdquiere la versión Completa en automapro.com",
+                     font=("Segoe UI", 10), fg="#555", bg="#f0f0f0", justify='center').pack(pady=5)
+            tk.Button(tab_pred, text="⬆️ Ver planes", font=("Segoe UI", 10, "bold"),
+                      bg="#1a73e8", fg="white", command=lambda: messagebox.showinfo("Versión Completa", "Visita automapro.com para adquirir la versión Completa.")).pack(pady=15)
+        else:
+            tk.Label(tab_pred,
+                     text="Configuración para extraer predicaciones de un grupo de WhatsApp",
+                     font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
 
-        self._seccion(tab_pred, "👥 Nombre del grupo de WhatsApp (ORIGEN de predicaciones)")
-        tk.Label(tab_pred, text="⚠️  Debe ser EXACTAMENTE igual a como aparece en WhatsApp",
-                 font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
-        self.var_grupo_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'nombre_grupo_whatsapp', ''))
-        tk.Entry(tab_pred, textvariable=self.var_grupo_predicaciones, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
+            self._seccion(tab_pred, "👥 Nombre del grupo de WhatsApp (ORIGEN de predicaciones)")
+            tk.Label(tab_pred, text="⚠️  Debe ser EXACTAMENTE igual a como aparece en WhatsApp",
+                     font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
+            self.var_grupo_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'nombre_grupo_whatsapp', ''))
+            tk.Entry(tab_pred, textvariable=self.var_grupo_predicaciones, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
 
-        self._seccion(tab_pred, "📦 Predicaciones a extraer por vez")
-        self.var_mensajes_extraccion = tk.StringVar(value=self._get('PREDICACIONES', 'mensajes_por_extraccion', '10'))
-        tk.Spinbox(tab_pred, from_=1, to=50, textvariable=self.var_mensajes_extraccion, width=8, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
+            self._seccion(tab_pred, "📦 Predicaciones a extraer por vez")
+            self.var_mensajes_extraccion = tk.StringVar(value=self._get('PREDICACIONES', 'mensajes_por_extraccion', '10'))
+            tk.Spinbox(tab_pred, from_=1, to=50, textvariable=self.var_mensajes_extraccion, width=8, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
 
-        self._seccion(tab_pred, "🌐 Navegador para extracción de predicaciones")
-        self.var_nav_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'navegador', 'firefox'))
-        self._radio_navegador(tab_pred, self.var_nav_predicaciones)
+            self._seccion(tab_pred, "🌐 Navegador para extracción de predicaciones")
+            self.var_nav_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'navegador', 'firefox'))
+            self._radio_navegador(tab_pred, self.var_nav_predicaciones)
 
         # ==================== PESTAÑA ORACIONES ====================
         tab_ora = ttk.Frame(notebook)
         notebook.add(tab_ora, text="📱 Oraciones")
 
-        tk.Label(tab_ora,
-                 text="Configuración para enviar llamados de oración a grupos/contactos de WhatsApp",
-                 font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
+        if not self.es_full:
+            tk.Label(tab_ora, text="🔒 Función disponible en versión Completa",
+                     font=("Segoe UI", 12, "bold"), fg="#dc3545", bg="#f0f0f0").pack(pady=(30, 5))
+            tk.Label(tab_ora, text="Envía llamados de oración automáticamente a grupos y contactos de WhatsApp.\nAdquiere la versión Completa en automapro.com",
+                     font=("Segoe UI", 10), fg="#555", bg="#f0f0f0", justify='center').pack(pady=5)
+            tk.Button(tab_ora, text="⬆️ Ver planes", font=("Segoe UI", 10, "bold"),
+                      bg="#1a73e8", fg="white", command=lambda: messagebox.showinfo("Versión Completa", "Visita automapro.com para adquirir la versión Completa.")).pack(pady=15)
+        else:
+            tk.Label(tab_ora,
+                     text="Configuración para enviar llamados de oración a grupos/contactos de WhatsApp",
+                     font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
 
-        self._seccion(tab_ora, "🌐 Navegador para envío de oraciones")
-        self.var_nav_oraciones = tk.StringVar(value=self._get('ORACIONES', 'navegador', 'firefox'))
-        self._radio_navegador(tab_ora, self.var_nav_oraciones)
+            self._seccion(tab_ora, "🌐 Navegador para envío de oraciones")
+            self.var_nav_oraciones = tk.StringVar(value=self._get('ORACIONES', 'navegador', 'firefox'))
+            self._radio_navegador(tab_ora, self.var_nav_oraciones)
 
-        self._seccion(tab_ora, "👥 Grupos y contactos a los que se envían oraciones")
-        tk.Label(tab_ora, text="El nombre debe ser EXACTAMENTE igual a como aparece en WhatsApp",
-                 font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
+            self._seccion(tab_ora, "👥 Grupos y contactos a los que se envían oraciones")
+            tk.Label(tab_ora, text="El nombre debe ser EXACTAMENTE igual a como aparece en WhatsApp",
+                     font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
 
-        # Frame editor grupos
-        frame_grupos = tk.Frame(tab_ora, bg="#f0f0f0")
-        frame_grupos.pack(fill='both', expand=True, padx=20, pady=(5, 0))
+            frame_grupos = tk.Frame(tab_ora, bg="#f0f0f0")
+            frame_grupos.pack(fill='both', expand=True, padx=20, pady=(5, 0))
 
-        # Lista
-        frame_lista_g = tk.Frame(frame_grupos, bg="#f0f0f0")
-        frame_lista_g.pack(fill='both', expand=True)
+            frame_lista_g = tk.Frame(frame_grupos, bg="#f0f0f0")
+            frame_lista_g.pack(fill='both', expand=True)
 
-        scrollbar_g = tk.Scrollbar(frame_lista_g)
-        scrollbar_g.pack(side='right', fill='y')
+            scrollbar_g = tk.Scrollbar(frame_lista_g)
+            scrollbar_g.pack(side='right', fill='y')
 
-        self.lista_grupos = tk.Listbox(
-            frame_lista_g,
-            yscrollcommand=scrollbar_g.set,
-            font=("Segoe UI", 9),
-            height=5,
-            bg="white",
-            relief='solid',
-            borderwidth=1
-        )
-        self.lista_grupos.pack(side='left', fill='both', expand=True)
-        scrollbar_g.config(command=self.lista_grupos.yview)
+            self.lista_grupos = tk.Listbox(
+                frame_lista_g,
+                yscrollcommand=scrollbar_g.set,
+                font=("Segoe UI", 9),
+                height=5,
+                bg="white",
+                relief='solid',
+                borderwidth=1
+            )
+            self.lista_grupos.pack(side='left', fill='both', expand=True)
+            scrollbar_g.config(command=self.lista_grupos.yview)
 
-        # Botones agregar/eliminar
-        frame_btn_g = tk.Frame(tab_ora, bg="#f0f0f0")
-        frame_btn_g.pack(fill='x', padx=20, pady=(5, 0))
+            frame_btn_g = tk.Frame(tab_ora, bg="#f0f0f0")
+            frame_btn_g.pack(fill='x', padx=20, pady=(5, 0))
 
-        tk.Button(frame_btn_g, text="✚ Agregar",
-                  font=("Segoe UI", 9, "bold"), bg="#1a73e8", fg="white",
-                  command=self._agregar_grupo).pack(side='left', padx=(0, 5))
-        tk.Button(frame_btn_g, text="🗑️ Eliminar seleccionado",
-                  font=("Segoe UI", 9), bg="#dc3545", fg="white",
-                  command=self._eliminar_grupo).pack(side='left')
+            tk.Button(frame_btn_g, text="✚ Agregar",
+                      font=("Segoe UI", 9, "bold"), bg="#1a73e8", fg="white",
+                      command=self._agregar_grupo).pack(side='left', padx=(0, 5))
+            tk.Button(frame_btn_g, text="✏️ Editar",
+                      font=("Segoe UI", 9), bg="#ffc107",
+                      command=self._editar_grupo).pack(side='left', padx=(0, 5))
+            tk.Button(frame_btn_g, text="🗑️ Eliminar",
+                      font=("Segoe UI", 9), bg="#dc3545", fg="white",
+                      command=self._eliminar_grupo).pack(side='left')
 
-        self._cargar_grupos_lista()
+            self._cargar_grupos_lista()
 
         # ==================== PESTAÑA AVANZADO ====================
         tab_adv = ttk.Frame(notebook)
@@ -439,6 +475,68 @@ class ConfiguradorGUI:
             self._cargar_grupos_lista()
         except Exception as e:
             messagebox.showerror("❌ Error", f"Error eliminando grupo: {e}")
+
+    def _editar_grupo(self):
+        """Edita el grupo/contacto seleccionado"""
+        seleccion = self.lista_grupos.curselection()
+        if not seleccion:
+            messagebox.showwarning("⚠️ Aviso", "Selecciona un grupo para editar")
+            return
+        idx = seleccion[0]
+        try:
+            with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
+                datos = json.load(f)
+            grupo = datos['grupos'][idx]
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"Error leyendo grupos: {e}")
+            return
+
+        ventana = tk.Toplevel(self.root)
+        ventana.withdraw()
+        ventana.title("✏️ Editar grupo/contacto")
+        ventana.resizable(False, False)
+        ventana.configure(bg="#f0f0f0")
+        ventana.transient(self.root)
+        ventana.grab_set()
+
+        tk.Label(ventana, text="Nombre (igual que en WhatsApp):",
+                 font=("Segoe UI", 10, "bold"), bg="#f0f0f0").pack(anchor='w', padx=20, pady=(20, 3))
+        var_nombre = tk.StringVar(value=grupo.get('nombre', ''))
+        tk.Entry(ventana, textvariable=var_nombre, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20)
+
+        tk.Label(ventana, text="Tipo:", font=("Segoe UI", 10, "bold"), bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 3))
+        var_tipo = tk.StringVar(value=grupo.get('tipo', 'grupo'))
+        frame_tipo = tk.Frame(ventana, bg="#f0f0f0")
+        frame_tipo.pack(anchor='w', padx=20)
+        tk.Radiobutton(frame_tipo, text="Grupo", variable=var_tipo, value="grupo", bg="#f0f0f0").pack(side='left', padx=(0, 10))
+        tk.Radiobutton(frame_tipo, text="Contacto", variable=var_tipo, value="contacto", bg="#f0f0f0").pack(side='left')
+
+        frame_btns = tk.Frame(ventana, bg="#f0f0f0")
+        frame_btns.pack(fill='x', pady=20, padx=20)
+
+        def guardar():
+            nombre = var_nombre.get().strip()
+            if not nombre:
+                messagebox.showerror("Error", "El nombre no puede estar vacío")
+                return
+            datos['grupos'][idx] = {'nombre': nombre, 'tipo': var_tipo.get()}
+            try:
+                with open(self.archivo_grupos, 'w', encoding='utf-8') as f:
+                    json.dump(datos, f, ensure_ascii=False, indent=2)
+                self._cargar_grupos_lista()
+                ventana.destroy()
+            except Exception as e:
+                messagebox.showerror("❌ Error", f"Error guardando: {e}")
+
+        tk.Button(frame_btns, text="Cancelar", font=("Segoe UI", 10), bg="#e0e0e0",
+                  command=ventana.destroy, width=10).pack(side='left')
+        tk.Button(frame_btns, text="💾 Guardar", font=("Segoe UI", 10, "bold"),
+                  bg="#1a73e8", fg="white", command=guardar, width=12).pack(side='right')
+
+        x = (ventana.winfo_screenwidth() // 2) - 200
+        y = (ventana.winfo_screenheight() // 2) - 150
+        ventana.geometry(f'400x300+{x}+{y}')
+        ventana.deiconify()
 
     def ejecutar(self):
         """Inicia la interfaz gráfica"""
