@@ -1,4 +1,6 @@
 import os
+import sys
+import json
 import configparser
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -11,6 +13,15 @@ class ConfiguradorGUI:
         self.archivo_config = "config_global.txt"
         self.config = configparser.ConfigParser()
         self.cambios = {}
+
+        # Ruta base siempre relativa al ejecutable
+        if getattr(sys, 'frozen', False):
+            self.base_dir = os.path.dirname(sys.executable)
+        else:
+            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        self.archivo_config = os.path.join(self.base_dir, "config_global.txt")
+        self.archivo_grupos = os.path.join(self.base_dir, "llamados-oracion", "grupos.json")
 
         self.root = tk.Tk()
         self.root.title("⚙️ Configurador - Mensajes Bíblicos")
@@ -244,16 +255,45 @@ class ConfiguradorGUI:
         self.var_nav_oraciones = tk.StringVar(value=self._get('ORACIONES', 'navegador', 'firefox'))
         self._radio_navegador(tab_ora, self.var_nav_oraciones)
 
-        frame_info = tk.Frame(tab_ora, bg="#e8f4fd", relief='solid', borderwidth=1)
-        frame_info.pack(fill='x', padx=20, pady=(15, 0))
-        tk.Label(frame_info,
-                 text="ℹ️  Los grupos y contactos a los que se envían oraciones\n"
-                      "se configuran en el archivo:\n"
-                      "llamados-oracion/grupos.json",
-                 font=("Segoe UI", 9),
-                 bg="#e8f4fd",
-                 fg="#1a73e8",
-                 justify='left').pack(padx=15, pady=10, anchor='w')
+        self._seccion(tab_ora, "👥 Grupos y contactos a los que se envían oraciones")
+        tk.Label(tab_ora, text="El nombre debe ser EXACTAMENTE igual a como aparece en WhatsApp",
+                 font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
+
+        # Frame editor grupos
+        frame_grupos = tk.Frame(tab_ora, bg="#f0f0f0")
+        frame_grupos.pack(fill='both', expand=True, padx=20, pady=(5, 0))
+
+        # Lista
+        frame_lista_g = tk.Frame(frame_grupos, bg="#f0f0f0")
+        frame_lista_g.pack(fill='both', expand=True)
+
+        scrollbar_g = tk.Scrollbar(frame_lista_g)
+        scrollbar_g.pack(side='right', fill='y')
+
+        self.lista_grupos = tk.Listbox(
+            frame_lista_g,
+            yscrollcommand=scrollbar_g.set,
+            font=("Segoe UI", 9),
+            height=5,
+            bg="white",
+            relief='solid',
+            borderwidth=1
+        )
+        self.lista_grupos.pack(side='left', fill='both', expand=True)
+        scrollbar_g.config(command=self.lista_grupos.yview)
+
+        # Botones agregar/eliminar
+        frame_btn_g = tk.Frame(tab_ora, bg="#f0f0f0")
+        frame_btn_g.pack(fill='x', padx=20, pady=(5, 0))
+
+        tk.Button(frame_btn_g, text="✚ Agregar",
+                  font=("Segoe UI", 9, "bold"), bg="#1a73e8", fg="white",
+                  command=self._agregar_grupo).pack(side='left', padx=(0, 5))
+        tk.Button(frame_btn_g, text="🗑️ Eliminar seleccionado",
+                  font=("Segoe UI", 9), bg="#dc3545", fg="white",
+                  command=self._eliminar_grupo).pack(side='left')
+
+        self._cargar_grupos_lista()
 
         # ==================== PESTAÑA AVANZADO ====================
         tab_adv = ttk.Frame(notebook)
@@ -306,6 +346,99 @@ class ConfiguradorGUI:
             width=14,
             command=self._guardar_config
         ).pack(side='right', padx=5)
+
+    def _cargar_grupos_lista(self):
+        """Carga grupos desde grupos.json en la lista visual"""
+        self.lista_grupos.delete(0, tk.END)
+        if not os.path.exists(self.archivo_grupos):
+            return
+        try:
+            with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
+                datos = json.load(f)
+            for g in datos.get('grupos', []):
+                activo = "✅" if g.get('activo', True) else "❌"
+                tipo = "👥" if g.get('tipo') == 'grupo' else "👤"
+                self.lista_grupos.insert(tk.END, f"{activo} {tipo} {g['nombre']}")
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"Error leyendo grupos: {e}")
+
+    def _agregar_grupo(self):
+        """Diálogo para agregar un grupo/contacto"""
+        ventana = tk.Toplevel(self.root)
+        ventana.title("✚ Agregar grupo/contacto")
+        ventana.geometry("400x220")
+        ventana.resizable(False, False)
+        ventana.configure(bg="#f0f0f0")
+        ventana.transient(self.root)
+        ventana.grab_set()
+        ventana.withdraw()
+        ventana.update_idletasks()
+        x = (ventana.winfo_screenwidth() // 2) - 200
+        y = (ventana.winfo_screenheight() // 2) - 110
+        ventana.geometry(f'400x220+{x}+{y}')
+        ventana.deiconify()
+
+        tk.Label(ventana, text="Nombre (igual que en WhatsApp):",
+                 font=("Segoe UI", 10), bg="#f0f0f0").pack(anchor='w', padx=20, pady=(15, 2))
+        var_nombre = tk.StringVar()
+        tk.Entry(ventana, textvariable=var_nombre, width=40,
+                 font=("Segoe UI", 10)).pack(padx=20, fill='x')
+
+        tk.Label(ventana, text="Tipo:", font=("Segoe UI", 10),
+                 bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 2))
+        var_tipo = tk.StringVar(value='grupo')
+        frame_tipo = tk.Frame(ventana, bg="#f0f0f0")
+        frame_tipo.pack(anchor='w', padx=20)
+        tk.Radiobutton(frame_tipo, text="👥 Grupo", variable=var_tipo,
+                       value='grupo', bg="#f0f0f0").pack(side='left', padx=(0, 15))
+        tk.Radiobutton(frame_tipo, text="👤 Individual", variable=var_tipo,
+                       value='individual', bg="#f0f0f0").pack(side='left')
+
+        def _confirmar():
+            nombre = var_nombre.get().strip()
+            if not nombre:
+                messagebox.showwarning("⚠️ Aviso", "Escribe el nombre", parent=ventana)
+                return
+            self._guardar_grupo_nuevo(nombre, var_tipo.get())
+            self._cargar_grupos_lista()
+            ventana.destroy()
+
+        tk.Button(ventana, text="✚ Agregar", font=("Segoe UI", 10, "bold"),
+                  bg="#1a73e8", fg="white", command=_confirmar).pack(pady=15)
+
+    def _guardar_grupo_nuevo(self, nombre, tipo):
+        """Agrega un grupo al JSON"""
+        datos = {"grupos": []}
+        if os.path.exists(self.archivo_grupos):
+            try:
+                with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+            except:
+                pass
+        datos['grupos'].append({"nombre": nombre, "tipo": tipo, "activo": True, "descripcion": ""})
+        os.makedirs(os.path.dirname(self.archivo_grupos), exist_ok=True)
+        with open(self.archivo_grupos, 'w', encoding='utf-8') as f:
+            json.dump(datos, f, ensure_ascii=False, indent=2)
+
+    def _eliminar_grupo(self):
+        """Elimina el grupo seleccionado del JSON"""
+        seleccion = self.lista_grupos.curselection()
+        if not seleccion:
+            messagebox.showwarning("⚠️ Aviso", "Selecciona un grupo para eliminar")
+            return
+        idx = seleccion[0]
+        try:
+            with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
+                datos = json.load(f)
+            nombre = datos['grupos'][idx]['nombre']
+            if not messagebox.askyesno("🗑️ Confirmar", f"¿Eliminar '{nombre}'?"):
+                return
+            datos['grupos'].pop(idx)
+            with open(self.archivo_grupos, 'w', encoding='utf-8') as f:
+                json.dump(datos, f, ensure_ascii=False, indent=2)
+            self._cargar_grupos_lista()
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"Error eliminando grupo: {e}")
 
     def ejecutar(self):
         """Inicia la interfaz gráfica"""

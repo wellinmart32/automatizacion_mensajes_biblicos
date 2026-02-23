@@ -1,4 +1,5 @@
 import os
+import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 
@@ -7,26 +8,27 @@ class GestorMensajesGUI:
     """Interfaz gráfica para gestionar mensajes bíblicos (.txt)"""
 
     def __init__(self):
-        self.carpeta_mensajes = "mensajes"
+        # Ruta siempre relativa al ejecutable, no al directorio de trabajo
+        if getattr(sys, 'frozen', False):
+            base = os.path.dirname(sys.executable)
+        else:
+            base = os.path.dirname(os.path.abspath(__file__))
+        self.carpeta_mensajes = os.path.join(base, "mensajes")
 
         self.root = tk.Tk()
         self.root.title("📝 Gestor de Mensajes Bíblicos")
         self.root.geometry("800x600")
+        self.root.minsize(700, 500)
         self.root.resizable(True, True)
         self.root.configure(bg="#f0f0f0")
-        
-        # Ocultar ventana mientras se configura
+
         self.root.withdraw()
-        
-        # Centrar ventana correctamente
         self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
+        width = 800
+        height = 600
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
-        
-        # Mostrar ventana ya centrada
         self.root.deiconify()
 
         self._construir_ui()
@@ -61,7 +63,6 @@ class GestorMensajesGUI:
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 5))
 
-        # Contador
         self.lbl_contador = tk.Label(
             panel_izq,
             text="0 mensajes",
@@ -71,7 +72,6 @@ class GestorMensajesGUI:
         )
         self.lbl_contador.pack(anchor='w', pady=(0, 5))
 
-        # Lista con scrollbar
         frame_lista = tk.Frame(panel_izq, bg="#f0f0f0")
         frame_lista.pack(fill='both', expand=True)
 
@@ -92,16 +92,17 @@ class GestorMensajesGUI:
 
         self.lista.bind('<<ListboxSelect>>', self._on_seleccionar)
 
-        # Botones de lista
+        # Botones lista — altura fija para que no se achiquen
         frame_btn_lista = tk.Frame(panel_izq, bg="#f0f0f0")
-        frame_btn_lista.pack(fill='x', pady=(5, 0))
+        frame_btn_lista.pack(fill='x', pady=(8, 0))
 
         tk.Button(
             frame_btn_lista,
-            text="➕ Nuevo",
+            text="✚ Nuevo",
             font=("Segoe UI", 9, "bold"),
             bg="#1a73e8",
             fg="white",
+            height=2,
             command=self._nuevo_mensaje
         ).pack(side='left', expand=True, fill='x', padx=(0, 2))
 
@@ -111,6 +112,7 @@ class GestorMensajesGUI:
             font=("Segoe UI", 9),
             bg="#dc3545",
             fg="white",
+            height=2,
             command=self._eliminar_mensaje
         ).pack(side='left', expand=True, fill='x', padx=(2, 0))
 
@@ -125,7 +127,6 @@ class GestorMensajesGUI:
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 5))
 
-        # Nombre del archivo
         frame_nombre = tk.Frame(panel_der, bg="#f0f0f0")
         frame_nombre.pack(fill='x', pady=(0, 8))
 
@@ -145,7 +146,6 @@ class GestorMensajesGUI:
         )
         self.lbl_archivo.pack(side='left', padx=5)
 
-        # Área de texto
         frame_texto = tk.Frame(panel_der, bg="#f0f0f0")
         frame_texto.pack(fill='both', expand=True)
 
@@ -166,7 +166,6 @@ class GestorMensajesGUI:
         self.texto.pack(fill='both', expand=True)
         scrollbar_texto.config(command=self.texto.yview)
 
-        # Contador de caracteres
         self.lbl_chars = tk.Label(
             panel_der,
             text="0 caracteres",
@@ -178,7 +177,7 @@ class GestorMensajesGUI:
 
         self.texto.bind('<KeyRelease>', self._actualizar_contador_chars)
 
-        # Botones del editor
+        # Botones editor — altura fija para que no se achiquen
         frame_btn_editor = tk.Frame(panel_der, bg="#f0f0f0")
         frame_btn_editor.pack(fill='x', pady=(8, 0))
 
@@ -188,7 +187,7 @@ class GestorMensajesGUI:
             font=("Segoe UI", 9),
             bg="#e0e0e0",
             command=self._limpiar_editor
-        ).pack(side='left', padx=(0, 5))
+        ).pack(side='left', padx=(0, 5), ipady=6)
 
         tk.Button(
             frame_btn_editor,
@@ -197,7 +196,7 @@ class GestorMensajesGUI:
             bg="#1a73e8",
             fg="white",
             command=self._guardar_mensaje
-        ).pack(side='right')
+        ).pack(side='right', ipady=6)
 
     def _cargar_mensajes(self):
         """Carga la lista de mensajes desde la carpeta"""
@@ -262,7 +261,6 @@ class GestorMensajesGUI:
 
     def _nuevo_mensaje(self):
         """Crea un nuevo archivo de mensaje"""
-        # Calcular siguiente número
         mensajes_existentes = [
             f for f in os.listdir(self.carpeta_mensajes)
             if f.endswith('.txt')
@@ -296,7 +294,6 @@ class GestorMensajesGUI:
 
             self._cargar_mensajes()
 
-            # Seleccionar el nuevo archivo en la lista
             for i in range(self.lista.size()):
                 if self.lista.get(i) == nombre:
                     self.lista.selection_clear(0, tk.END)

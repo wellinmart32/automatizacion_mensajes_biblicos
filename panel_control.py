@@ -139,6 +139,8 @@ class PanelControl:
         grid = tk.Frame(container, bg="#f0f0f0")
         grid.pack(fill='both', expand=True)
 
+        self._botones_grid = []  # Para bloquear/desbloquear todos juntos
+
         # Fila 0
         self._boton(grid, "⚡\nAcciones", "Publicar y automatizar",
                     self._abrir_acciones, row=0, col=0, color="#e65100")
@@ -146,8 +148,12 @@ class PanelControl:
                     self._abrir_configurador, row=0, col=1)
 
         # Fila 1
-        self._boton(grid, "📝\nMensajes", "Crear y editar mensajes",
-                    self._abrir_gestor_mensajes, row=1, col=0)
+        if es_full:
+            self._boton(grid, "📝\nMensajes", "Crear y editar mensajes",
+                        self._abrir_gestor_mensajes, row=1, col=0)
+        else:
+            self._boton(grid, "📝\nMensajes", "Ver tus mensajes",
+                        self._abrir_carpeta_mensajes, row=1, col=0)
         self._boton(grid, "📊\nEstadísticas", "Ver historial",
                     self._ver_estadisticas, row=1, col=1)
 
@@ -166,12 +172,38 @@ class PanelControl:
         self._boton(grid, "❌\nSalir", "Cerrar panel",
                     self.root.destroy, row=3, col=0, color="#dc3545")
 
+    def _bloquear_grid(self, segundos=3):
+        """Bloquea todos los botones del grid y muestra cursor de espera"""
+        self.root.config(cursor="wait")
+        for frame, widgets in self._botones_grid:
+            frame.config(cursor="")
+            for w in widgets:
+                w.unbind('<Button-1>')
+                w.unbind('<Enter>')
+                w.unbind('<Leave>')
+        self.root.after(segundos * 1000, self._desbloquear_grid)
+
+    def _desbloquear_grid(self):
+        """Restaura todos los botones del grid"""
+        self.root.config(cursor="")
+        for frame, widgets in self._botones_grid:
+            frame.config(cursor="hand2")
+            cmd = frame._cmd
+            frame.bind('<Button-1>', lambda e, c=cmd: c())
+            frame.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
+            frame.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
+            for w in widgets:
+                w.bind('<Button-1>', lambda e, c=cmd: c())
+                w.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
+                w.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
+
     def _boton(self, parent, texto, subtexto, comando, row, col, color="#1a73e8"):
         """Crea un botón estilizado en el grid"""
         frame = tk.Frame(parent, bg="white", relief='solid', borderwidth=1, cursor="hand2")
         frame.grid(row=row, column=col, padx=8, pady=8, sticky='nsew')
         parent.grid_rowconfigure(row, weight=1)
         parent.grid_columnconfigure(col, weight=1)
+        frame._cmd = comando  # Guardar referencia al comando
 
         lbl1 = tk.Label(frame, text=texto, font=("Segoe UI", 13, "bold"), bg="white", fg=color)
         lbl1.pack(expand=True, pady=(12, 3))
@@ -179,10 +211,16 @@ class PanelControl:
         lbl2 = tk.Label(frame, text=subtexto, font=("Segoe UI", 8), bg="white", fg="gray")
         lbl2.pack(expand=True, pady=(0, 12))
 
+        def _ejecutar(cmd=comando):
+            self._bloquear_grid(segundos=3)
+            cmd()
+
         for w in [frame, lbl1, lbl2]:
-            w.bind('<Button-1>', lambda e, c=comando: c())
+            w.bind('<Button-1>', lambda e, c=_ejecutar: c())
             w.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
             w.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
+
+        self._botones_grid.append((frame, [lbl1, lbl2]))
 
     # ==================== VENTANA ACCIONES ====================
 
@@ -344,8 +382,9 @@ class PanelControl:
             font=("Segoe UI", 10),
             bg="#6c757d",
             fg="white",
+            width=12,
             command=ventana.destroy
-        ).pack(pady=(10, 0))
+        ).pack(pady=15)
 
     # ==================== ACCIONES ====================
 
@@ -412,6 +451,23 @@ class PanelControl:
                 subprocess.Popen([sys.executable, "configurador_gui.py"])
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
+
+    def _abrir_carpeta_mensajes(self):
+        """TRIAL: abre la carpeta mensajes en el explorador e informa sobre el gestor"""
+        import subprocess as sp
+        carpeta = os.path.join(os.path.dirname(self._exe("MensajesBiblicos.exe")), "mensajes")
+        if not os.path.exists(carpeta):
+            os.makedirs(carpeta)
+        sp.Popen(f'explorer "{carpeta}"')
+        messagebox.showinfo(
+            "📝 Tus Mensajes",
+            "Se abrió tu carpeta de mensajes en el Explorador.\n\n"
+            "💡 Con la versión Completa accedes al Gestor de Mensajes:\n"
+            "   • Editor visual integrado\n"
+            "   • Crear y eliminar mensajes fácilmente\n"
+            "   • Contador de caracteres en tiempo real\n\n"
+            "Adquiérela en automapro.com"
+        )
 
     def _abrir_gestor_mensajes(self):
         try:
