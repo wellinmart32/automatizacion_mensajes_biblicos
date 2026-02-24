@@ -90,7 +90,23 @@ class PublicadorWhatsAppOracion:
         return True
 
     def cargar_grupos(self):
-        """Carga lista de chats desde JSON"""
+        """Carga lista de chats — usa selección temporal si existe"""
+        temp_file = os.path.join(self.carpeta_oracion, "seleccion_temp.json")
+        
+        # Si hay selección del panel, usarla y borrarla
+        if os.path.exists(temp_file):
+            try:
+                with open(temp_file, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                os.remove(temp_file)
+                chats = datos.get('grupos', [])
+                if chats:
+                    print(f"   ✔ Usando selección del panel: {len(chats)} destinatario(s)")
+                    return chats
+            except Exception as e:
+                print(f"   ⚠  Error leyendo selección temporal: {e}")
+
+        # todos los activos de grupos.json
         if not os.path.exists(self.archivo_grupos):
             raise Exception(f"No se encontró {self.archivo_grupos}")
 

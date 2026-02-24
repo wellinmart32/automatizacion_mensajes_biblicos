@@ -10,7 +10,12 @@ def leer_config_global():
     Lee config_global.txt y retorna un diccionario con la configuración
     Similar al sistema de Marketplace pero adaptado para Facebook
     """
-    archivo_config = "config_global.txt"
+    import sys
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    archivo_config = os.path.join(base_dir, "config_global.txt")
     
     if not os.path.exists(archivo_config):
         print("⚠️  No existe config_global.txt. Creando configuración por defecto...")
@@ -494,7 +499,12 @@ def guardar_nombre_grupo_whatsapp(nombre_grupo):
     """Guarda el nombre del grupo de WhatsApp en config_global.txt"""
     import configparser
     
-    archivo_config = "config_global.txt"
+    import sys
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    archivo_config = os.path.join(base_dir, "config_global.txt")
     config = configparser.ConfigParser()
     config.read(archivo_config, encoding='utf-8')
     

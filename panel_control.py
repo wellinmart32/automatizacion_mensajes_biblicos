@@ -29,6 +29,12 @@ class PanelControl:
         self.gestor_licencias = GestorLicencias()
         self.licencia = self._verificar_licencia()
 
+        # Ruta base del ejecutable
+        if getattr(sys, 'frozen', False):
+            self.base_dir = os.path.dirname(sys.executable)
+        else:
+            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+
         if not self.licencia:
             self.root.destroy()
             return
@@ -418,16 +424,124 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo iniciar la publicación:\n{e}")
 
     def _enviar_oraciones(self):
+        """Muestra diálogo de selección de grupos antes de enviar"""
+        import json
+
+        archivo_grupos = os.path.join(self.base_dir, "llamados-oracion", "grupos.json")
+        if not os.path.exists(archivo_grupos):
+            messagebox.showwarning("⚠️ Sin grupos",
+                "No hay grupos configurados.\nAbre el Configurador → Oraciones para agregar grupos.")
+            return
+
         try:
-            exe = self._exe("OracionesWhatsApp.exe")
-            if os.path.exists(exe):
-                subprocess.Popen([exe])
-            else:
-                subprocess.Popen([sys.executable,
-                                  os.path.join("publicadores", "whatsapp_oracion.py")])
-            self._toast("📱 Oraciones WhatsApp", "Iniciando envío de llamados de oración...")
+            with open(archivo_grupos, 'r', encoding='utf-8') as f:
+                datos = json.load(f)
+            grupos = [g for g in datos.get('grupos', []) if g.get('activo', True)]
         except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo iniciar el módulo:\n{e}")
+            messagebox.showerror("❌ Error", f"Error leyendo grupos:\n{e}")
+            return
+
+        if not grupos:
+            messagebox.showwarning("⚠️ Sin grupos activos",
+                "No hay grupos activos configurados.\nAbre el Configurador → Oraciones.")
+            return
+
+        # Diálogo de selección
+        ventana = tk.Toplevel(self.root)
+        ventana.withdraw()
+        ventana.title("📱 Seleccionar destinatarios")
+        ventana.resizable(False, False)
+        ventana.configure(bg="#f0f0f0")
+        ventana.transient(self.root)
+        ventana.grab_set()
+
+        header = tk.Frame(ventana, bg="#25D366", pady=12)
+        header.pack(fill='x')
+        tk.Label(header, text="📱 Enviar llamados de oración",
+                 font=("Segoe UI", 12, "bold"), bg="#25D366", fg="white").pack()
+        tk.Label(header, text="Selecciona a quiénes enviar hoy",
+                 font=("Segoe UI", 9), bg="#25D366", fg="#d0f5e0").pack()
+
+        frame = tk.Frame(ventana, bg="#f0f0f0", padx=20, pady=10)
+        frame.pack(fill='both', expand=True)
+
+        # Checkbox seleccionar todos
+        var_todos = tk.BooleanVar(value=True)
+        vars_grupos = []
+
+        def toggle_todos():
+            for v in vars_grupos:
+                v.set(var_todos.get())
+
+        chk_todos = tk.Checkbutton(frame, text="✅ Seleccionar todos",
+                                   variable=var_todos, command=toggle_todos,
+                                   font=("Segoe UI", 10, "bold"), bg="#f0f0f0")
+        chk_todos.pack(anchor='w', pady=(0, 5))
+
+        tk.Frame(frame, bg="#ccc", height=1).pack(fill='x', pady=(0, 8))
+
+        # Checkboxes individuales
+        frame_scroll = tk.Frame(frame, bg="#f0f0f0")
+        frame_scroll.pack(fill='both', expand=True)
+
+        for g in grupos:
+            var = tk.BooleanVar(value=True)
+            vars_grupos.append(var)
+            icono = "👥" if g.get('tipo') == 'grupo' else "👤"
+            tk.Checkbutton(frame_scroll,
+                           text=f"{icono} {g['nombre']} ({g.get('tipo','grupo')})",
+                           variable=var, bg="#f0f0f0",
+                           font=("Segoe UI", 10)).pack(anchor='w', pady=2)
+
+        def actualizar_todos(*args):
+            todos_marcados = all(v.get() for v in vars_grupos)
+            var_todos.set(todos_marcados)
+
+        for v in vars_grupos:
+            v.trace_add('write', actualizar_todos)
+
+        # Botones
+        frame_btns = tk.Frame(ventana, bg="#f0f0f0", padx=20)
+        frame_btns.pack(fill='x', pady=(5, 15))
+
+        def cancelar():
+            ventana.destroy()
+
+        def confirmar():
+            seleccionados = [grupos[i] for i, v in enumerate(vars_grupos) if v.get()]
+            if not seleccionados:
+                messagebox.showwarning("⚠️ Aviso", "Selecciona al menos un destinatario.")
+                return
+
+            # Escribir selección temporal
+            temp_file = os.path.join(self.base_dir, "llamados-oracion", "seleccion_temp.json")
+            try:
+                with open(temp_file, 'w', encoding='utf-8') as f:
+                    json.dump({"grupos": seleccionados}, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                messagebox.showerror("❌ Error", f"Error preparando selección:\n{e}")
+                return
+
+            ventana.destroy()
+            try:
+                exe = self._exe("OracionesWhatsApp.exe")
+                if os.path.exists(exe):
+                    subprocess.Popen([exe])
+                else:
+                    subprocess.Popen([sys.executable,
+                                      os.path.join("publicadores", "whatsapp_oracion.py")])
+                self._toast("📱 Oraciones WhatsApp",
+                            f"Enviando a {len(seleccionados)} destinatario(s)...")
+            except Exception as e:
+                messagebox.showerror("❌ Error", f"No se pudo iniciar el módulo:\n{e}")
+
+        tk.Button(frame_btns, text="Cancelar", font=("Segoe UI", 10),
+                  bg="#6c757d", fg="white", command=cancelar, width=10).pack(side='left', ipady=4)
+        tk.Button(frame_btns, text="📱 Enviar ahora", font=("Segoe UI", 10, "bold"),
+                  bg="#25D366", fg="white", command=confirmar, width=16).pack(side='right', ipady=4)
+
+        self._centrar_ventana(ventana, 420, min(120 + len(grupos) * 35 + 80, 500))
+        ventana.deiconify()
 
     def _extraer_predicaciones(self):
         try:

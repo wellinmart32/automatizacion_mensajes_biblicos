@@ -299,9 +299,21 @@ class GestorTareasGUI:
         contenido = tk.Frame(ventana, bg="white", relief='solid', borderwidth=1)
         contenido.pack(fill='both', expand=True, padx=20, pady=20)
         
+        # Normalizar frecuencia: si todos los días están seleccionados, mostrar siempre igual
+        frecuencia_raw = detalles.get('frecuencia', 'N/A')
+        dias_val = detalles.get('dias', '')
+        if dias_val == 'Todos los días':
+            frecuencia_mostrar = 'Diariamente'
+        elif 'diaria' in frecuencia_raw.lower() or 'daily' in frecuencia_raw.lower():
+            frecuencia_mostrar = 'Diariamente'
+        elif 'semanal' in frecuencia_raw.lower() or 'weekly' in frecuencia_raw.lower():
+            frecuencia_mostrar = 'Semanal'
+        else:
+            frecuencia_mostrar = frecuencia_raw
+
         for etiqueta, valor in [
             ("Horario:", detalles.get('horario', 'N/A')),
-            ("Frecuencia:", detalles.get('frecuencia', 'N/A')),
+            ("Frecuencia:", frecuencia_mostrar),
             ("Días:", detalles.get('dias', 'N/A')),
             ("Estado:", detalles.get('estado', 'N/A')),
             ("Próxima ejecución:", detalles.get('Hora próxima ejecución', 'N/A'))

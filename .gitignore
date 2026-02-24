@@ -13,6 +13,10 @@ registro_publicaciones.json
 # El cliente recibe grupos.ejemplo.json como plantilla
 llamados-oracion/grupos.json
 
+# Ignorar mensajes de oración (contenido personal)
+llamados-oracion/mensajes_oracion.txt
+!llamados-oracion/mensajes_oracion.ejemplo.txt
+
 # Ignorar carpeta de perfiles de navegador (contiene sesiones)
 perfiles/
 
