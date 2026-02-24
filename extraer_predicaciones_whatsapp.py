@@ -55,7 +55,7 @@ def mostrar_estado_sistema(gestor, config):
 
 def verificar_nombre_grupo(config, es_automatico):
     """Verifica si el nombre del grupo está configurado, si no lo solicita"""
-    if config.get('nombre_grupo_whatsapp') == 'Prédicas' and not es_automatico:
+    if not config.get('nombre_grupo_whatsapp', '').strip() and not es_automatico:
         print("⚠️  No has configurado el nombre de tu grupo de WhatsApp\n")
         print("   El nombre debe ser EXACTAMENTE igual a como aparece en WhatsApp")
         print("   Ejemplo: 'Grupo Predicaciones', 'Iglesia Central', etc.\n")

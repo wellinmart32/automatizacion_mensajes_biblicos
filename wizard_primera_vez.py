@@ -939,7 +939,7 @@ class WizardPrimeraVez:
         config['PREDICACIONES'] = {
             'activar_predicaciones': 'no',
             'alternar_con_predicaciones': 'no',
-            'nombre_grupo_whatsapp': 'Prédicas',
+            'nombre_grupo_whatsapp': '',
             'mensajes_por_extraccion': '10',
             'agregar_introduccion_predica': 'si',
             'texto_introduccion_predica': '⏰ Vale la pena ver esto',

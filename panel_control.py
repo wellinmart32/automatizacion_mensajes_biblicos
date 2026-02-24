@@ -544,6 +544,80 @@ class PanelControl:
         ventana.deiconify()
 
     def _extraer_predicaciones(self):
+        # Verificar si el grupo está configurado antes de lanzar el exe
+        archivo_config = os.path.join(self.base_dir, "config_global.txt")
+        import configparser as _cp
+        cfg = _cp.ConfigParser()
+        cfg.read(archivo_config, encoding='utf-8')
+        nombre_actual = cfg.get('PREDICACIONES', 'nombre_grupo_whatsapp', fallback='Prédicas').strip()
+
+        VALORES_DEFAULT = {''}
+        if nombre_actual in VALORES_DEFAULT:
+            ventana = tk.Toplevel(self.root)
+            ventana.withdraw()
+            ventana.title("📱 Configurar grupo de WhatsApp")
+            ventana.resizable(False, False)
+            ventana.configure(bg="#f0f0f0")
+            ventana.transient(self.root)
+            ventana.grab_set()
+
+            header = tk.Frame(ventana, bg="#25D366", pady=12)
+            header.pack(fill='x')
+            tk.Label(header, text="📱 Grupo de WhatsApp para Prédicas",
+                     font=("Segoe UI", 12, "bold"), bg="#25D366", fg="white").pack()
+            tk.Label(header, text="Necesitas configurar esto una sola vez",
+                     font=("Segoe UI", 9), bg="#25D366", fg="#d0f5e0").pack()
+
+            frame = tk.Frame(ventana, bg="#f0f0f0", padx=20, pady=15)
+            frame.pack(fill='both', expand=True)
+
+            tk.Label(frame,
+                     text="Escribe el nombre EXACTO de tu grupo de WhatsApp\n(tal como aparece en la app):",
+                     font=("Segoe UI", 10), bg="#f0f0f0", justify='left').pack(anchor='w', pady=(0, 8))
+
+            var_nombre = tk.StringVar()
+            entry = tk.Entry(frame, textvariable=var_nombre, font=("Segoe UI", 11), width=35)
+            entry.pack(anchor='w', pady=(0, 5))
+            entry.focus()
+
+            tk.Label(frame, text="⚠️  Distingue mayúsculas, tildes y espacios",
+                     font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w')
+
+            frame_btns = tk.Frame(ventana, bg="#f0f0f0", padx=20)
+            frame_btns.pack(fill='x', pady=(5, 15))
+
+            def cancelar():
+                ventana.destroy()
+
+            def confirmar():
+                nombre = var_nombre.get().strip()
+                if not nombre:
+                    messagebox.showwarning("⚠️ Aviso", "Debes ingresar el nombre del grupo.", parent=ventana)
+                    return
+                # Guardar en config
+                if not cfg.has_section('PREDICACIONES'):
+                    cfg.add_section('PREDICACIONES')
+                cfg.set('PREDICACIONES', 'nombre_grupo_whatsapp', nombre)
+                try:
+                    with open(archivo_config, 'w', encoding='utf-8') as f:
+                        cfg.write(f)
+                except Exception as e:
+                    messagebox.showerror("❌ Error", f"No se pudo guardar:\n{e}", parent=ventana)
+                    return
+                ventana.destroy()
+                self._lanzar_extractor()
+
+            tk.Button(frame_btns, text="Cancelar", font=("Segoe UI", 10),
+                      bg="#6c757d", fg="white", command=cancelar, width=10).pack(side='left', ipady=4)
+            tk.Button(frame_btns, text="✅ Guardar y extraer", font=("Segoe UI", 10, "bold"),
+                      bg="#25D366", fg="white", command=confirmar, width=18).pack(side='right', ipady=4)
+
+            self._centrar_ventana(ventana, 420, 260)
+            ventana.deiconify()
+        else:
+            self._lanzar_extractor()
+
+    def _lanzar_extractor(self):
         try:
             exe = self._exe("ExtractorPredicaciones.exe")
             if os.path.exists(exe):
