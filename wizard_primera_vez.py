@@ -1058,8 +1058,13 @@ class WizardPrimeraVez:
             # Crear tareas automáticas si está activado
             if hasattr(self, 'var_crear_tareas') and self.var_crear_tareas.get():
                 self._crear_tareas_predeterminadas()
-            
-            subprocess.Popen(['python', 'publicar_facebook.py'])
+
+            base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            exe = os.path.join(base, 'MensajesBiblicos.exe')
+            if os.path.exists(exe):
+                subprocess.Popen([exe])
+            else:
+                subprocess.Popen([sys.executable, 'publicar_facebook.py'])
             self._mostrar_toast(
                 "✅ Publicación Iniciada\n\nEl navegador se abrirá en unos segundos...",
                 duracion=3000,

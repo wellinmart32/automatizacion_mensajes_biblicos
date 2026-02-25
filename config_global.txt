@@ -4,16 +4,16 @@
 
 [GENERAL]
 nombre_proyecto = Publicador Automático Facebook
-carpeta_mensajes = mosajes
-navegador = chrome
+carpeta_mensajes = mensajes
+navegador = firefox
 modo_debug = si
 
 [MENSAJES]
-seleccion = aleatorio
+seleccion = aleatoria
 historial_evitar_repetir = 5
 formato_fecha = no
 agregar_hashtags = no
-hashtags = #Fe,#Biblia
+hashtags = #Fe,#Biblia,#Reflexión
 agregar_firma = no
 texto_firma = Publicado automáticamente
 
@@ -38,7 +38,7 @@ permitir_forzar_publicacion_manual = si
 [PREDICACIONES]
 activar_predicaciones = no
 alternar_con_predicaciones = no
-nombre_grupo_whatsapp =
+nombre_grupo_whatsapp = 
 mensajes_por_extraccion = 10
 agregar_introduccion_predica = si
 texto_introduccion_predica = ⏰ Vale la pena ver esto
@@ -46,11 +46,7 @@ agregar_hashtags_predicaciones = no
 hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
 usar_estrategia_optimizada_enlaces = si
-navegador = firefox
 
 [DEBUG]
 modo_debug = detallado
-
-[ORACIONES]
-navegador = firefox
 
