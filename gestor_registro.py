@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from datetime import datetime
 
 
@@ -11,7 +12,11 @@ class GestorRegistro:
     """
     
     def __init__(self, archivo_registro="registro_publicaciones.json"):
-        self.archivo_registro = archivo_registro
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.archivo_registro = os.path.join(base_dir, archivo_registro)
         self.registro = self.cargar_registro()
     
     def cargar_registro(self):

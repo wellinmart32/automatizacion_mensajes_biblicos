@@ -63,8 +63,60 @@ def cerrar_con_error(mensaje):
     input("Presiona Enter para cerrar...")
 
 
+def main_solo_predicacion():
+    """Publica únicamente la siguiente prédica extraída pendiente"""
+    from compartido.gestor_archivos import obtener_siguiente_predicacion, mover_predicacion_a_publicados, escribir_estado_predicaciones
+    from publicar_facebook import publicar_con_reintentos
+
+    print("\n" + "="*70)
+    print("📤 PUBLICAR PRÉDICA EXTRAÍDA")
+    print("="*70)
+
+    ruta, nombre = obtener_siguiente_predicacion()
+    if not ruta:
+        print("⚠️  No hay prédicas extraídas pendientes.")
+        print("   Usa primero 'Extraer Predicaciones de WhatsApp'.")
+        pass
+        return
+
+    try:
+        with open(ruta, 'r', encoding='utf-8') as f:
+            url = f.read().strip()
+    except Exception as e:
+        print(f"❌ Error leyendo prédica: {e}")
+        return
+
+    print(f"📄 Prédica: {nombre}")
+    print(f"🔗 URL: {url[:80]}...")
+
+    config = leer_config_global()
+    gestor = GestorRegistro()
+
+    from publicadores.publicador_facebook import PublicadorFacebook
+    print("\n🌐 Iniciando navegador...")
+    publicador = PublicadorFacebook(config)
+    publicador.iniciar_navegador()
+
+    try:
+        exito = publicar_con_reintentos(publicador, url, 'predicacion', config, gestor, nombre)
+        if exito:
+            gestor.registrar_publicacion_exitosa(nombre, url, len(url), 1, 0, tipo='predicacion')
+            mover_predicacion_a_publicados(nombre)
+            escribir_estado_predicaciones()
+            print(f"\n✅ Prédica publicada: {nombre}")
+        else:
+            print("\n❌ No se pudo publicar la prédica.")
+    finally:
+        publicador.cerrar_navegador()
+
+
 def main():
     """Orquestador maestro - Ejecuta el flujo completo automáticamente"""
+    if "--modulo" in sys.argv:
+        idx = sys.argv.index("--modulo")
+        if idx + 1 < len(sys.argv) and sys.argv[idx + 1] == "publicar_predicaciones":
+            main_solo_predicacion()
+            return
 
     print("\n" + "="*70)
     print(" " * 10 + "🎯 PUBLICADOR AUTOMÁTICO - FLUJO COMPLETO")
@@ -160,7 +212,29 @@ def main():
     cerrar_con_exito()
 
 
+def _verificar_wizard_completado():
+    """Si no hay licencia configurada, lanza el wizard y termina"""
+    import subprocess
+    from gestor_licencias import GestorLicencias
+    gestor = GestorLicencias("MensajesBiblicos")
+    if not os.path.exists(gestor.archivo_config):
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+            wizard = os.path.join(base_dir, "WizardMensajes.exe")
+        else:
+            wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
+
+        if os.path.exists(wizard):
+            subprocess.Popen([wizard])
+        else:
+            print("⚠️  Ejecuta WizardMensajes.exe para configurar el sistema.")
+        return False
+    return True
+
+
 if __name__ == "__main__":
+    if not _verificar_wizard_completado():
+        sys.exit(0)
     try:
         main()
     except KeyboardInterrupt:

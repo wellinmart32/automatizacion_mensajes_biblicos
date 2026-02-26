@@ -155,7 +155,7 @@ class GestorMensajesGUI:
             bg="#e0e0e0",
             width=12,
             command=self._limpiar_editor
-        ).pack(side='left', padx=(0, 5), ipady=6)
+        ).pack(side='left', padx=(0, 5), ipady=6, pady=0)
 
         tk.Button(
             frame_btn_editor,
@@ -165,7 +165,7 @@ class GestorMensajesGUI:
             fg="white",
             width=16,
             command=self._guardar_mensaje
-        ).pack(side='right', ipady=6)
+        ).pack(side='right', ipady=6, pady=0)
 
         frame_texto = tk.Frame(panel_der, bg="#f0f0f0")
         frame_texto.pack(fill='both', expand=True)

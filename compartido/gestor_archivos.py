@@ -88,152 +88,144 @@ def crear_config_defecto():
 
 
 def verificar_y_crear_estructura():
-    """
-    Verifica y crea todas las carpetas necesarias del sistema
-    Incluye carpetas de predicaciones
-    """
     config = leer_config_global()
-    
+    base = _base_dir()
+
     carpetas_necesarias = [
-        config['carpeta_mensajes'],
-        'cola-facebook',
-        'cola-facebook/pendientes',
-        'cola-facebook/publicados'
+        os.path.join(base, config['carpeta_mensajes']),
+        os.path.join(base, 'cola-facebook'),
+        os.path.join(base, 'cola-facebook', 'pendientes'),
+        os.path.join(base, 'cola-facebook', 'publicados')
     ]
-    
-    # Crear carpeta de perfil si no usa perfil existente
+
     if not config['usar_perfil_existente']:
-        carpetas_necesarias.append(config['carpeta_perfil_custom'])
-    
+        carpetas_necesarias.append(os.path.join(base, config['carpeta_perfil_custom']))
+
     carpetas_creadas = []
     for carpeta in carpetas_necesarias:
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
             carpetas_creadas.append(carpeta)
-    
-    # Crear .gitkeep en carpetas de predicaciones
-    gitkeep_pendientes = os.path.join('cola-facebook', 'pendientes', '.gitkeep')
-    gitkeep_publicados = os.path.join('cola-facebook', 'publicados', '.gitkeep')
-    
+
+    gitkeep_pendientes = os.path.join(base, 'cola-facebook', 'pendientes', '.gitkeep')
+    gitkeep_publicados = os.path.join(base, 'cola-facebook', 'publicados', '.gitkeep')
+
     if not os.path.exists(gitkeep_pendientes):
         with open(gitkeep_pendientes, 'w') as f:
             f.write('')
-    
+
     if not os.path.exists(gitkeep_publicados):
         with open(gitkeep_publicados, 'w') as f:
             f.write('')
-    
+
     if carpetas_creadas:
         print(f"✅ Carpetas creadas: {', '.join(carpetas_creadas)}")
-    
+
     return True
 
 
+def _base_dir():
+    import sys
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def escribir_estado_predicaciones():
+    """Escribe en estado_predicaciones.json el conteo real de pendientes"""
+    import json
+    base = _base_dir()
+    pendientes = contar_predicaciones_pendientes()
+    publicados = contar_predicaciones_publicadas()
+    estado = {
+        'pendientes': pendientes,
+        'publicados': publicados
+    }
+    ruta = os.path.join(base, 'estado_predicaciones.json')
+    try:
+        with open(ruta, 'w', encoding='utf-8') as f:
+            json.dump(estado, f, indent=2)
+    except Exception as e:
+        print(f"⚠️  No se pudo escribir estado: {e}")
+
+
+def leer_estado_predicaciones():
+    """Lee estado_predicaciones.json — si no existe cuenta directamente la carpeta"""
+    import json
+    base = _base_dir()
+    ruta = os.path.join(base, 'estado_predicaciones.json')
+    try:
+        with open(ruta, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {
+            'pendientes': contar_predicaciones_pendientes(),
+            'publicados': contar_predicaciones_publicadas()
+        }
+
+
 def contar_predicaciones_pendientes():
-    """
-    Cuenta cuántas predicaciones hay en cola-facebook/pendientes/
-    
-    Returns:
-        int: Número de predicaciones pendientes
-    """
-    carpeta = 'cola-facebook/pendientes'
-    
+    carpeta = os.path.join(_base_dir(), 'cola-facebook', 'pendientes')
     if not os.path.exists(carpeta):
         return 0
-    
-    archivos = [f for f in os.listdir(carpeta) 
-               if f.endswith('.txt') and f.startswith('predica-')]
-    
+    archivos = [f for f in os.listdir(carpeta)
+                if f.endswith('.txt') and f.startswith('predica-')]
     return len(archivos)
 
 
 def contar_predicaciones_publicadas():
-    """
-    Cuenta cuántas predicaciones hay en cola-facebook/publicados/
-    
-    Returns:
-        int: Número de predicaciones publicadas
-    """
-    carpeta = 'cola-facebook/publicados'
-    
+    carpeta = os.path.join(_base_dir(), 'cola-facebook', 'publicados')
     if not os.path.exists(carpeta):
         return 0
-    
-    archivos = [f for f in os.listdir(carpeta) 
-               if f.endswith('.txt') and f.startswith('predica-')]
-    
+    archivos = [f for f in os.listdir(carpeta)
+                if f.endswith('.txt') and f.startswith('predica-')]
     return len(archivos)
 
 
 def obtener_siguiente_predicacion():
-    """
-    Obtiene la siguiente predicación pendiente (orden alfabético)
-    
-    Returns:
-        tuple: (ruta_completa, nombre_archivo) o (None, None)
-    """
-    carpeta = 'cola-facebook/pendientes'
-    
+    carpeta = os.path.join(_base_dir(), 'cola-facebook', 'pendientes')
+
     if not os.path.exists(carpeta):
         return None, None
-    
-    # Obtener archivos .txt que empiecen con 'predica-'
-    archivos = [f for f in os.listdir(carpeta) 
-               if f.endswith('.txt') and f.startswith('predica-')]
-    
+
+    archivos = [f for f in os.listdir(carpeta)
+                if f.endswith('.txt') and f.startswith('predica-')]
+
     if not archivos:
         return None, None
-    
-    # Ordenar alfabéticamente (predica-001.txt, predica-002.txt, etc.)
+
     archivos.sort()
-    
-    # Tomar el primero
     archivo_siguiente = archivos[0]
     ruta_completa = os.path.join(carpeta, archivo_siguiente)
-    
+
     return ruta_completa, archivo_siguiente
 
 
 def mover_predicacion_a_publicados(nombre_archivo):
-    """
-    Mueve una predicación de pendientes/ a publicados/
-    También mueve archivos asociados (imágenes si existen)
-    
-    Args:
-        nombre_archivo: Nombre del archivo (ej: predica-001.txt)
-    
-    Returns:
-        bool: True si se movió correctamente
-    """
-    carpeta_pendientes = 'cola-facebook/pendientes'
-    carpeta_publicados = 'cola-facebook/publicados'
-    
-    # Asegurar que existan las carpetas
+    base = _base_dir()
+    carpeta_pendientes = os.path.join(base, 'cola-facebook', 'pendientes')
+    carpeta_publicados = os.path.join(base, 'cola-facebook', 'publicados')
+
     os.makedirs(carpeta_publicados, exist_ok=True)
-    
-    # Rutas del archivo .txt
+
     origen_txt = os.path.join(carpeta_pendientes, nombre_archivo)
     destino_txt = os.path.join(carpeta_publicados, nombre_archivo)
-    
+
     try:
-        # Mover archivo .txt
         if os.path.exists(origen_txt):
             shutil.move(origen_txt, destino_txt)
             print(f"   📦 Movido: {nombre_archivo}")
-        
-        # Buscar archivo de imagen asociado (mismo nombre pero .jpg)
+
         nombre_base = nombre_archivo.replace('.txt', '')
-        nombre_imagen = f"{nombre_base}.jpg"
-        
-        origen_img = os.path.join(carpeta_pendientes, nombre_imagen)
-        destino_img = os.path.join(carpeta_publicados, nombre_imagen)
-        
+        origen_img = os.path.join(carpeta_pendientes, f"{nombre_base}.jpg")
+        destino_img = os.path.join(carpeta_publicados, f"{nombre_base}.jpg")
+
         if os.path.exists(origen_img):
             shutil.move(origen_img, destino_img)
-            print(f"   🖼️  Movida imagen: {nombre_imagen}")
-        
+            print(f"   🖼️  Movida imagen: {nombre_base}.jpg")
+
         return True
-        
+
     except Exception as e:
         print(f"   ⚠️  Error moviendo predicación: {e}")
         return False

@@ -19,17 +19,21 @@ class ExtractorWhatsAppPredicaciones:
     """
     
     def __init__(self):
+        import sys
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
         self.driver = None
-        self.carpeta_pendientes = "cola-facebook/pendientes"
-        self.carpeta_publicados = "cola-facebook/publicados"
-        self.archivo_historial = "cola-facebook/historial_publicados.json"
-        
-        # Configuración
-        self.PREDICACIONES_OBJETIVO = 5  # Mantener 5 predicaciones pendientes
-        self.MAX_SCROLLS = 200  # Máximo de scrolls (seguridad)
-        self.SCROLLS_SIN_CAMBIO_LIMITE = 15  # Parar si 15 scrolls no encuentran nuevas
-        
-        # Crear carpetas
+        self.carpeta_pendientes = os.path.join(base_dir, "cola-facebook", "pendientes")
+        self.carpeta_publicados = os.path.join(base_dir, "cola-facebook", "publicados")
+        self.archivo_historial = os.path.join(base_dir, "cola-facebook", "historial_publicados.json")
+
+        self.PREDICACIONES_OBJETIVO = 5
+        self.MAX_SCROLLS = 200
+        self.SCROLLS_SIN_CAMBIO_LIMITE = 15
+
         os.makedirs(self.carpeta_pendientes, exist_ok=True)
         os.makedirs(self.carpeta_publicados, exist_ok=True)
     
@@ -150,8 +154,10 @@ class ExtractorWhatsAppPredicaciones:
             barra_busqueda.send_keys(Keys.BACKSPACE)
             time.sleep(0.5)
             
-            # Escribir nombre completo del grupo
-            barra_busqueda.send_keys(nombre_grupo)
+            # Escribir nombre del grupo letra por letra
+            for caracter in nombre_grupo:
+                barra_busqueda.send_keys(caracter)
+                time.sleep(0.05)
             time.sleep(3)
             
             # Hacer clic en el primer resultado

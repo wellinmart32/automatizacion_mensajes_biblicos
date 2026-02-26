@@ -10,6 +10,13 @@ class ConfiguradorGUI:
     """Interfaz gráfica para configurar el sistema de Mensajes Bíblicos"""
 
     def __init__(self):
+        # Leer pestaña inicial desde argumento si viene del panel
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--pestana', default=None)
+        args, _ = parser.parse_known_args()
+        self.pestana_inicial = args.pestana
+
         self.archivo_config = "config_global.txt"
         self.config = configparser.ConfigParser()
         self.cambios = {}
@@ -253,82 +260,97 @@ class ConfiguradorGUI:
         tab_pred = ttk.Frame(notebook)
         notebook.add(tab_pred, text="🎬 Predicaciones")
 
+        tk.Label(tab_pred,
+                 text="Configuración para extraer predicaciones de un grupo de WhatsApp",
+                 font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
+
         if not self.es_full:
-            tk.Label(tab_pred, text="🔒 Función disponible en versión Completa",
-                     font=("Segoe UI", 12, "bold"), fg="#dc3545", bg="#f0f0f0").pack(pady=(30, 5))
-            tk.Label(tab_pred, text="Extrae y publica predicaciones automáticamente desde WhatsApp.\nAdquiere la versión Completa en automapro.com",
-                     font=("Segoe UI", 10), fg="#555", bg="#f0f0f0", justify='center').pack(pady=5)
-            tk.Button(tab_pred, text="⬆️ Ver planes", font=("Segoe UI", 10, "bold"),
-                      bg="#1a73e8", fg="white", command=lambda: messagebox.showinfo("Versión Completa", "Visita automapro.com para adquirir la versión Completa.")).pack(pady=15)
-        else:
-            tk.Label(tab_pred,
-                     text="Configuración para extraer predicaciones de un grupo de WhatsApp",
-                     font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
+            banner_pred = tk.Frame(tab_pred, bg="#fff3cd", pady=6)
+            banner_pred.pack(fill='x', padx=20, pady=(8, 0))
+            tk.Label(banner_pred, text="🔒 Estas funciones están disponibles en la versión Completa",
+                     font=("Segoe UI", 9, "bold"), fg="#856404", bg="#fff3cd").pack()
 
-            self._seccion(tab_pred, "👥 Nombre del grupo de WhatsApp (ORIGEN de predicaciones)")
-            tk.Label(tab_pred, text="⚠️  Debe ser EXACTAMENTE igual a como aparece en WhatsApp",
-                     font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
-            self.var_grupo_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'nombre_grupo_whatsapp', ''))
-            tk.Entry(tab_pred, textvariable=self.var_grupo_predicaciones, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
+        self._seccion(tab_pred, "👥 Nombre del grupo de WhatsApp (ORIGEN de predicaciones)")
+        tk.Label(tab_pred, text="⚠️  Debe ser EXACTAMENTE igual a como aparece en WhatsApp",
+                 font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
+        self.var_grupo_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'nombre_grupo_whatsapp', ''))
+        tk.Entry(tab_pred, textvariable=self.var_grupo_predicaciones, width=40, font=("Segoe UI", 10),
+                 state='normal' if self.es_full else 'disabled').pack(anchor='w', padx=20, pady=(0, 12))
 
-            self._seccion(tab_pred, "📦 Predicaciones a extraer por vez")
-            self.var_mensajes_extraccion = tk.StringVar(value=self._get('PREDICACIONES', 'mensajes_por_extraccion', '10'))
-            tk.Spinbox(tab_pred, from_=1, to=50, textvariable=self.var_mensajes_extraccion, width=8, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
+        self._seccion(tab_pred, "📦 Predicaciones a extraer por vez")
+        self.var_mensajes_extraccion = tk.StringVar(value=self._get('PREDICACIONES', 'mensajes_por_extraccion', '10'))
+        tk.Spinbox(tab_pred, from_=1, to=50, textvariable=self.var_mensajes_extraccion, width=8,
+                   font=("Segoe UI", 10), state='normal' if self.es_full else 'disabled').pack(anchor='w', padx=20, pady=(0, 12))
 
-            self._seccion(tab_pred, "🌐 Navegador para extracción de predicaciones")
-            self.var_nav_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'navegador', 'firefox'))
-            self._radio_navegador(tab_pred, self.var_nav_predicaciones)
+        self._seccion(tab_pred, "🌐 Navegador para extracción de predicaciones")
+        self.var_nav_predicaciones = tk.StringVar(value=self._get('PREDICACIONES', 'navegador', 'firefox'))
+        frame_nav_pred = tk.Frame(tab_pred, bg="#f0f0f0")
+        frame_nav_pred.pack(anchor='w', padx=20)
+        for val, lbl in [('firefox', 'Firefox'), ('chrome', 'Chrome')]:
+            tk.Radiobutton(frame_nav_pred, text=lbl, variable=self.var_nav_predicaciones,
+                           value=val, bg="#f0f0f0", font=("Segoe UI", 10),
+                           state='normal' if self.es_full else 'disabled').pack(side='left', padx=(0, 15))
 
-            self._seccion(tab_pred, "🔄 Alternancia con mensajes bíblicos")
-            tk.Label(tab_pred, text="Sí = alterna: 1 mensaje bíblico + 1 predicación + ...",
-                     font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
-            frame_alt = tk.Frame(tab_pred, bg="#f0f0f0")
-            frame_alt.pack(anchor='w', padx=20, pady=(4, 0))
-            tk.Radiobutton(frame_alt, text="Sí", variable=self.var_alternar,
-                           value="si", bg="#f0f0f0", font=("Segoe UI", 10)).pack(side='left', padx=(0, 15))
-            tk.Radiobutton(frame_alt, text="No", variable=self.var_alternar,
-                           value="no", bg="#f0f0f0", font=("Segoe UI", 10)).pack(side='left')
+        self._seccion(tab_pred, "🔄 Alternancia con mensajes bíblicos")
+        tk.Label(tab_pred, text="Sí = alterna: 1 mensaje bíblico + 1 predicación + ...",
+                 font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
+        frame_alt = tk.Frame(tab_pred, bg="#f0f0f0")
+        frame_alt.pack(anchor='w', padx=20, pady=(4, 0))
+        tk.Radiobutton(frame_alt, text="Sí", variable=self.var_alternar,
+                       value="si", bg="#f0f0f0", font=("Segoe UI", 10),
+                       state='normal' if self.es_full else 'disabled').pack(side='left', padx=(0, 15))
+        tk.Radiobutton(frame_alt, text="No", variable=self.var_alternar,
+                       value="no", bg="#f0f0f0", font=("Segoe UI", 10),
+                       state='normal' if self.es_full else 'disabled').pack(side='left')
 
         # ==================== PESTAÑA ORACIONES ====================
         tab_ora = ttk.Frame(notebook)
         notebook.add(tab_ora, text="📱 Oraciones")
 
+        tk.Label(tab_ora,
+                 text="Configuración para enviar llamados de oración a grupos/contactos de WhatsApp",
+                 font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
+
         if not self.es_full:
-            tk.Label(tab_ora, text="🔒 Función disponible en versión Completa",
-                     font=("Segoe UI", 12, "bold"), fg="#dc3545", bg="#f0f0f0").pack(pady=(30, 5))
-            tk.Label(tab_ora, text="Envía llamados de oración automáticamente a grupos y contactos de WhatsApp.\nAdquiere la versión Completa en automapro.com",
-                     font=("Segoe UI", 10), fg="#555", bg="#f0f0f0", justify='center').pack(pady=5)
-            tk.Button(tab_ora, text="⬆️ Ver planes", font=("Segoe UI", 10, "bold"),
-                      bg="#1a73e8", fg="white", command=lambda: messagebox.showinfo("Versión Completa", "Visita automapro.com para adquirir la versión Completa.")).pack(pady=15)
-        else:
-            tk.Label(tab_ora,
-                     text="Configuración para enviar llamados de oración a grupos/contactos de WhatsApp",
-                     font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
+            banner_ora = tk.Frame(tab_ora, bg="#fff3cd", pady=6)
+            banner_ora.pack(fill='x', padx=20, pady=(8, 0))
+            tk.Label(banner_ora, text="🔒 Estas funciones están disponibles en la versión Completa",
+                     font=("Segoe UI", 9, "bold"), fg="#856404", bg="#fff3cd").pack()
 
-            self._seccion(tab_ora, "🌐 Navegador para envío de oraciones")
-            self.var_nav_oraciones = tk.StringVar(value=self._get('ORACIONES', 'navegador', 'firefox'))
-            self._radio_navegador(tab_ora, self.var_nav_oraciones)
+        self._seccion(tab_ora, "🌐 Navegador para envío de oraciones")
+        self.var_nav_oraciones = tk.StringVar(value=self._get('ORACIONES', 'navegador', 'firefox'))
+        frame_nav_ora = tk.Frame(tab_ora, bg="#f0f0f0")
+        frame_nav_ora.pack(anchor='w', padx=20)
+        for val, lbl in [('firefox', 'Firefox'), ('chrome', 'Chrome')]:
+            rb = tk.Radiobutton(frame_nav_ora, text=lbl, variable=self.var_nav_oraciones,
+                                value=val, bg="#f0f0f0", font=("Segoe UI", 10),
+                                state='normal' if self.es_full else 'disabled')
+            rb.pack(side='left', padx=(0, 15))
 
-            self._seccion(tab_ora, "⚙️ Gestión de oraciones")
+        self._seccion(tab_ora, "⚙️ Gestión de oraciones")
 
-            frame_btns_ora = tk.Frame(tab_ora, bg="#f0f0f0")
-            frame_btns_ora.pack(fill='x', padx=20, pady=(5, 5))
+        frame_btns_ora = tk.Frame(tab_ora, bg="#f0f0f0")
+        frame_btns_ora.pack(fill='x', padx=20, pady=(5, 5))
 
-            tk.Button(
-                frame_btns_ora,
-                text="👥  Gestionar grupos y contactos",
-                font=("Segoe UI", 10, "bold"),
-                bg="#1a73e8", fg="white",
-                command=self._abrir_gestor_grupos
-            ).pack(fill='x', pady=(0, 8), ipady=6)
+        tk.Button(
+            frame_btns_ora,
+            text="👥  Gestionar grupos y contactos" if self.es_full else "🔒  Gestionar grupos y contactos  —  versión Completa",
+            font=("Segoe UI", 10, "bold") if self.es_full else ("Segoe UI", 10),
+            bg="#1a73e8" if self.es_full else "#e0e0e0",
+            fg="white" if self.es_full else "#9e9e9e",
+            command=self._abrir_gestor_grupos if self.es_full else lambda: messagebox.showinfo(
+                "🔒 Versión Completa", "Adquiere la versión Completa en automapro.com para gestionar grupos.")
+        ).pack(fill='x', pady=(0, 8), ipady=6)
 
-            tk.Button(
-                frame_btns_ora,
-                text="📝  Gestionar mensajes de oración",
-                font=("Segoe UI", 10, "bold"),
-                bg="#28a745", fg="white",
-                command=self._abrir_gestor_mensajes_oracion
-            ).pack(fill='x', ipady=6)
+        tk.Button(
+            frame_btns_ora,
+            text="📝  Gestionar mensajes de oración" if self.es_full else "🔒  Gestionar mensajes de oración  —  versión Completa",
+            font=("Segoe UI", 10, "bold") if self.es_full else ("Segoe UI", 10),
+            bg="#28a745" if self.es_full else "#e0e0e0",
+            fg="white" if self.es_full else "#9e9e9e",
+            command=self._abrir_gestor_mensajes_oracion if self.es_full else lambda: messagebox.showinfo(
+                "🔒 Versión Completa", "Adquiere la versión Completa en automapro.com para gestionar mensajes.")
+        ).pack(fill='x', ipady=6)
 
         # ==================== PESTAÑA AVANZADO ====================
         tab_adv = ttk.Frame(notebook)
@@ -358,6 +380,10 @@ class ConfiguradorGUI:
                  font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
         self.var_forzar_manual = tk.StringVar(value=self._get('LIMITES', 'permitir_forzar_publicacion_manual', 'si'))
         self._radio_si_no(tab_adv, self.var_forzar_manual)
+
+        # Navegar a pestaña inicial si viene del panel
+        if self.pestana_inicial == 'oraciones':
+            notebook.select(3)
 
         # ==================== BOTONES ====================
         frame_botones = tk.Frame(self.root, bg="#f0f0f0", pady=8)

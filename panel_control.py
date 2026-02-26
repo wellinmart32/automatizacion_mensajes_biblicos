@@ -210,6 +210,12 @@ class PanelControl:
             frame.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
             frame.bind('<Leave>', lambda e, f=frame: f.config(bg="white"))
 
+    def _lanzar_accion(self, cmd):
+        """Para acciones que abren ventanas: bloquea grid brevemente para evitar doble clic"""
+        self._bloquear_grid()
+        self.root.after(300, self._desbloquear_grid)
+        cmd()
+
     def _lanzar_en_hilo(self, cmd):
         """Para subprocesos: bloquea grid, corre en hilo, desbloquea al terminar"""
         self._bloquear_grid()
@@ -242,7 +248,10 @@ class PanelControl:
         lbl2 = tk.Label(frame, text=subtexto, font=("Segoe UI", 8), bg="white", fg="gray")
         lbl2.pack(expand=True, pady=(0, 12))
 
-        accion = (lambda c=comando: self._lanzar_en_hilo(c)) if en_hilo else comando
+        if en_hilo:
+            accion = lambda c=comando: self._lanzar_en_hilo(c)
+        else:
+            accion = lambda c=comando: self._lanzar_accion(c)
         for w in [frame, lbl1, lbl2]:
             w.bind('<Button-1>', lambda e, a=accion: a())
             w.bind('<Enter>', lambda e, f=frame: f.config(bg="#f8f9fa"))
@@ -286,12 +295,10 @@ class PanelControl:
         frame = tk.Frame(ventana, bg="#f0f0f0")
         frame.pack(fill='both', expand=True, padx=20, pady=15)
 
-        # Verificar predicaciones pendientes
-        cola = os.path.join(
-            os.path.dirname(self._exe("MensajesBiblicos.exe")),
-            "cola-facebook", "pendientes"
-        )
-        hay_predicaciones = os.path.exists(cola) and len(os.listdir(cola)) > 0
+        # Verificar predicaciones pendientes desde archivo de estado
+        from compartido.gestor_archivos import leer_estado_predicaciones
+        estado = leer_estado_predicaciones()
+        hay_predicaciones = estado.get('pendientes', 0) > 0
 
         # Acción 1 — siempre disponible
         tk.Button(
@@ -309,93 +316,55 @@ class PanelControl:
         ).pack(fill='x', pady=(0, 8))
 
         # Acción 2 — Enviar Oraciones por WhatsApp
-        if es_full:
-            tk.Button(
-                frame,
-                text="📱  Enviar Oraciones por WhatsApp",
-                font=("Segoe UI", 11, "bold"),
-                bg="#25D366",
-                fg="white",
-                activebackground="#1da851",
-                cursor="hand2",
-                anchor='w',
-                padx=15,
-                pady=8,
-                command=lambda: [ventana.destroy(), self._enviar_oraciones()]
-            ).pack(fill='x', pady=(0, 8))
-        else:
-            tk.Button(
-                frame,
-                text="🔒  Enviar Oraciones por WhatsApp — Solo versión Completa",
-                font=("Segoe UI", 11),
-                bg="#e0e0e0",
-                fg="#9e9e9e",
-                cursor="hand2",
-                anchor='w',
-                padx=15,
-                pady=8,
-                command=self._mostrar_mensaje_upgrade
-            ).pack(fill='x', pady=(0, 8))
+        tk.Button(
+            frame,
+            text="📱  Enviar Oraciones por WhatsApp" if es_full else "🔒  Enviar Oraciones por WhatsApp  —  versión Completa",
+            font=("Segoe UI", 11, "bold") if es_full else ("Segoe UI", 11),
+            bg="#25D366" if es_full else "#e0e0e0",
+            fg="white" if es_full else "#9e9e9e",
+            cursor="hand2",
+            anchor='w',
+            padx=15,
+            pady=8,
+            command=lambda: [ventana.destroy(), self._enviar_oraciones()] if es_full else self._mostrar_mensaje_upgrade()
+        ).pack(fill='x', pady=(0, 8))
 
         # Acción 3 — Extraer Predicaciones de WhatsApp
-        if es_full:
-            tk.Button(
-                frame,
-                text="🎬  Extraer Predicaciones de WhatsApp",
-                font=("Segoe UI", 11, "bold"),
-                bg="#25D366",
-                fg="white",
-                activebackground="#1da851",
-                cursor="hand2",
-                anchor='w',
-                padx=15,
-                pady=8,
-                command=lambda: [ventana.destroy(), self._extraer_predicaciones()]
-            ).pack(fill='x', pady=(0, 8))
-        else:
-            tk.Button(
-                frame,
-                text="🔒  Extraer Predicaciones de WhatsApp — Solo versión Completa",
-                font=("Segoe UI", 11),
-                bg="#e0e0e0",
-                fg="#9e9e9e",
-                cursor="hand2",
-                anchor='w',
-                padx=15,
-                pady=8,
-                command=self._mostrar_mensaje_upgrade
-            ).pack(fill='x', pady=(0, 8))
+        tk.Button(
+            frame,
+            text="🎬  Extraer Predicaciones de WhatsApp" if es_full else "🔒  Extraer Predicaciones de WhatsApp  —  versión Completa",
+            font=("Segoe UI", 11, "bold") if es_full else ("Segoe UI", 11),
+            bg="#25D366" if es_full else "#e0e0e0",
+            fg="white" if es_full else "#9e9e9e",
+            cursor="hand2",
+            anchor='w',
+            padx=15,
+            pady=8,
+            command=lambda: [ventana.destroy(), self._extraer_predicaciones()] if es_full else self._mostrar_mensaje_upgrade()
+        ).pack(fill='x', pady=(0, 8))
 
         # Acción 4 — Publicar Predicaciones en Facebook
         if es_full:
             color_pred = "#1a73e8" if hay_predicaciones else "#90a4ae"
             cmd_pred = (lambda: [ventana.destroy(), self._publicar_predicaciones()]) \
                        if hay_predicaciones else self._sin_predicaciones
-            tk.Button(
-                frame,
-                text="📤  Publicar Predicaciones en Facebook",
-                font=("Segoe UI", 11, "bold"),
-                bg=color_pred,
-                fg="white",
-                cursor="hand2",
-                anchor='w',
-                padx=15,
-                pady=8,
-                command=cmd_pred
-            ).pack(fill='x', pady=(0, 8))
+            texto_pred = "📤  Publicar Prédica Extraída" if hay_predicaciones else "📭  Sin prédicas extraídas"
         else:
-            tk.Button(
-                frame,
-                text="🔒  Publicar Predicaciones en Facebook — Solo versión Completa",
-                font=("Segoe UI", 11),
-                bg="#e0e0e0",
-                fg="#9e9e9e",
-                cursor="hand2",
-                anchor='w',
-                padx=15,
-                pady=8,
-                command=self._mostrar_mensaje_upgrade
-            ).pack(fill='x', pady=(0, 8))
+            color_pred = "#e0e0e0"
+            cmd_pred = self._mostrar_mensaje_upgrade
+            texto_pred = "🔒  Publicar Prédica Extraída  —  versión Completa"
+        tk.Button(
+            frame,
+            text=texto_pred,
+            font=("Segoe UI", 11, "bold") if es_full else ("Segoe UI", 11),
+            bg=color_pred,
+            fg="white" if es_full else "#9e9e9e",
+            cursor="hand2",
+            anchor='w',
+            padx=15,
+            pady=8,
+            command=cmd_pred
+        ).pack(fill='x', pady=(0, 8))
 
         tk.Button(
             frame,
@@ -428,22 +397,29 @@ class PanelControl:
         import json
 
         archivo_grupos = os.path.join(self.base_dir, "llamados-oracion", "grupos.json")
+        grupos_vacios = False
+
         if not os.path.exists(archivo_grupos):
-            messagebox.showwarning("⚠️ Sin grupos",
-                "No hay grupos configurados.\nAbre el Configurador → Oraciones para agregar grupos.")
-            return
+            grupos_vacios = True
+        else:
+            try:
+                with open(archivo_grupos, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                grupos = [g for g in datos.get('grupos', []) if g.get('activo', True)]
+                if not grupos:
+                    grupos_vacios = True
+            except Exception as e:
+                messagebox.showerror("❌ Error", f"Error leyendo grupos:\n{e}")
+                return
 
-        try:
-            with open(archivo_grupos, 'r', encoding='utf-8') as f:
-                datos = json.load(f)
-            grupos = [g for g in datos.get('grupos', []) if g.get('activo', True)]
-        except Exception as e:
-            messagebox.showerror("❌ Error", f"Error leyendo grupos:\n{e}")
-            return
-
-        if not grupos:
-            messagebox.showwarning("⚠️ Sin grupos activos",
-                "No hay grupos activos configurados.\nAbre el Configurador → Oraciones.")
+        if grupos_vacios:
+            respuesta = messagebox.askokcancel(
+                "⚠️ Sin grupos configurados",
+                "No hay grupos de oración configurados.\n\n"
+                "¿Deseas abrir el Configurador para agregarlos ahora?"
+            )
+            if respuesta:
+                self._abrir_configurador(pestaña='oraciones')
             return
 
         # Diálogo de selección
@@ -542,6 +518,18 @@ class PanelControl:
 
         self._centrar_ventana(ventana, 420, min(120 + len(grupos) * 35 + 80, 500))
         ventana.deiconify()
+
+    def _abrir_configurador(self, pestaña=None):
+        """Abre el configurador, opcionalmente en una pestaña específica"""
+        try:
+            exe = self._exe("ConfiguradorMensajes.exe")
+            args = [exe] if os.path.exists(exe) else [sys.executable, "configurador_gui.py"]
+            if pestaña:
+                args.append(f"--pestana={pestaña}")
+            subprocess.Popen(args)
+            self._toast("⚙️ Configurador", "Abriendo configurador...")
+        except Exception as e:
+            messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
 
     def _extraer_predicaciones(self):
         # Verificar si el grupo está configurado antes de lanzar el exe
@@ -648,16 +636,6 @@ class PanelControl:
             "y luego podrás publicarlas en Facebook."
         )
 
-    def _abrir_configurador(self):
-        try:
-            exe = self._exe("ConfiguradorMensajes.exe")
-            if os.path.exists(exe):
-                subprocess.run([exe])
-            else:
-                subprocess.run([sys.executable, "configurador_gui.py"])
-        except Exception as e:
-            messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
-
     def _abrir_carpeta_mensajes(self):
         """TRIAL: abre la carpeta mensajes en el explorador e informa sobre el gestor"""
         import subprocess as sp
@@ -727,6 +705,8 @@ class PanelControl:
             ventana.title("📊 Estadísticas")
             ventana.resizable(False, False)
             ventana.configure(bg="#f0f0f0")
+            ventana.transient(self.root)
+            ventana.grab_set()
 
             header = tk.Frame(ventana, bg="#1a73e8", pady=12)
             header.pack(fill='x')
@@ -806,7 +786,36 @@ class PanelControl:
         self.root.mainloop()
 
 
+def _verificar_wizard_completado():
+    """Si no hay licencia configurada, lanza el wizard y termina"""
+    import subprocess
+    gestor = GestorLicencias("MensajesBiblicos")
+    if not os.path.exists(gestor.archivo_config):
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+            wizard = os.path.join(base_dir, "WizardMensajes.exe")
+        else:
+            wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
+        
+        if os.path.exists(wizard):
+            subprocess.Popen([wizard])
+        else:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning(
+                "Configuración requerida",
+                "Por favor ejecuta WizardMensajes.exe para configurar el sistema."
+            )
+            root.destroy()
+        return False
+    return True
+
+
 def main():
+    if not _verificar_wizard_completado():
+        return
     panel = PanelControl()
     panel.ejecutar()
 
