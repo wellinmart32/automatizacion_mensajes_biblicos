@@ -485,12 +485,12 @@ class ConfiguradorGUI:
             except Exception as e:
                 messagebox.showerror("❌ Error", f"Error eliminando: {e}")
 
-        tk.Button(frame_btns, text="✚ Agregar", font=("Segoe UI", 10, "bold"),
+        tk.Button(frame_btns, text="+ Agregar", font=("Segoe UI", 10, "bold"),
                   bg="#1a73e8", fg="white", command=agregar, width=12).pack(side='left', padx=(0, 5), ipady=4)
-        tk.Button(frame_btns, text="✏️ Editar", font=("Segoe UI", 10),
+        tk.Button(frame_btns, text="Editar", font=("Segoe UI", 10),
                   bg="#ffc107", command=editar, width=10).pack(side='left', padx=(0, 5), ipady=4)
-        tk.Button(frame_btns, text="🗑️ Eliminar", font=("Segoe UI", 10),
-                  bg="#dc3545", fg="white", command=eliminar, width=10).pack(side='left', ipady=4)
+        tk.Button(frame_btns, text="Eliminar", font=("Segoe UI", 10),
+                  bg="#dc3545", fg="white", command=eliminar, width=10).pack(side='left', padx=(0, 5), ipady=4)
         tk.Button(frame_btns, text="Cerrar", font=("Segoe UI", 10),
                   bg="#6c757d", fg="white", command=ventana.destroy, width=10).pack(side='right', ipady=4)
 

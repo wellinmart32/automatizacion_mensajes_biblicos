@@ -436,6 +436,38 @@ class WizardPrimeraVez:
             bg="#f0f0f0", font=("Segoe UI", 10)
         ).pack(side='left')
 
+        if self.tipo_licencia in ['FULL', 'MASTER']:
+            tk.Label(
+                frame,
+                text="Navegador para WhatsApp (Oraciones):",
+                font=("Segoe UI", 11, "bold"),
+                bg="#f0f0f0"
+            ).pack(anchor='w', pady=(20, 5))
+
+            tk.Label(
+                frame,
+                text="(Usado para enviar oraciones por WhatsApp Web)",
+                font=("Segoe UI", 9),
+                bg="#f0f0f0",
+                fg="gray"
+            ).pack(anchor='w', pady=(0, 5))
+
+            self.var_navegador_whatsapp = tk.StringVar(value=self.datos_config.get('navegador_whatsapp', 'chrome'))
+            frame_nav_wa = tk.Frame(frame, bg="#f0f0f0")
+            frame_nav_wa.pack(anchor='w', pady=(0, 10))
+
+            tk.Radiobutton(
+                frame_nav_wa, text="Firefox",
+                variable=self.var_navegador_whatsapp, value="firefox",
+                bg="#f0f0f0", font=("Segoe UI", 10)
+            ).pack(side='left', padx=(0, 20))
+
+            tk.Radiobutton(
+                frame_nav_wa, text="Chrome",
+                variable=self.var_navegador_whatsapp, value="chrome",
+                bg="#f0f0f0", font=("Segoe UI", 10)
+            ).pack(side='left')
+
         # Botones
         frame_btn = tk.Frame(self.root, bg="#f0f0f0", pady=20)
         frame_btn.pack(fill='x', side='bottom')
@@ -829,6 +861,9 @@ class WizardPrimeraVez:
     def _guardar_config_basica(self):
         self.datos_config['navegador'] = self.var_navegador.get()
         self.datos_config['usar_perfil'] = self.var_perfil.get()
+        if self.tipo_licencia in ['FULL', 'MASTER']:
+            self.datos_config['navegador_whatsapp'] = self.var_navegador_whatsapp.get()
+        self._crear_config_completa()
         self._siguiente()
 
     def _abrir_gestor_mensajes(self):
@@ -934,6 +969,10 @@ class WizardPrimeraVez:
             'tiempo_minimo_entre_publicaciones_segundos': '120',
             'permitir_duplicados': 'no',
             'permitir_forzar_publicacion_manual': 'si'
+        }
+
+        config['ORACIONES'] = {
+            'navegador': self.datos_config.get('navegador_whatsapp', 'chrome')
         }
         
         config['PREDICACIONES'] = {

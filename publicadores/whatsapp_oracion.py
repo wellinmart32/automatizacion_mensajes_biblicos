@@ -65,6 +65,19 @@ class PublicadorWhatsAppOracion:
         except Exception as e:
             print(f"   ⚠️  Error leyendo config navegador: {e}")
         return 'firefox'  # Default
+    
+    def _leer_usar_perfil_config(self):
+        """Lee si debe usar perfil existente desde config_global.txt"""
+        try:
+            config = configparser.ConfigParser()
+            if os.path.exists(self.archivo_config):
+                config.read(self.archivo_config, encoding='utf-8')
+                if config.has_option('NAVEGADOR', 'usar_perfil_existente'):
+                    val = config['NAVEGADOR']['usar_perfil_existente'].split('#')[0].strip().lower()
+                    return val == 'si'
+        except Exception as e:
+            print(f"   ⚠️  Error leyendo config perfil: {e}")
+        return True
 
     def cargar_mensajes(self):
         """Carga mensajes desde archivo separados por tipo"""
@@ -130,22 +143,36 @@ class PublicadorWhatsAppOracion:
             return random.choice(self.mensajes_grupos)
 
     def iniciar_navegador(self):
-        """Inicia el navegador configurado con perfil existente"""
+        """Inicia el navegador configurado según config_global.txt"""
         print(f"\n🌐 Iniciando {self.navegador.capitalize()} para WhatsApp Web...")
 
         try:
+            usar_perfil = self._leer_usar_perfil_config()
+
             if self.navegador == 'chrome':
                 opciones = ChromeOptions()
-                # Buscar perfil de Chrome
-                if platform.system() == "Windows":
-                    perfil_path = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
-                else:
-                    perfil_path = os.path.expanduser("~/.config/google-chrome")
+                opciones.add_argument("--disable-blink-features=AutomationControlled")
+                opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
 
-                if os.path.exists(perfil_path):
-                    opciones.add_argument(f"--user-data-dir={perfil_path}")
-                    opciones.add_argument("--profile-directory=Default")
-                    print(f"   ✓ Usando perfil Chrome: {perfil_path}")
+                if usar_perfil:
+                    if platform.system() == "Windows":
+                        perfil_path = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
+                    else:
+                        perfil_path = os.path.expanduser("~/.config/google-chrome")
+
+                    if os.path.exists(perfil_path):
+                        opciones.add_argument(f"--user-data-dir={perfil_path}")
+                        opciones.add_argument("--profile-directory=Default")
+                        print(f"   ✓ Usando perfil Chrome existente: {perfil_path}")
+                    else:
+                        print("   ⚠️  Perfil Chrome no encontrado, usando perfil dedicado")
+                        usar_perfil = False
+
+                if not usar_perfil:
+                    perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_oracion_chrome")
+                    os.makedirs(perfil_dedicado, exist_ok=True)
+                    opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+                    print(f"   ✓ Usando perfil Chrome dedicado: {perfil_dedicado}")
 
                 self.driver = webdriver.Chrome(options=opciones)
             else:
