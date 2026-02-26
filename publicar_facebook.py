@@ -87,7 +87,7 @@ def mostrar_configuracion(config):
 
 def obtener_contenido_publicacion(gestor, config):
     """Obtiene el contenido a publicar según configuración"""
-    if config['seleccion'] == 'aleatorio':
+    if config['seleccion'] in ('aleatorio', 'aleatoria'):
         contenido, nombre_archivo = obtener_mensaje_aleatorio_sin_repetir(gestor.registro)
     else:
         contenido, nombre_archivo = obtener_mensaje_secuencial(gestor.registro)
@@ -240,18 +240,15 @@ def _verificar_wizard_completado():
         if getattr(sys, 'frozen', False):
             base_dir = os.path.dirname(sys.executable)
             wizard = os.path.join(base_dir, "WizardMensajes.exe")
+            if os.path.exists(wizard):
+                # Ocultar consola y lanzar wizard directamente
+                import ctypes
+                ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+                subprocess.Popen([wizard])
         else:
             wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
-
-        if os.path.exists(wizard):
-            subprocess.Popen([wizard])
-        else:
-            import tkinter as tk
-            from tkinter import messagebox
-            root = tk.Tk()
-            root.withdraw()
-            messagebox.showwarning("Configuración requerida", "Por favor ejecuta WizardMensajes.exe para configurar el sistema.")
-            root.destroy()
+            if os.path.exists(wizard):
+                subprocess.Popen([wizard])
         return False
     return True
 

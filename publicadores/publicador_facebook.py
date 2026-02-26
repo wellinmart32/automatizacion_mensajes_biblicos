@@ -60,21 +60,35 @@ class PublicadorFacebook:
     
     def _iniciar_chrome(self):
         """Inicia Chrome con perfil configurado"""
+        import platform as _platform
         opciones = ChromeOptions()
-        
+
         if self.config['desactivar_notificaciones']:
             opciones.add_argument("--disable-notifications")
-        
+
         opciones.add_argument("--disable-blink-features=AutomationControlled")
         opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
         opciones.add_experimental_option('useAutomationExtension', False)
-        
-        if not self.config['usar_perfil_existente']:
-            ruta_perfil = os.path.abspath(self.config['carpeta_perfil_custom'])
-            opciones.add_argument(f"--user-data-dir={ruta_perfil}")
-        
-        servicio = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=servicio, options=opciones)
+
+        usar_perfil = self.config.get('usar_perfil_existente', True)
+
+        # Siempre usar perfil dedicado para evitar conflictos con Chrome abierto
+        import platform as _platform
+        if usar_perfil:
+            if _platform.system() == "Windows":
+                base = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
+            else:
+                base = os.path.expanduser("~/.config/google-chrome")
+            perfil_dedicado = os.path.join(os.path.dirname(os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/facebook_publicador'))), "chrome_mensajes")
+        else:
+            perfil_dedicado = os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/facebook_publicador'))
+
+        os.makedirs(perfil_dedicado, exist_ok=True)
+        opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+        opciones.add_argument("--no-first-run")
+        opciones.add_argument("--no-default-browser-check")
+
+        self.driver = webdriver.Chrome(options=opciones)
     
     def verificar_sesion_facebook(self):
         """Verifica si hay sesión activa en Facebook, espera si necesita login"""

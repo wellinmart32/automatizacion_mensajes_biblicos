@@ -44,11 +44,12 @@ class ConfiguradorGUI:
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
-        self.root.deiconify()
 
         self._cargar_config()
         self.es_full = self._verificar_licencia_full()
         self._construir_ui()
+
+        self.root.deiconify()
 
     def _verificar_licencia_full(self):
         """Verifica si la licencia es FULL/MASTER desde caché o código guardado"""

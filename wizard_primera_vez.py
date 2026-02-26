@@ -871,25 +871,17 @@ class WizardPrimeraVez:
             es_full = self.tipo_licencia in ['FULL', 'MASTER']
 
             if es_full:
-                # FULL/MASTER: abrir GUI de gestión
                 gestor_exe = os.path.join(os.path.dirname(sys.executable), 'GestorMensajes.exe')
                 if os.path.exists(gestor_exe):
                     subprocess.Popen([gestor_exe])
-                    messagebox.showinfo("📝 Gestor de Mensajes", "El gestor se abrió en una nueva ventana.\n\nCrea tus mensajes y luego presiona 'Siguiente'.")
                 else:
                     messagebox.showwarning("Aviso", "El gestor de mensajes no se encontró.\nAbriendo carpeta de mensajes.")
                     subprocess.Popen(['explorer', os.path.abspath('mensajes')])
             else:
-                # TRIAL: abrir carpeta del Explorador
                 carpeta = os.path.abspath('mensajes')
                 os.makedirs(carpeta, exist_ok=True)
                 subprocess.Popen(['explorer', carpeta])
-                messagebox.showinfo(
-                    "📁 Carpeta de Mensajes",
-                    "Se abrió la carpeta de mensajes.\n\n"
-                    "Agrega archivos .txt con tus mensajes bíblicos\n"
-                    "y luego presiona 'Siguiente'."
-                )
+                self._mostrar_toast("Carpeta abierta — agrega archivos .txt con tus mensajes y presiona Siguiente", duracion=5000)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el gestor: {e}")
 

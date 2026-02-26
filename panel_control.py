@@ -151,7 +151,7 @@ class PanelControl:
         self._boton(grid, "⚡\nAcciones", "Publicar y automatizar",
                     self._abrir_acciones, row=0, col=0, color="#e65100")
         self._boton(grid, "⚙️\nConfigurador", "Ajustar configuración",
-                    self._abrir_configurador, row=0, col=1, en_hilo=True)
+                    self._abrir_configurador, row=0, col=1, en_hilo=False)
 
         # Fila 1
         if es_full:
@@ -520,48 +520,26 @@ class PanelControl:
         ventana.deiconify()
 
     def _abrir_configurador(self, pestaña=None):
-        """Abre el configurador — deshabilita el botón mientras está abierto"""
+        """Abre el configurador — bloquea el grid mientras está abierto"""
         try:
             exe = self._exe("ConfiguradorMensajes.exe")
             args = [exe] if os.path.exists(exe) else [sys.executable, "configurador_gui.py"]
             if pestaña:
                 args.append(f"--pestana={pestaña}")
 
-            # Deshabilitar botón configurador mientras está abierto
-            for widget in self.root.winfo_children():
-                try:
-                    if hasattr(widget, 'winfo_children'):
-                        for child in widget.winfo_children():
-                            if hasattr(child, 'cget') and 'Configurador' in str(child.cget('text') if hasattr(child, 'cget') else ''):
-                                child.config(state='disabled')
-                except:
-                    pass
-
+            self._bloquear_grid()
             proceso = subprocess.Popen(args)
-            self._toast("⚙️ Configurador", "Abriendo configurador...")
 
             def _esperar_cierre():
                 proceso.wait()
-                self.root.after(0, self._rehabilitar_botones)
+                self.root.after(0, self._desbloquear_grid)
 
             import threading
             threading.Thread(target=_esperar_cierre, daemon=True).start()
 
         except Exception as e:
+            self._desbloquear_grid()
             messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
-
-    def _rehabilitar_botones(self):
-        """Rehabilita todos los botones del panel tras cerrar subventana"""
-        try:
-            for widget in self.root.winfo_children():
-                if hasattr(widget, 'winfo_children'):
-                    for child in widget.winfo_children():
-                        try:
-                            child.config(state='normal')
-                        except:
-                            pass
-        except:
-            pass
 
     def _extraer_predicaciones(self):
         # Verificar si el grupo está configurado antes de lanzar el exe
@@ -675,14 +653,10 @@ class PanelControl:
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
         sp.Popen(f'explorer "{carpeta}"')
-        messagebox.showinfo(
+        self._toast(
             "📝 Tus Mensajes",
-            "Se abrió tu carpeta de mensajes en el Explorador.\n\n"
-            "💡 Con la versión Completa accedes al Gestor de Mensajes:\n"
-            "   • Editor visual integrado\n"
-            "   • Crear y eliminar mensajes fácilmente\n"
-            "   • Contador de caracteres en tiempo real\n\n"
-            "Adquiérela en automapro.com"
+            "Carpeta abierta — version Completa incluye editor visual",
+            duracion=5000
         )
 
     def _abrir_gestor_mensajes(self):
@@ -729,8 +703,8 @@ class PanelControl:
         """Muestra ventana de estadísticas"""
         try:
             gestor = GestorRegistro()
-            stats = gestor.registro.get('estadisticas', {})
-            fecha_ultima = gestor.registro.get('ultima_publicacion', {}).get('fecha', 'Nunca')
+            stats = gestor.obtener_estadisticas()
+            fecha_ultima = stats.get('ultima_publicacion') or 'Nunca'
 
             ventana = tk.Toplevel(self.root)
             ventana.withdraw()
