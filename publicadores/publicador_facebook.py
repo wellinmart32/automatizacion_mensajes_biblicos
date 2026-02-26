@@ -74,8 +74,6 @@ class PublicadorFacebook:
 
         usar_perfil = self.config.get('usar_perfil_existente', True)
 
-        # Siempre usar perfil dedicado para evitar conflictos con Chrome abierto
-        import platform as _platform
         if usar_perfil:
             if _platform.system() == "Windows":
                 base = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
@@ -156,10 +154,9 @@ class PublicadorFacebook:
             return True
     
     def abrir_compositor(self):
-        """Abre el cuadro de publicación - SELECTOR EXACTO DEL HTML DE WELLINGTON"""
+        """Abre el cuadro de publicación"""
         print("📝 Abriendo compositor de publicación...")
         
-        # CRÍTICO: Verificar que estamos en Facebook
         url_actual = self.driver.current_url
         
         if "facebook.com" not in url_actual:
@@ -198,21 +195,9 @@ class PublicadorFacebook:
                             
                             dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
                             if dialogs and len(dialogs) > 0 and dialogs[0].is_displayed():
-                                print("   ✅ Modal confirmado - Estrategia 1")
-                                
                                 tiempo_espera = self.config.get('espera_estabilizacion_modal', 3)
-                                print(f"   ⏳ Esperando {tiempo_espera}s...")
                                 time.sleep(tiempo_espera)
-                                
-                                try:
-                                    WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((By.XPATH, "//div[@role='dialog']//div[@contenteditable='true']"))
-                                    )
-                                    print("   ✅ Área de texto lista")
-                                    return True
-                                except:
-                                    print("   ✅ Modal confirmado")
-                                    return True
+                                return True
                     except:
                         continue
         except Exception as e:
@@ -367,11 +352,10 @@ class PublicadorFacebook:
             pass
         
         print("\n   ❌ No se pudo abrir el compositor")
-        print("   💡 Intenta: cerrar navegador y ejecutar de nuevo\n")
         return False
     
     def ingresar_texto(self, mensaje):
-        """Ingresa el texto en el compositor - Usa portapapeles y fallbacks"""
+        """Ingresa el texto en el compositor"""
         print("✍️  Ingresando texto...")
         
         area_texto = self._buscar_area_texto()
@@ -383,56 +367,63 @@ class PublicadorFacebook:
         try:
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_texto)
             time.sleep(0.5)
-            self.driver.execute_script("arguments[0].click();", area_texto)
-            time.sleep(1)
             self.driver.execute_script("arguments[0].focus();", area_texto)
             time.sleep(1)
         except Exception as e:
             print(f"   ⚠️  Error dando foco: {e}")
         
+        def _verificar_texto(el):
+            """Verifica contenido real del elemento via JavaScript"""
+            try:
+                contenido = self.driver.execute_script(
+                    "return arguments[0].innerText || arguments[0].textContent || '';", el
+                )
+                return len(contenido.strip()) >= 10
+            except:
+                return False
+
         # MÉTODO 1: Portapapeles
-        print("   Método: Portapapeles...")
         try:
             pyperclip.copy(mensaje)
+            self.driver.execute_script("arguments[0].focus();", area_texto)
+            time.sleep(0.5)
             ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
             time.sleep(2)
-            
-            texto_actual = area_texto.text
-            if len(texto_actual) >= 10:
-                print(f"   ✅ Texto ingresado ({len(texto_actual)} caracteres)")
+            if _verificar_texto(area_texto):
+                print(f"   ✅ Texto ingresado (portapapeles)")
                 return True
         except Exception as e:
             print(f"   ⚠️  Error portapapeles: {e}")
-        
-        # MÉTODO 2: send_keys
-        print("   Método: send_keys...")
+
+        # MÉTODO 2: send_keys con foco JS
         try:
-            area_texto.clear()
+            self.driver.execute_script("arguments[0].focus();", area_texto)
             time.sleep(0.5)
-            area_texto.send_keys(mensaje)
+            ActionChains(self.driver).send_keys(mensaje).perform()
             time.sleep(2)
-            
-            texto_actual = area_texto.text
-            if len(texto_actual) >= 10:
-                print(f"   ✅ Texto ingresado ({len(texto_actual)} caracteres)")
+            if _verificar_texto(area_texto):
+                print(f"   ✅ Texto ingresado (send_keys)")
                 return True
         except Exception as e:
             print(f"   ⚠️  Error send_keys: {e}")
-        
-        # MÉTODO 3: JavaScript
-        print("   Método: JavaScript...")
+
+        # MÉTODO 3: JavaScript con evento input
         try:
-            self.driver.execute_script(
-                "arguments[0].textContent = arguments[1];", 
-                area_texto, 
-                mensaje
-            )
+            self.driver.execute_script("""
+                arguments[0].focus();
+                arguments[0].textContent = arguments[1];
+                arguments[0].dispatchEvent(new Event('input', {bubbles: true}));
+                arguments[0].dispatchEvent(new Event('change', {bubbles: true}));
+            """, area_texto, mensaje)
             time.sleep(2)
-            print("   ✅ Texto ingresado con JavaScript")
-            return True
+            if _verificar_texto(area_texto):
+                print(f"   ✅ Texto ingresado (JavaScript)")
+                return True
         except Exception as e:
             print(f"   ❌ Error JavaScript: {e}")
-            return False
+
+        print("   ❌ No se pudo ingresar texto con ningún método")
+        return False
     
     def _buscar_area_texto(self):
         """Busca el área de texto del compositor"""
@@ -447,50 +438,11 @@ class PublicadorFacebook:
                     EC.presence_of_element_located((By.XPATH, sel))
                 )
                 time.sleep(1.5)
-                # Retornar directamente el elemento encontrado
-                elementos = self.driver.find_elements(By.XPATH, sel)
-                for el in elementos:
-                    try:
-                        if el.is_displayed():
-                            print(f"   ✅ Área de texto lista")
-                            return el
-                    except:
-                        continue
+                print(f"   ✅ Área de texto lista")
+                return elemento
             except:
                 continue
 
-        return None
-
-        selectores_texto = [
-            "//div[@role='textbox' and @contenteditable='true']",
-            "//div[@contenteditable='true' and contains(@aria-label, 'publicación')]",
-            "//div[@contenteditable='true' and contains(@aria-label, 'post')]",
-            "//div[@role='textbox']",
-            "//div[@contenteditable='true']"
-        ]
-        
-        for selector in selectores_texto:
-            try:
-                elementos = self.driver.find_elements(By.XPATH, selector)
-                
-                for elemento in elementos:
-                    try:
-                        if elemento.is_displayed():
-                            size = elemento.size
-                            if size['height'] > 50:
-                                return elemento
-                    except:
-                        continue
-            except:
-                continue
-        
-        try:
-            dialog = self.driver.find_element(By.XPATH, "//div[@role='dialog']")
-            area_texto = dialog.find_element(By.XPATH, ".//div[@contenteditable='true']")
-            return area_texto
-        except:
-            pass
-        
         return None
     
     def publicar_mensaje(self):
@@ -520,7 +472,6 @@ class PublicadorFacebook:
                                     elemento
                                 )
                                 time.sleep(1)
-                                
                                 self.driver.execute_script("arguments[0].click();", elemento)
                                 boton_encontrado = True
                                 print(f"   ✅ Clic en 'Publicar'")
@@ -533,7 +484,6 @@ class PublicadorFacebook:
                 continue
         
         if not boton_encontrado:
-            print("   Buscando por texto...")
             try:
                 elementos = self.driver.find_elements(By.XPATH, "//div[@role='button']")
                 for elemento in elementos:
@@ -572,7 +522,7 @@ class PublicadorFacebook:
         return True
     
     def verificar_publicacion_exitosa(self):
-        """Verifica que la publicación fue exitosa (modal cerrado)"""
+        """Verifica que la publicación fue exitosa"""
         if not self.config['verificar_publicacion_exitosa']:
             return True
         
@@ -586,7 +536,6 @@ class PublicadorFacebook:
                 return True
             else:
                 time.sleep(3)
-                
                 dialogs = self.driver.find_elements(By.XPATH, "//div[@role='dialog']")
                 if len(dialogs) == 0:
                     print("   ✅ Modal cerrado - Publicación exitosa")
@@ -598,128 +547,86 @@ class PublicadorFacebook:
             print("   ✅ Asumiendo publicación exitosa")
             return True
     
-    
     def publicar_enlace_con_preview_optimizado(self, enlace, texto_introduccion="", hashtags=""):
-        """
-        Publica un enlace con previsualización optimizada
-        NUEVA ESTRATEGIA: Escribir introducción → Pegar enlace → Esperar preview
-        """
+        """Publica un enlace con previsualización optimizada"""
         print("\n🔗 MODO OPTIMIZADO: Publicación de enlace con previsualización")
         
-        # Buscar área de texto
         area_texto = self._buscar_area_texto()
         if not area_texto:
             print("   ❌ No se encontró área de texto")
             return False
         
         try:
-            # Dar foco al área
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_texto)
             time.sleep(0.5)
             self.driver.execute_script("arguments[0].click();", area_texto)
             time.sleep(1)
             self.driver.execute_script("arguments[0].focus();", area_texto)
             time.sleep(1)
-            
-            # Limpiar contenido previo
             area_texto.send_keys(Keys.CONTROL + "a")
             time.sleep(0.3)
             area_texto.send_keys(Keys.DELETE)
             time.sleep(0.5)
-            
         except Exception as e:
             print(f"   ⚠️  Error dando foco: {e}")
         
-        # FASE 1: Escribir introducción PRIMERO (si existe)
         if texto_introduccion:
             print("📝 FASE 1: Escribiendo introducción...")
-            print(f"   {texto_introduccion}")
-            
             try:
-                # Escribir introducción letra por letra (más confiable)
                 for caracter in texto_introduccion:
                     area_texto.send_keys(caracter)
                     time.sleep(0.02)
-                
-                # Agregar 2 saltos de línea
                 area_texto.send_keys(Keys.RETURN)
                 time.sleep(0.2)
                 area_texto.send_keys(Keys.RETURN)
                 time.sleep(0.3)
-                
                 print("   ✅ Introducción escrita")
-                
             except Exception as e:
                 print(f"   ⚠️  Error escribiendo introducción: {e}")
         
-        # FASE 2: Pegar enlace
         print("\n📎 FASE 2: Pegando enlace...")
-        print(f"   {enlace[:70]}...")
-        
         try:
-            # Pegar enlace usando portapapeles
             pyperclip.copy(enlace)
             time.sleep(0.5)
-            
             ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
             time.sleep(2)
-            
             print("   ✅ Enlace pegado")
-            
         except Exception as e:
             print(f"   ❌ Error pegando enlace: {e}")
             return False
         
-        # FASE 3: Esperar previsualización
         tiempo_espera = self.config.get('tiempo_espera_previsualizacion', 12)
         print(f"\n⏳ FASE 3: Esperando previsualización ({tiempo_espera}s)...")
-        print("   Facebook está generando la miniatura del video...")
-        
         for i in range(tiempo_espera, 0, -1):
             if i % 2 == 0:
                 print(f"   Esperando... {i}s restantes", end='\r', flush=True)
             time.sleep(1)
-        
         print("\n   ✅ Previsualización lista")
         
-        # FASE 4: Agregar hashtags al final (si existen)
         if hashtags:
             print("\n📝 FASE 4: Agregando hashtags...")
-            
             try:
                 time.sleep(1)
                 area_texto = self._buscar_area_texto()
-                
                 if area_texto:
-                    # Ir al final del texto
                     ActionChains(self.driver).key_down(Keys.CONTROL).send_keys(Keys.END).key_up(Keys.CONTROL).perform()
                     time.sleep(0.5)
-                    
-                    # Agregar saltos de línea y hashtags
                     area_texto.send_keys(Keys.RETURN)
                     time.sleep(0.2)
                     area_texto.send_keys(Keys.RETURN)
                     time.sleep(0.2)
-                    
-                    # Escribir hashtags letra por letra
                     for caracter in hashtags.strip():
                         area_texto.send_keys(caracter)
                         time.sleep(0.05)
-                        
-                        # Si es #, cerrar menú de sugerencias
                         if caracter == '#':
                             time.sleep(0.3)
                             area_texto.send_keys(Keys.ESCAPE)
                             time.sleep(0.2)
-                    
                     print("   ✅ Hashtags agregados")
-            
             except Exception as e:
                 print(f"   ⚠️  Error agregando hashtags: {e}")
         
-        # FASE 5: Publicar
         print("\n🚀 Publicando...")
-        
         if not self.publicar_mensaje():
             print("❌ Error al publicar")
             return False
@@ -733,12 +640,10 @@ class PublicadorFacebook:
     def publicar_completo(self, mensaje):
         """Realiza el proceso completo de publicación"""
         try:
-            # Verificar sesión (esto navega a Facebook)
             if not self.verificar_sesion_facebook():
                 print("❌ No se pudo verificar sesión")
                 return False
             
-            # Ahora ya estamos en Facebook, abrir compositor
             if not self.abrir_compositor():
                 print("❌ No se pudo abrir compositor")
                 return False

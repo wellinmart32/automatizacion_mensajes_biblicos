@@ -236,23 +236,25 @@ def main():
 
 def _verificar_wizard_completado():
     """Si no hay licencia configurada, lanza el wizard y termina"""
-    import subprocess
-    gestor = GestorLicencias("MensajesBiblicos")
-    if not os.path.exists(gestor.archivo_config):
-        if getattr(sys, 'frozen', False):
-            base_dir = os.path.dirname(sys.executable)
-            wizard = os.path.join(base_dir, "WizardMensajes.exe")
+    try:
+        import subprocess
+        # Ruta directa sin depender de GestorLicencias
+        config_path = os.path.join(
+            os.path.expanduser("~"), ".config", "AutomaPro", "MensajesBiblicos", "config.json"
+        )
+        if not os.path.exists(config_path):
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+                wizard = os.path.join(base_dir, "WizardMensajes.exe")
+            else:
+                wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
+
             if os.path.exists(wizard):
-                # Ocultar consola y lanzar wizard directamente
-                import ctypes
-                ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
                 subprocess.Popen([wizard])
-        else:
-            wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
-            if os.path.exists(wizard):
-                subprocess.Popen([wizard])
-        return False
-    return True
+            return False
+        return True
+    except Exception:
+        return True  # Si falla la verificación, continuar normal
 
 
 if __name__ == "__main__":
