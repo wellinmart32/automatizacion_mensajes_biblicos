@@ -32,15 +32,15 @@ class ConfiguradorGUI:
 
         self.root = tk.Tk()
         self.root.title("⚙️ Configurador - Mensajes Bíblicos")
-        self.root.geometry("620x560")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
 
-        # Centrar antes de mostrar
+        # Centrar ANTES de mostrar
         self.root.withdraw()
-        self.root.update_idletasks()
         width = 620
         height = 560
+        self.root.geometry(f'{width}x{height}')
+        self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')

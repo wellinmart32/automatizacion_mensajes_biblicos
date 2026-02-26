@@ -1,6 +1,9 @@
 import os
+import sys
 import time
 import json
+import platform
+import configparser
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -26,6 +29,8 @@ class ExtractorWhatsAppPredicaciones:
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         self.driver = None
+        self.base_dir = base_dir
+        self.archivo_config = os.path.join(base_dir, "config_global.txt")
         self.carpeta_pendientes = os.path.join(base_dir, "cola-facebook", "pendientes")
         self.carpeta_publicados = os.path.join(base_dir, "cola-facebook", "publicados")
         self.archivo_historial = os.path.join(base_dir, "cola-facebook", "historial_publicados.json")
@@ -80,48 +85,97 @@ class ExtractorWhatsAppPredicaciones:
         
         return max(todos) + 1 if todos else 1
     
-    def iniciar_navegador(self):
-        """Inicializa Firefox con perfil existente"""
-        print("🌐 Iniciando Firefox para WhatsApp Web...")
-        
+    def _leer_config_navegador(self):
+        """Lee navegador y perfil desde [PREDICACIONES] en config_global.txt"""
         try:
-            opciones = FirefoxOptions()
-            
-            # Detectar perfil de Firefox
-            import platform
-            
-            if platform.system() == "Windows":
-                ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
+            config = configparser.ConfigParser()
+            if os.path.exists(self.archivo_config):
+                config.read(self.archivo_config, encoding='utf-8')
+                nav = 'firefox'
+                usar_perfil = True
+                if config.has_option('PREDICACIONES', 'navegador'):
+                    nav = config['PREDICACIONES']['navegador'].split('#')[0].strip()
+                if config.has_option('PREDICACIONES', 'usar_perfil_existente'):
+                    usar_perfil = config['PREDICACIONES']['usar_perfil_existente'].split('#')[0].strip().lower() == 'si'
+                return nav, usar_perfil
+        except Exception as e:
+            print(f"⚠️  Error leyendo config navegador: {e}")
+        return 'firefox', True
+
+    def iniciar_navegador(self):
+        """Inicializa el navegador configurado en [PREDICACIONES]"""
+        navegador, usar_perfil = self._leer_config_navegador()
+        print(f"🌐 Iniciando {navegador.capitalize()} para WhatsApp Web...")
+
+        try:
+            if navegador == 'chrome':
+                from selenium.webdriver.chrome.options import Options as ChromeOptions
+                opciones = ChromeOptions()
+                opciones.add_argument("--disable-blink-features=AutomationControlled")
+                opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
+
+                if usar_perfil:
+                    if platform.system() == "Windows":
+                        perfil_path = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
+                    else:
+                        perfil_path = os.path.expanduser("~/.config/google-chrome")
+
+                    if os.path.exists(perfil_path):
+                        opciones.add_argument(f"--user-data-dir={perfil_path}")
+                        opciones.add_argument("--profile-directory=Default")
+                        print(f"   ✓ Usando perfil Chrome: {perfil_path}")
+                    else:
+                        usar_perfil = False
+
+                if not usar_perfil:
+                    perfil_dedicado = os.path.join(self.base_dir, "perfiles", "predicaciones_chrome")
+                    os.makedirs(perfil_dedicado, exist_ok=True)
+                    opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+                    print(f"   ✓ Usando perfil Chrome dedicado")
+
+                self.driver = webdriver.Chrome(options=opciones)
             else:
-                ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
-            
-            # Buscar perfil default-release
-            perfil_path = None
-            if os.path.exists(ruta_perfiles):
-                for carpeta in os.listdir(ruta_perfiles):
-                    if 'default-release' in carpeta:
-                        perfil_path = os.path.join(ruta_perfiles, carpeta)
-                        print(f"🦊 Usando perfil Firefox: {carpeta}")
-                        break
-            
-            if perfil_path:
-                opciones.add_argument('-profile')
-                opciones.add_argument(perfil_path)
-            
-            self.driver = webdriver.Firefox(options=opciones)
+                opciones = FirefoxOptions()
+                if usar_perfil:
+                    if platform.system() == "Windows":
+                        ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
+                    else:
+                        ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
+
+                    perfil_path = None
+                    if os.path.exists(ruta_perfiles):
+                        for carpeta in os.listdir(ruta_perfiles):
+                            if 'default-release' in carpeta:
+                                perfil_path = os.path.join(ruta_perfiles, carpeta)
+                                print(f"   ✓ Usando perfil Firefox: {carpeta}")
+                                break
+
+                    if perfil_path:
+                        opciones.add_argument('-profile')
+                        opciones.add_argument(perfil_path)
+                    else:
+                        print("   ⚠️  No se encontró perfil default-release")
+                else:
+                    perfil_dedicado = os.path.join(self.base_dir, "perfiles", "predicaciones_firefox")
+                    os.makedirs(perfil_dedicado, exist_ok=True)
+                    opciones.add_argument('-profile')
+                    opciones.add_argument(perfil_dedicado)
+                    print(f"   ✓ Usando perfil Firefox dedicado")
+
+                self.driver = webdriver.Firefox(options=opciones)
+
             self.driver.maximize_window()
             print("✅ Navegador iniciado")
-            
-            # Ir a WhatsApp Web
+
             print("📱 Abriendo WhatsApp Web...")
             self.driver.get("https://web.whatsapp.com")
-            
+
             return True
-            
+
         except Exception as e:
             print(f"❌ Error iniciando navegador: {e}")
             return False
-    
+
     def esperar_whatsapp_cargado(self, timeout=60):
         """Espera a que WhatsApp Web esté completamente cargado"""
         print("⏳ Esperando que WhatsApp Web cargue...")

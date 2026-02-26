@@ -520,16 +520,48 @@ class PanelControl:
         ventana.deiconify()
 
     def _abrir_configurador(self, pestaña=None):
-        """Abre el configurador, opcionalmente en una pestaña específica"""
+        """Abre el configurador — deshabilita el botón mientras está abierto"""
         try:
             exe = self._exe("ConfiguradorMensajes.exe")
             args = [exe] if os.path.exists(exe) else [sys.executable, "configurador_gui.py"]
             if pestaña:
                 args.append(f"--pestana={pestaña}")
-            subprocess.Popen(args)
+
+            # Deshabilitar botón configurador mientras está abierto
+            for widget in self.root.winfo_children():
+                try:
+                    if hasattr(widget, 'winfo_children'):
+                        for child in widget.winfo_children():
+                            if hasattr(child, 'cget') and 'Configurador' in str(child.cget('text') if hasattr(child, 'cget') else ''):
+                                child.config(state='disabled')
+                except:
+                    pass
+
+            proceso = subprocess.Popen(args)
             self._toast("⚙️ Configurador", "Abriendo configurador...")
+
+            def _esperar_cierre():
+                proceso.wait()
+                self.root.after(0, self._rehabilitar_botones)
+
+            import threading
+            threading.Thread(target=_esperar_cierre, daemon=True).start()
+
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
+
+    def _rehabilitar_botones(self):
+        """Rehabilita todos los botones del panel tras cerrar subventana"""
+        try:
+            for widget in self.root.winfo_children():
+                if hasattr(widget, 'winfo_children'):
+                    for child in widget.winfo_children():
+                        try:
+                            child.config(state='normal')
+                        except:
+                            pass
+        except:
+            pass
 
     def _extraer_predicaciones(self):
         # Verificar si el grupo está configurado antes de lanzar el exe

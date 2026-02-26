@@ -34,7 +34,7 @@ class PublicadorFacebookEnlaces:
     
     def iniciar_navegador(self):
         """Inicia el navegador según configuración (Firefox o Chrome)"""
-        navegador = self.config['navegador']
+        navegador = self.config.get('navegador_predicaciones', self.config.get('navegador', 'firefox'))
         
         print(f"🌐 Iniciando {navegador.upper()}...")
         
@@ -54,43 +54,70 @@ class PublicadorFacebookEnlaces:
         print("✅ Navegador iniciado correctamente")
     
     def _iniciar_firefox(self):
-        """Inicia Firefox con perfil configurado"""
+        """Inicia Firefox con perfil configurado para predicaciones"""
+        import platform
         opciones = FirefoxOptions()
-        
-        # Desactivar notificaciones
+
         if self.config['desactivar_notificaciones']:
             opciones.set_preference("dom.webnotifications.enabled", False)
-        
-        # Usar perfil existente o personalizado
-        from compartido.gestor_archivos import obtener_ruta_perfil_navegador
-        ruta_perfil = obtener_ruta_perfil_navegador()
-        
-        if ruta_perfil:
+
+        usar_perfil = self.config.get('usar_perfil_predicaciones', True)
+
+        if usar_perfil:
+            if platform.system() == "Windows":
+                ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
+            else:
+                ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
+
+            perfil_path = None
+            if os.path.exists(ruta_perfiles):
+                for carpeta in os.listdir(ruta_perfiles):
+                    if 'default-release' in carpeta:
+                        perfil_path = os.path.join(ruta_perfiles, carpeta)
+                        break
+
+            if perfil_path:
+                opciones.add_argument("-profile")
+                opciones.add_argument(perfil_path)
+        else:
+            perfil_dedicado = os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/predicaciones_firefox'))
+            os.makedirs(perfil_dedicado, exist_ok=True)
             opciones.add_argument("-profile")
-            opciones.add_argument(ruta_perfil)
-        
+            opciones.add_argument(perfil_dedicado)
+
         self.driver = webdriver.Firefox(options=opciones)
-    
+
     def _iniciar_chrome(self):
-        """Inicia Chrome con perfil configurado"""
+        """Inicia Chrome con perfil configurado para predicaciones"""
+        import platform
         opciones = ChromeOptions()
-        
-        # Desactivar notificaciones
+
         if self.config['desactivar_notificaciones']:
             opciones.add_argument("--disable-notifications")
-        
-        # Anti-detección
+
         opciones.add_argument("--disable-blink-features=AutomationControlled")
         opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
         opciones.add_experimental_option('useAutomationExtension', False)
-        
-        # Perfil personalizado
-        if not self.config['usar_perfil_existente']:
-            ruta_perfil = os.path.abspath(self.config['carpeta_perfil_custom'])
-            opciones.add_argument(f"--user-data-dir={ruta_perfil}")
-        
+
+        usar_perfil = self.config.get('usar_perfil_predicaciones', True)
+
+        if usar_perfil:
+            if platform.system() == "Windows":
+                perfil_path = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
+            else:
+                perfil_path = os.path.expanduser("~/.config/google-chrome")
+
+            if os.path.exists(perfil_path):
+                opciones.add_argument(f"--user-data-dir={perfil_path}")
+                opciones.add_argument("--profile-directory=Default")
+        else:
+            perfil_dedicado = os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/predicaciones_chrome'))
+            os.makedirs(perfil_dedicado, exist_ok=True)
+            opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+
         servicio = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=servicio, options=opciones)
+
     
     def verificar_sesion_facebook(self):
         """

@@ -68,7 +68,8 @@ def leer_config_global():
         'maximizar_ventana': config['NAVEGADOR']['maximizar_ventana'].lower() == 'si',
         
         # [PREDICACIONES]
-        'activar_predicaciones': config['PREDICACIONES']['activar_predicaciones'].lower() == 'si' if config.has_option('PREDICACIONES', 'activar_predicaciones') else False,
+        'navegador_predicaciones': config['PREDICACIONES']['navegador'].split('#')[0].strip() if config.has_option('PREDICACIONES', 'navegador') else 'firefox',
+        'usar_perfil_predicaciones': config['PREDICACIONES']['usar_perfil_existente'].split('#')[0].strip().lower() == 'si' if config.has_option('PREDICACIONES', 'usar_perfil_existente') else True,
         'alternar_con_predicaciones': config['PREDICACIONES']['alternar_con_predicaciones'].lower() == 'si' if config.has_option('PREDICACIONES', 'alternar_con_predicaciones') else False,
         'nombre_grupo_whatsapp': config['PREDICACIONES']['nombre_grupo_whatsapp'] if config.has_option('PREDICACIONES', 'nombre_grupo_whatsapp') else 'Prédicas',
         'mensajes_por_extraccion': int(config['PREDICACIONES']['mensajes_por_extraccion']) if config.has_option('PREDICACIONES', 'mensajes_por_extraccion') else 10,

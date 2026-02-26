@@ -1,5 +1,6 @@
 import sys
 import time
+import os
 from datetime import datetime
 from compartido.gestor_archivos import (
     leer_config_global,
@@ -231,7 +232,33 @@ def main():
         publicador.cerrar_navegador()
 
 
+def _verificar_wizard_completado():
+    """Si no hay licencia configurada, lanza el wizard y termina"""
+    import subprocess
+    gestor = GestorLicencias("MensajesBiblicos")
+    if not os.path.exists(gestor.archivo_config):
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+            wizard = os.path.join(base_dir, "WizardMensajes.exe")
+        else:
+            wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
+
+        if os.path.exists(wizard):
+            subprocess.Popen([wizard])
+        else:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning("Configuración requerida", "Por favor ejecuta WizardMensajes.exe para configurar el sistema.")
+            root.destroy()
+        return False
+    return True
+
+
 if __name__ == "__main__":
+    if not _verificar_wizard_completado():
+        sys.exit(0)
     try:
         main()
     except KeyboardInterrupt:
@@ -241,4 +268,3 @@ if __name__ == "__main__":
         import traceback
         print(f"\n❌ Error inesperado: {e}")
         traceback.print_exc()
-        input("\nPresiona Enter para cerrar...")

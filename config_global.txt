@@ -38,14 +38,20 @@ permitir_forzar_publicacion_manual = si
 [PREDICACIONES]
 activar_predicaciones = no
 alternar_con_predicaciones = no
-nombre_grupo_whatsapp = 
+nombre_grupo_whatsapp =
 mensajes_por_extraccion = 10
+navegador = firefox
+usar_perfil_existente = si
 agregar_introduccion_predica = si
 texto_introduccion_predica = ⏰ Vale la pena ver esto
 agregar_hashtags_predicaciones = no
 hashtags_predicaciones = 
 tiempo_espera_previsualizacion = 12
 usar_estrategia_optimizada_enlaces = si
+
+[ORACIONES]
+navegador = chrome
+usar_perfil_existente = si
 
 [DEBUG]
 modo_debug = detallado
