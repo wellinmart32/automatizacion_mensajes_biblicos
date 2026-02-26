@@ -1,5 +1,6 @@
 import os
 import tkinter as tk
+from compartido.toast import Toast
 from tkinter import ttk, messagebox
 import configparser
 import re
@@ -1107,33 +1108,16 @@ class WizardPrimeraVez:
             messagebox.showerror("Error", f"No se pudo iniciar la publicación: {e}")
 
     def _mostrar_toast(self, mensaje, duracion=3000, color="#28a745"):
-        """Muestra notificación toast que desaparece automáticamente"""
-        toast = tk.Toplevel(self.root)
-        toast.withdraw()
-        toast.overrideredirect(True)
-        
-        frame = tk.Frame(toast, bg=color, padx=20, pady=15)
-        frame.pack()
-        
-        tk.Label(
-            frame,
-            text=mensaje,
-            font=("Segoe UI", 11),
-            bg=color,
-            fg="white",
-            justify='center'
-        ).pack()
-        
-        toast.update_idletasks()
-        width = toast.winfo_width()
-        height = toast.winfo_height()
-        x = (toast.winfo_screenwidth() // 2) - (width // 2)
-        y = toast.winfo_screenheight() - height - 50
-        
-        toast.geometry(f'+{x}+{y}')
-        toast.deiconify()
-        
-        toast.after(duracion, toast.destroy)
+        """Delega al sistema centralizado de toasts"""
+        from compartido.toast import Toast
+        if color == Toast.COLOR_ERROR or color == "#dc3545":
+            Toast.error(self.root, mensaje, duracion)
+        elif color == Toast.COLOR_ADVERTENCIA or color == "#e65100":
+            Toast.advertencia(self.root, mensaje, duracion)
+        elif color == Toast.COLOR_INFO or color == "#1a73e8":
+            Toast.info(self.root, mensaje, duracion)
+        else:
+            Toast.exito(self.root, mensaje, duracion)
 
     def ejecutar(self):
         self.root.mainloop()

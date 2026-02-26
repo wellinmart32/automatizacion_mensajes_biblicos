@@ -4,6 +4,7 @@ import json
 import configparser
 import tkinter as tk
 from tkinter import ttk, messagebox
+from compartido.toast import Toast
 
 
 class ConfiguradorGUI:
@@ -128,8 +129,8 @@ class ConfiguradorGUI:
                 f.write("# ============================================================\n\n")
                 self.config.write(f)
 
-            messagebox.showinfo("✅ Éxito", "Configuración guardada correctamente")
-            self.root.destroy()
+            Toast.exito(self.root, "Configuración guardada correctamente")
+            self.root.after(1500, self.root.destroy)
 
         except Exception as e:
             messagebox.showerror("❌ Error", f"Error al guardar: {e}")
@@ -678,7 +679,7 @@ class ConfiguradorGUI:
             os.makedirs(os.path.dirname(archivo_msg), exist_ok=True)
             with open(archivo_msg, 'w', encoding='utf-8') as f:
                 f.write(contenido)
-            messagebox.showinfo("✅ Guardado", "Mensajes de oración guardados correctamente.")
+            Toast.exito(self.root, "Mensajes de oración guardados correctamente")
 
         def agregar_msg(lista):
             v = tk.Toplevel(ventana)

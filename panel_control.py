@@ -5,6 +5,7 @@ from tkinter import messagebox
 import subprocess
 from gestor_licencias import GestorLicencias
 from gestor_registro import GestorRegistro
+from compartido.toast import Toast
 
 
 class PanelControl:
@@ -215,6 +216,17 @@ class PanelControl:
         self._bloquear_grid()
         self.root.after(300, self._desbloquear_grid)
         cmd()
+
+    def _lanzar_subprocess(self, cmd):
+        """Para subprocesos externos: bloquea grid, espera cierre del proceso, desbloquea"""
+        self._bloquear_grid()
+        import threading
+        def _hilo():
+            try:
+                cmd()
+            finally:
+                pass  # El cmd maneja su propio desbloqueo
+        threading.Thread(target=_hilo, daemon=True).start()
 
     def _lanzar_en_hilo(self, cmd):
         """Para subprocesos: bloquea grid, corre en hilo, desbloquea al terminar"""
@@ -527,8 +539,9 @@ class PanelControl:
             if pestaña:
                 args.append(f"--pestana={pestaña}")
 
-            self._bloquear_grid()
             proceso = subprocess.Popen(args)
+            # Re-bloquear después de que _lanzar_accion desbloquea a los 300ms
+            self.root.after(350, self._bloquear_grid)
 
             def _esperar_cierre():
                 proceso.wait()
@@ -771,22 +784,16 @@ class PanelControl:
         )
 
     def _toast(self, titulo, mensaje, duracion=3000, color="#28a745"):
-        """Notificación toast que se cierra sola"""
-        toast = tk.Toplevel(self.root)
-        toast.overrideredirect(True)
-        toast.attributes('-topmost', True)
-        ancho, alto = 350, 90
-        x = toast.winfo_screenwidth() - ancho - 20
-        y = toast.winfo_screenheight() - alto - 60
-        toast.geometry(f'{ancho}x{alto}+{x}+{y}')
-        frame = tk.Frame(toast, bg=color, relief='raised', borderwidth=2)
-        frame.pack(fill='both', expand=True)
-        tk.Label(frame, text=titulo, font=("Segoe UI", 11, "bold"),
-                 bg=color, fg="white").pack(pady=(10, 3))
-        tk.Label(frame, text=mensaje, font=("Segoe UI", 9),
-                 bg=color, fg="white", wraplength=300).pack(pady=(0, 10))
-        toast.after(duracion, toast.destroy)
-        frame.bind('<Button-1>', lambda e: toast.destroy())
+        """Delega al sistema centralizado de toasts"""
+        from compartido.toast import Toast
+        if color == Toast.COLOR_ERROR or color == "#dc3545":
+            Toast.error(self.root, f"{titulo}\n{mensaje}", duracion)
+        elif color == Toast.COLOR_ADVERTENCIA or color == "#e65100":
+            Toast.advertencia(self.root, f"{titulo}\n{mensaje}", duracion)
+        elif color == Toast.COLOR_INFO or color == "#1a73e8":
+            Toast.info(self.root, f"{titulo}\n{mensaje}", duracion)
+        else:
+            Toast.exito(self.root, f"{titulo}\n{mensaje}", duracion)
 
     def ejecutar(self):
         self.root.mainloop()

@@ -49,12 +49,14 @@ class PublicadorFacebook:
         if self.config['desactivar_notificaciones']:
             opciones.set_preference("dom.webnotifications.enabled", False)
         
-        from compartido.gestor_archivos import obtener_ruta_perfil_navegador
-        ruta_perfil = obtener_ruta_perfil_navegador()
-        
-        if ruta_perfil:
-            opciones.add_argument("-profile")
-            opciones.add_argument(ruta_perfil)
+        usar_perfil = self.config.get('usar_perfil_existente', True)
+
+        if usar_perfil:
+            from compartido.gestor_archivos import obtener_ruta_perfil_navegador
+            ruta_perfil = obtener_ruta_perfil_navegador()
+            if ruta_perfil:
+                opciones.add_argument("-profile")
+                opciones.add_argument(ruta_perfil)
         
         self.driver = webdriver.Firefox(options=opciones)
     
@@ -87,6 +89,13 @@ class PublicadorFacebook:
         opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
         opciones.add_argument("--no-first-run")
         opciones.add_argument("--no-default-browser-check")
+        opciones.add_argument("--disable-session-crashed-bubble")
+        opciones.add_argument("--hide-crash-restore-bubble")
+        opciones.add_argument("--disable-features=InfiniteSessionRestore")
+        opciones.add_experimental_option("prefs", {
+            "profile.exit_type": "Normal",
+            "profile.exited_cleanly": True
+        })
 
         self.driver = webdriver.Chrome(options=opciones)
     
@@ -427,6 +436,31 @@ class PublicadorFacebook:
     
     def _buscar_area_texto(self):
         """Busca el área de texto del compositor"""
+        selectores_espera = [
+            "//div[@role='dialog']//div[@contenteditable='true']",
+            "//div[@contenteditable='true'][@role='textbox']",
+            "//div[@contenteditable='true']",
+        ]
+        for sel in selectores_espera:
+            try:
+                elemento = WebDriverWait(self.driver, 8).until(
+                    EC.presence_of_element_located((By.XPATH, sel))
+                )
+                time.sleep(1.5)
+                # Retornar directamente el elemento encontrado
+                elementos = self.driver.find_elements(By.XPATH, sel)
+                for el in elementos:
+                    try:
+                        if el.is_displayed():
+                            print(f"   ✅ Área de texto lista")
+                            return el
+                    except:
+                        continue
+            except:
+                continue
+
+        return None
+
         selectores_texto = [
             "//div[@role='textbox' and @contenteditable='true']",
             "//div[@contenteditable='true' and contains(@aria-label, 'publicación')]",

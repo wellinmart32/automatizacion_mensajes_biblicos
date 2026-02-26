@@ -1,6 +1,8 @@
 import sys
 import time
 import os
+import ctypes
+
 from datetime import datetime
 from compartido.gestor_archivos import (
     leer_config_global,
@@ -256,6 +258,10 @@ def _verificar_wizard_completado():
 if __name__ == "__main__":
     if not _verificar_wizard_completado():
         sys.exit(0)
+    # Wizard completado: crear consola visible
+    ctypes.windll.kernel32.AllocConsole()
+    sys.stdout = open('CONOUT$', 'w')
+    sys.stderr = open('CONOUT$', 'w')
     try:
         main()
     except KeyboardInterrupt:
