@@ -69,24 +69,20 @@ class GestorTareasGUI:
         toast.after(duracion, toast.destroy)
 
     def _verificar_licencia_full(self):
-        codigo = self.gestor_licencias.obtener_codigo_guardado()
-
-        if not codigo:
+        """Verifica si la licencia es FULL — usa cache primero"""
+        try:
             cache = self.gestor_licencias._obtener_cache_local()
             if cache and cache.get('valida'):
                 tipo = cache.get('tipo', 'TRIAL')
                 return tipo in ['FULL', 'MASTER'] or cache.get('es_developer_permanente', False)
+
+            codigo = self.gestor_licencias.obtener_codigo_guardado()
+            if not codigo:
+                return False
+            resultado = self.gestor_licencias.verificar_licencia(codigo, mostrar_mensajes=False)
+            return resultado.get('valida') and (resultado.get('tipo') in ['FULL', 'MASTER'] or resultado.get('developer_permanente'))
+        except Exception:
             return False
-
-        resultado = self.gestor_licencias.verificar_licencia(codigo, mostrar_mensajes=False)
-
-        if not resultado['valida']:
-            return False
-
-        if resultado.get('developer_permanente') or resultado.get('tipo') == 'FULL':
-            return True
-
-        return False
 
     def _construir_ui(self):
         header = tk.Frame(self.root, bg="#1a73e8", pady=20)

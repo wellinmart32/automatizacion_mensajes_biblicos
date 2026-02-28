@@ -2,6 +2,7 @@ import sys
 import time
 import os
 import ctypes
+import configparser
 
 from datetime import datetime
 from compartido.gestor_archivos import (
@@ -10,7 +11,6 @@ from compartido.gestor_archivos import (
     obtener_mensaje_aleatorio_sin_repetir,
     obtener_mensaje_secuencial,
     contar_predicaciones_pendientes,
-    contar_predicaciones_publicadas,
     obtener_siguiente_predicacion,
     mover_predicacion_a_publicados
 )
@@ -21,46 +21,36 @@ from dialogos_licencia import DialogosLicencia
 
 
 def verificar_licencia_inicio():
-    """Verificar licencia al iniciar la aplicación"""
     gestor_lic = GestorLicencias("MensajesBiblicos")
     resultado = gestor_lic.verificar_e_iniciar()
-    
-    # Primera vez - solicitar código
+
     if resultado.get('necesita_ingreso'):
         codigo = DialogosLicencia.solicitar_codigo_licencia()
-        
         if not codigo:
             DialogosLicencia.mostrar_error("Necesitas un código de licencia para usar la aplicación")
             return None
-        
-        # Guardar y verificar
         gestor_lic.guardar_codigo_licencia(codigo)
         resultado = gestor_lic.verificar_e_iniciar()
-    
-    # Error en verificación
+
     if resultado.get('error'):
         DialogosLicencia.mostrar_error(resultado.get('mensaje'))
         return None
-    
-    # Trial expirado
+
     if resultado.get('expirado'):
         DialogosLicencia.mostrar_trial_expirado(resultado.get('codigo'))
         return None
-    
-    # Trial activo
+
     if resultado.get('tipo') == 'TRIAL':
         dias = resultado.get('dias_restantes')
         print(f"\n⚠️  MODO TRIAL - Quedan {dias} días\n")
-    
-    # Full - mostrar mensaje de bienvenida
+
     if resultado.get('tipo') == 'FULL':
         print("\n✅ Licencia completa activada - Todas las funciones desbloqueadas\n")
-    
+
     return resultado
 
 
 def mostrar_banner():
-    """Muestra el banner inicial"""
     print("\n" + "="*70)
     print(" " * 15 + "🚀 PUBLICADOR AUTOMÁTICO DE FACEBOOK")
     print(" " * 20 + "Sistema de Mensajes Bíblicos")
@@ -68,48 +58,39 @@ def mostrar_banner():
 
 
 def mostrar_configuracion(config):
-    """Muestra la configuración actual"""
     print("📁 Verificando estructura...")
     verificar_y_crear_estructura()
     print()
-    
     print("⚙️  CONFIGURACIÓN DEL SISTEMA:")
     print(f"   📁 Carpeta mensajes: {config['carpeta_mensajes']}")
     print(f"   🌐 Navegador: {config['navegador'].upper()}")
     print(f"   🎲 Selección: {config['seleccion'].capitalize()}")
     print(f"   💾 Memoria: Últimos {config['historial_evitar_repetir']} mensajes")
     print(f"   🔄 Máx. intentos: {config.get('max_intentos', 3)}")
-    
     if config.get('activar_predicaciones'):
         print(f"   🎬 Predicaciones: ACTIVADAS")
         print(f"   📱 Grupo WhatsApp: {config['nombre_grupo_whatsapp']}")
-    
     print()
 
 
 def obtener_contenido_publicacion(gestor, config):
-    """Obtiene el contenido a publicar según configuración"""
     if config['seleccion'] in ('aleatorio', 'aleatoria'):
         contenido, nombre_archivo = obtener_mensaje_aleatorio_sin_repetir(gestor.registro)
     else:
         contenido, nombre_archivo = obtener_mensaje_secuencial(gestor.registro)
-    
     return (contenido, nombre_archivo), 'biblico'
 
 
 def publicar_con_reintentos(publicador, contenido, tipo_publicacion, config, gestor, nombre_archivo=None):
-    """Intenta publicar con reintentos configurables"""
     max_intentos = config.get('max_intentos', 3)
     tiempo_entre_intentos = config.get('tiempo_entre_intentos', 10)
-    
+
     for intento in range(1, max_intentos + 1):
         try:
             print(f"\n{'='*70}")
             print(f"🔄 INTENTO {intento} DE {max_intentos}")
             print(f"{'='*70}\n")
-            
             exito = publicador.publicar_completo(contenido)
-            
             if exito:
                 print(f"✅ Publicación exitosa en intento {intento}")
                 return True
@@ -118,7 +99,6 @@ def publicar_con_reintentos(publicador, contenido, tipo_publicacion, config, ges
                 if intento < max_intentos:
                     print(f"⏳ Esperando {tiempo_entre_intentos}s antes de reintentar...")
                     time.sleep(tiempo_entre_intentos)
-        
         except Exception as e:
             print(f"❌ Error en intento {intento}: {e}")
             if intento < max_intentos:
@@ -127,118 +107,164 @@ def publicar_con_reintentos(publicador, contenido, tipo_publicacion, config, ges
             else:
                 import traceback
                 traceback.print_exc()
-    
+
     return False
 
 
+def _publicar_mensaje_biblico(config):
+    gestor = GestorRegistro()
+    gestor.mostrar_estadisticas()
+    gestor.mostrar_historial_reciente(5)
+
+    if not gestor.puede_publicar_ahora(config.get('max_publicaciones_por_dia', 20)):
+        print(f"\n⚠️  Límite diario alcanzado")
+        return
+
+    contenido_data, tipo_pub = obtener_contenido_publicacion(gestor, config)
+    contenido, nombre_archivo = contenido_data
+    if not contenido:
+        print("❌ No hay mensajes disponibles")
+        return
+
+    print(f"\n📖 Mensaje seleccionado: {nombre_archivo}")
+    print("\n🌐 Inicializando navegador...")
+    publicador = PublicadorFacebook(config)
+    publicador.iniciar_navegador()
+
+    try:
+        exito = publicar_con_reintentos(publicador, contenido, tipo_pub, config, gestor, nombre_archivo)
+        if exito:
+            gestor.registrar_publicacion_exitosa(nombre_archivo, '', 0, 1, 0, tipo='biblico')
+            print("\n" + "="*70)
+            print("✅ MENSAJE BÍBLICO PUBLICADO EXITOSAMENTE")
+            print("="*70)
+        else:
+            print("\n" + "="*70)
+            print("❌ NO SE PUDO PUBLICAR EL MENSAJE")
+            print("="*70)
+            gestor.registrar_error(nombre_archivo, tipo_pub, "Falló después de todos los intentos")
+    finally:
+        publicador.cerrar_navegador()
+
+
+def _publicar_predicacion(config):
+    gestor = GestorRegistro()
+    ruta_archivo, titulo = obtener_siguiente_predicacion()
+    if not ruta_archivo:
+        print("❌ No hay predicaciones pendientes")
+        return
+
+    # Leer contenido del archivo
+    try:
+        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+            contenido = f.read().strip()
+        if not contenido:
+            print("❌ El archivo de predicación está vacío")
+            return
+    except Exception as e:
+        print(f"❌ Error leyendo predicación: {e}")
+        return
+
+    print(f"\n📹 Publicando predicación: {titulo}")
+    print("\n🌐 Inicializando navegador...")
+    publicador = PublicadorFacebook(config)
+    publicador.iniciar_navegador()
+
+    try:
+        exito = publicar_con_reintentos(publicador, contenido, 'predicacion', config, gestor, titulo)
+        if exito:
+            gestor.registrar_publicacion_exitosa(titulo, '', 0, 1, 0, tipo='predicacion')
+            mover_predicacion_a_publicados(titulo)
+            print("\n" + "="*70)
+            print("✅ PREDICACIÓN PUBLICADA EXITOSAMENTE")
+            print("="*70)
+        else:
+            print("\n" + "="*70)
+            print("❌ NO SE PUDO PUBLICAR LA PREDICACIÓN")
+            print("="*70)
+            gestor.registrar_error(titulo, 'predicacion', "Falló después de todos los intentos")
+    finally:
+        publicador.cerrar_navegador()
+
+
+def _ejecutar_secuencia_full(config):
+    import subprocess
+    base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+
+    cfg = configparser.ConfigParser()
+    cfg.read(os.path.join(base_dir, "config_global.txt"), encoding='utf-8')
+    modulos = cfg.get('SECUENCIA', 'modulos_activos', fallback='biblico,extraer,publicar_predica').strip()
+    lista = [m.strip() for m in modulos.split(',') if m.strip()]
+
+    for modulo in lista:
+        if modulo == 'biblico':
+            _publicar_mensaje_biblico(config)
+
+        elif modulo == 'extraer':
+            exe = os.path.join(base_dir, 'ExtractorPredicaciones.exe')
+            if os.path.exists(exe):
+                print("\n🎬 Iniciando extracción de predicaciones...")
+                subprocess.Popen([exe]).wait()
+            else:
+                print("⚠️  ExtractorPredicaciones.exe no encontrado")
+
+        elif modulo == 'publicar_predica':
+            if contar_predicaciones_pendientes() > 0:
+                _publicar_predicacion(config)
+            else:
+                print("\n📭 Sin predicaciones pendientes para publicar")
+
+        elif modulo == 'oraciones':
+            exe = os.path.join(base_dir, 'OracionesWhatsApp.exe')
+            if os.path.exists(exe):
+                print("\n📱 Iniciando envío de oraciones...")
+                subprocess.Popen([exe]).wait()
+            else:
+                print("⚠️  OracionesWhatsApp.exe no encontrado")
+
+
 def main():
-    """Función principal del publicador"""
-    
-    # VERIFICAR LICENCIA PRIMERO
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--solo-biblico', action='store_true')
+    args, _ = parser.parse_known_args()
+
     estado_licencia = verificar_licencia_inicio()
-    
     if not estado_licencia:
         print("\n❌ No se pudo verificar la licencia. Cerrando aplicación...")
         return
-    
-    # Mostrar banner
+
     mostrar_banner()
-    
-    # Cargar configuración
+
     try:
         config = leer_config_global()
     except Exception as e:
         print(f"❌ Error leyendo configuración: {e}")
         return
-    
-    # Mostrar configuración
+
     mostrar_configuracion(config)
-    
-    # Inicializar gestor de registro
-    gestor = GestorRegistro()
-    
-    # Mostrar estadísticas
-    gestor.mostrar_estadisticas()
-    
-    # Mostrar historial reciente
-    gestor.mostrar_historial_reciente(5)
-    
-    # Verificar límite diario
-    if not gestor.puede_publicar_ahora(config.get('max_publicaciones_por_dia', 20)):
-        print(f"\n⚠️  Ya se alcanzó el límite de {config.get('max_publicaciones_por_dia', 20)} publicaciones hoy")
-        print("   Intenta mañana o aumenta el límite en config_global.txt")
-        return
-    
-    # Obtener contenido a publicar
-    contenido_data, tipo_pub = obtener_contenido_publicacion(gestor, config)
-    
-    if tipo_pub == 'predicacion':
-        ruta_video, titulo = contenido_data
-        if not ruta_video:
-            print("❌ No hay predicaciones pendientes")
-            return
-        print(f"\n📹 Publicando predicación: {titulo}")
-        contenido = ruta_video
-        nombre_archivo = titulo
-    else:
-        contenido, nombre_archivo = contenido_data
-        if not contenido:
-            print("❌ No hay mensajes disponibles")
-            return
-        print(f"\n📖 Mensaje seleccionado: {nombre_archivo}")
-    
-    # Inicializar publicador
-    print("\n🌐 Inicializando navegador...")
-    publicador = PublicadorFacebook(config)
-    publicador.iniciar_navegador()
-    
+
+    es_full = estado_licencia.get('tipo') in ['FULL', 'MASTER'] or estado_licencia.get('developer_permanente')
+
     try:
-        # Publicar con reintentos
-        exito = publicar_con_reintentos(
-            publicador,
-            contenido,
-            tipo_pub,
-            config,
-            gestor,
-            nombre_archivo
-        )
-        
-        if exito:
-            # Registrar publicación
-            if tipo_pub == 'predicacion':
-                gestor.registrar_publicacion_exitosa(nombre_archivo, '', 0, 1, 0, tipo='predicacion')
-                mover_predicacion_a_publicados(nombre_archivo)
-            else:
-                gestor.registrar_publicacion_exitosa(nombre_archivo, '', 0, 1, 0, tipo='biblico')
-            
-            print("\n" + "="*70)
-            print("✅ PUBLICACIÓN COMPLETADA EXITOSAMENTE")
-            print("="*70)
+        if args.solo_biblico:
+            # Acción directa desde Panel — solo mensaje bíblico sin importar licencia
+            _publicar_mensaje_biblico(config)
+        elif es_full:
+            _ejecutar_secuencia_full(config)
         else:
-            print("\n" + "="*70)
-            print("❌ NO SE PUDO COMPLETAR LA PUBLICACIÓN")
-            print("="*70)
-            gestor.registrar_error(nombre_archivo, tipo_pub, "Falló después de todos los intentos")
-    
+            _publicar_mensaje_biblico(config)
     except KeyboardInterrupt:
-        print("\n\n⚠️  Publicación cancelada por el usuario")
-        gestor.registrar_error(nombre_archivo, tipo_pub, "Cancelado por usuario")
-    
+        print("\n\n⚠️  Proceso cancelado por el usuario")
     except Exception as e:
         print(f"\n❌ Error inesperado: {e}")
         import traceback
         traceback.print_exc()
-        gestor.registrar_error(nombre_archivo, tipo_pub, str(e))
-    
-    finally:
-        publicador.cerrar_navegador()
 
 
 def _verificar_wizard_completado():
-    """Si no hay licencia configurada, lanza el wizard y termina"""
     try:
         import subprocess
-        # Ruta directa sin depender de GestorLicencias
         config_path = os.path.join(
             os.path.expanduser("~"), ".config", "AutomaPro", "MensajesBiblicos", "config.json"
         )
@@ -248,19 +274,17 @@ def _verificar_wizard_completado():
                 wizard = os.path.join(base_dir, "WizardMensajes.exe")
             else:
                 wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
-
             if os.path.exists(wizard):
                 subprocess.Popen([wizard])
             return False
         return True
     except Exception:
-        return True  # Si falla la verificación, continuar normal
+        return True
 
 
 if __name__ == "__main__":
     if not _verificar_wizard_completado():
         sys.exit(0)
-    # Wizard completado: crear consola visible
     ctypes.windll.kernel32.AllocConsole()
     sys.stdout = open('CONOUT$', 'w')
     sys.stderr = open('CONOUT$', 'w')

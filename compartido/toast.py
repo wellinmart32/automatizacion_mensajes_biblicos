@@ -42,9 +42,9 @@ class Toast:
             toast.attributes('-topmost', True)
 
             if centro:
-                ancho, alto = 420, 110
+                ancho, alto = 420, 120
             else:
-                ancho, alto = 380, 80
+                ancho, alto = 420, 100
 
             frame = tk.Frame(toast, bg=color, padx=20, pady=12)
             frame.pack(fill='both', expand=True)

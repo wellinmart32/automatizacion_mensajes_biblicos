@@ -63,10 +63,16 @@ class PanelControl:
                     'diasRestantes': cache.get('dias_restantes', 0),
                     'developer_permanente': cache.get('es_developer_permanente', False)
                 }
-            messagebox.showwarning(
-                "Sin Licencia",
-                "No hay licencia configurada.\n\nEjecuta el Wizard de primera vez."
-            )
+            # Sin licencia — lanzar wizard automáticamente
+            import subprocess
+            if getattr(sys, 'frozen', False):
+                wizard = os.path.join(os.path.dirname(sys.executable), "WizardMensajes.exe")
+            else:
+                wizard = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wizard_primera_vez.py")
+            if os.path.exists(wizard):
+                subprocess.Popen([wizard])
+            else:
+                messagebox.showwarning("Sin Licencia", "No hay licencia configurada.\n\nEjecuta el Wizard de primera vez.")
             return None
 
         resultado = self.gestor_licencias.verificar_licencia(codigo, mostrar_mensajes=False)
@@ -378,6 +384,35 @@ class PanelControl:
             command=cmd_pred
         ).pack(fill='x', pady=(0, 8))
 
+        # Acción 5 — Ejecutar Secuencia Configurada
+        if es_full:
+            tk.Button(
+                frame,
+                text="⚡  Ejecutar Secuencia Configurada",
+                font=("Segoe UI", 11, "bold"),
+                bg="#e65100",
+                fg="white",
+                activebackground="#bf360c",
+                cursor="hand2",
+                anchor='w',
+                padx=15,
+                pady=8,
+                command=lambda: [ventana.destroy(), self._ejecutar_secuencia()]
+            ).pack(fill='x', pady=(0, 8))
+        else:
+            tk.Button(
+                frame,
+                text="🔒  Ejecutar Secuencia Configurada  —  versión Completa",
+                font=("Segoe UI", 11),
+                bg="#e0e0e0",
+                fg="#9e9e9e",
+                cursor="hand2",
+                anchor='w',
+                padx=15,
+                pady=8,
+                command=self._mostrar_mensaje_upgrade
+            ).pack(fill='x', pady=(0, 8))
+
         tk.Button(
             frame,
             text="Cerrar",
@@ -388,18 +423,87 @@ class PanelControl:
             command=ventana.destroy
         ).pack(pady=15)
 
-        self._centrar_ventana(ventana, 500, 420)
+        self._centrar_ventana(ventana, 500, 470)
         ventana.deiconify()
 
     # ==================== ACCIONES ====================
+
+    def _ejecutar_secuencia(self):
+        """Ejecuta los módulos en el orden configurado en Secuencia"""
+        import configparser
+        cfg = configparser.ConfigParser()
+        cfg.read(os.path.join(self.base_dir, "config_global.txt"), encoding='utf-8')
+        modulos = cfg.get('SECUENCIA', 'modulos_activos', fallback='').strip()
+
+        if not modulos:
+            respuesta = messagebox.askokcancel(
+                "⚙️ Secuencia no configurada",
+                "No has configurado la secuencia de módulos.\n\n"
+                "¿Deseas ir al Configurador para definirla ahora?"
+            )
+            if respuesta:
+                self._abrir_configurador(pestaña='secuencia')
+            return
+
+        lista = [m.strip() for m in modulos.split(',') if m.strip()]
+
+        # Validar configuración antes de ejecutar
+        necesita_grupo = 'extraer' in lista or 'publicar_predica' in lista
+        if necesita_grupo:
+            grupo = cfg.get('PREDICACIONES', 'nombre_grupo_whatsapp', fallback='').strip()
+            if not grupo:
+                respuesta = messagebox.askokcancel(
+                    "⚠️ Configuración incompleta",
+                    "La secuencia incluye 'Extraer Predicaciones' pero no has configurado\n"
+                    "el nombre del grupo de WhatsApp.\n\n"
+                    "¿Deseas ir al Configurador para completarlo ahora?"
+                )
+                if respuesta:
+                    self._abrir_configurador(pestana='extractor')
+                return
+
+        from compartido.gestor_archivos import leer_estado_predicaciones
+
+        for modulo in lista:
+            try:
+                if modulo == 'biblico':
+                    self._publicar_facebook()
+
+                elif modulo == 'extraer':
+                    self._extraer_predicaciones()
+
+                elif modulo == 'publicar_predica':
+                    # Verificar si hay predicaciones pendientes
+                    estado = leer_estado_predicaciones()
+                    hay_pendientes = estado.get('pendientes', 0) > 0
+                    if hay_pendientes:
+                        self._publicar_predicaciones()
+                    else:
+                        # No hay pendientes — extraer primero si no está ya en la secuencia
+                        if 'extraer' not in lista:
+                            respuesta = messagebox.askokcancel(
+                                "📭 Sin predicaciones",
+                                "No hay predicaciones extraídas.\n\n"
+                                "¿Deseas extraer predicaciones ahora antes de publicar?"
+                            )
+                            if respuesta:
+                                self._extraer_predicaciones()
+                        # Si extraer ya está en la secuencia, fue ejecutado antes — skip publicar
+
+                elif modulo == 'oraciones':
+                    self._enviar_oraciones()
+
+            except Exception as e:
+                messagebox.showerror("❌ Error en secuencia", f"Error ejecutando '{modulo}':\n{e}")
+                break
 
     def _publicar_facebook(self):
         try:
             exe = self._exe("MensajesBiblicos.exe")
             if os.path.exists(exe):
-                subprocess.Popen([exe])
+                subprocess.Popen([exe, "--solo-biblico"])
             else:
-                subprocess.Popen([sys.executable, "flujo_completo_facebook.py"])
+                subprocess.Popen([sys.executable, "flujo_completo_facebook.py", "--solo-biblico"])
             self._toast("✅ Publicación iniciada", "El navegador se abrirá en unos segundos...")
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo iniciar la publicación:\n{e}")

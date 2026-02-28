@@ -23,7 +23,15 @@ class GestorLicencias:
         
         self.carpeta_config = base_path / '.config' / 'AutomaPro' / nombre_app
         self.archivo_config = self.carpeta_config / 'config.json'
-        self.dias_revalidacion = 7  # Re-verificar cada 7 días (excepto developer)
+        self.dias_revalidacion = 7  # Re-verificar cada 7 días (solo TRIAL)
+
+        # Respaldo permanente en AppData (más resistente a limpiadores)
+        if os.name == 'nt':
+            appdata = Path(os.environ.get('LOCALAPPDATA', base_path / 'AppData' / 'Local'))
+        else:
+            appdata = Path.home() / '.local' / 'share'
+        self.carpeta_respaldo = appdata / 'AutomaPro' / nombre_app
+        self.archivo_respaldo = self.carpeta_respaldo / 'lic.json'
 
     def _es_codigo_developer_permanente(self, codigo):
         """Verifica si es un código developer master"""
@@ -33,9 +41,11 @@ class GestorLicencias:
         """Obtiene el código de licencia guardado localmente"""
         try:
             if self.archivo_config.exists():
-                with open(self.archivo_config, 'r', encoding='utf-8') as f:
-                    datos = json.load(f)
-                    return datos.get('codigo_licencia', '')
+                contenido = self.archivo_config.read_text(encoding='utf-8').strip()
+                if not contenido:
+                    return ''
+                datos = json.loads(contenido)
+                return datos.get('codigo_licencia', '')
         except Exception as e:
             print(f"Error leyendo configuración local: {e}")
         return ''
@@ -61,58 +71,97 @@ class GestorLicencias:
             return False
 
     def _obtener_cache_local(self):
-        """Obtiene la información de cache local"""
+        """Obtiene la información de cache local, con fallback a respaldo AppData"""
+        cache = self._leer_cache(self.archivo_config)
+        if cache:
+            return cache
+
+        # Fallback: restaurar desde respaldo AppData
+        cache_respaldo = self._leer_cache(self.archivo_respaldo, es_respaldo=True)
+        if cache_respaldo:
+            try:
+                self.carpeta_config.mkdir(parents=True, exist_ok=True)
+                config = {'datos_licencia': cache_respaldo}
+                with open(self.archivo_respaldo, 'r', encoding='utf-8') as f:
+                    respaldo = json.load(f)
+                if respaldo.get('codigo_licencia'):
+                    config['codigo_licencia'] = respaldo['codigo_licencia']
+                with open(self.archivo_config, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+            return cache_respaldo
+
+        return None
+
+    def _leer_cache(self, archivo, es_respaldo=False):
+        """Lee y valida cache desde un archivo"""
         try:
-            if self.archivo_config.exists():
-                with open(self.archivo_config, 'r', encoding='utf-8') as f:
-                    datos = json.load(f)
-                    
-                    if 'datos_licencia' in datos:
-                        cache = datos['datos_licencia']
-                        
-                        # Si es developer permanente, siempre es válido
-                        if cache.get('es_developer_permanente'):
-                            return cache
-                        
-                        # Para otras licencias, verificar si el cache expiró
-                        fecha_verificacion = cache.get('fecha_verificacion')
-                        if fecha_verificacion:
-                            fecha_cache = datetime.fromisoformat(fecha_verificacion)
-                            dias_desde_verificacion = (datetime.now() - fecha_cache).days
-                            
-                            if dias_desde_verificacion <= self.dias_revalidacion:
-                                return cache
+            archivo = Path(archivo)
+            if not archivo.exists():
+                return None
+            contenido = archivo.read_text(encoding='utf-8').strip()
+            if not contenido:
+                return None
+            datos = json.loads(contenido)
+            cache = datos.get('datos_licencia')
+            if not cache:
+                return None
+            if cache.get('es_developer_permanente'):
+                return cache
+            if cache.get('tipo') in ['FULL', 'MASTER'] and cache.get('valida'):
+                return cache
+            fecha_verificacion = cache.get('fecha_verificacion')
+            if fecha_verificacion:
+                fecha_cache = datetime.fromisoformat(fecha_verificacion)
+                dias = (datetime.now() - fecha_cache).days
+                if dias <= self.dias_revalidacion:
+                    return cache
         except Exception as e:
             print(f"Error leyendo cache: {e}")
-        
         return None
 
     def _guardar_cache_local(self, datos_licencia):
-        """Guarda los datos de la licencia en cache local"""
+        """Guarda los datos de la licencia en cache local y respaldo"""
+        datos_cache = {
+            'tipo': datos_licencia.get('tipo'),
+            'valida': datos_licencia.get('valida'),
+            'expirada': datos_licencia.get('expirada'),
+            'dias_restantes': datos_licencia.get('diasRestantes'),
+            'fecha_verificacion': datetime.now().isoformat(),
+            'es_developer_permanente': datos_licencia.get('developer_permanente', False)
+        }
+
+        # Guardar en ubicación principal
         try:
             self.carpeta_config.mkdir(parents=True, exist_ok=True)
-            
             config = {}
             if self.archivo_config.exists():
-                with open(self.archivo_config, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-            
-            config['datos_licencia'] = {
-                'tipo': datos_licencia.get('tipo'),
-                'valida': datos_licencia.get('valida'),
-                'expirada': datos_licencia.get('expirada'),
-                'dias_restantes': datos_licencia.get('diasRestantes'),
-                'fecha_verificacion': datetime.now().isoformat(),
-                'es_developer_permanente': datos_licencia.get('developer_permanente', False)
-            }
-            
+                contenido = self.archivo_config.read_text(encoding='utf-8').strip()
+                if contenido:
+                    config = json.loads(contenido)
+            config['datos_licencia'] = datos_cache
             with open(self.archivo_config, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
-            
-            return True
         except Exception as e:
-            print(f"Error guardando cache: {e}")
-            return False
+            print(f"Error guardando cache principal: {e}")
+
+        # Guardar respaldo en AppData solo para FULL/MASTER/developer
+        tipo = datos_licencia.get('tipo', 'TRIAL')
+        es_full = tipo in ['FULL', 'MASTER'] or datos_licencia.get('developer_permanente', False)
+        if es_full:
+            try:
+                self.carpeta_respaldo.mkdir(parents=True, exist_ok=True)
+                respaldo = {
+                    'codigo_licencia': self.obtener_codigo_guardado(),
+                    'datos_licencia': datos_cache
+                }
+                with open(self.archivo_respaldo, 'w', encoding='utf-8') as f:
+                    json.dump(respaldo, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"Error guardando respaldo: {e}")
+
+        return True
 
     def verificar_licencia(self, codigo_licencia, mostrar_mensajes=True):
         """
@@ -218,10 +267,14 @@ class GestorLicencias:
                 # Extender fecha de verificación
                 if not cache.get('es_developer_permanente'):
                     cache['fecha_verificacion'] = datetime.now().isoformat()
-                    with open(self.archivo_config, 'w', encoding='utf-8') as f:
-                        config = json.load(open(self.archivo_config, 'r', encoding='utf-8'))
+                    try:
+                        with open(self.archivo_config, 'r', encoding='utf-8') as f:
+                            config = json.load(f)
                         config['datos_licencia'] = cache
-                        json.dump(config, f, indent=2, ensure_ascii=False)
+                        with open(self.archivo_config, 'w', encoding='utf-8') as f:
+                            json.dump(config, f, indent=2, ensure_ascii=False)
+                    except Exception:
+                        pass
                 
                 return {
                     'tipo': cache.get('tipo', 'TRIAL'),
@@ -257,10 +310,14 @@ class GestorLicencias:
                 # Extender fecha de verificación
                 if not cache.get('es_developer_permanente'):
                     cache['fecha_verificacion'] = datetime.now().isoformat()
-                    with open(self.archivo_config, 'w', encoding='utf-8') as f:
-                        config = json.load(open(self.archivo_config, 'r', encoding='utf-8'))
+                    try:
+                        with open(self.archivo_config, 'r', encoding='utf-8') as f:
+                            config = json.load(f)
                         config['datos_licencia'] = cache
-                        json.dump(config, f, indent=2, ensure_ascii=False)
+                        with open(self.archivo_config, 'w', encoding='utf-8') as f:
+                            json.dump(config, f, indent=2, ensure_ascii=False)
+                    except Exception:
+                        pass
                 
                 return {
                     'tipo': cache.get('tipo', 'TRIAL'),
@@ -294,10 +351,14 @@ class GestorLicencias:
                 # Extender fecha de verificación
                 if not cache.get('es_developer_permanente'):
                     cache['fecha_verificacion'] = datetime.now().isoformat()
-                    with open(self.archivo_config, 'w', encoding='utf-8') as f:
-                        config = json.load(open(self.archivo_config, 'r', encoding='utf-8'))
+                    try:
+                        with open(self.archivo_config, 'r', encoding='utf-8') as f:
+                            config = json.load(f)
                         config['datos_licencia'] = cache
-                        json.dump(config, f, indent=2, ensure_ascii=False)
+                        with open(self.archivo_config, 'w', encoding='utf-8') as f:
+                            json.dump(config, f, indent=2, ensure_ascii=False)
+                    except Exception:
+                        pass
                 
                 return {
                     'tipo': cache.get('tipo', 'TRIAL'),
