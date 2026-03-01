@@ -103,35 +103,19 @@ class PublicadorWhatsAppOracion:
         return True
 
     def cargar_grupos(self):
-        """Carga lista de chats — usa selección temporal si existe"""
-        temp_file = os.path.join(self.carpeta_oracion, "seleccion_temp.json")
-        
-        # Si hay selección del panel, usarla y borrarla
-        if os.path.exists(temp_file):
-            try:
-                with open(temp_file, 'r', encoding='utf-8') as f:
-                    datos = json.load(f)
-                os.remove(temp_file)
-                chats = datos.get('grupos', [])
-                if chats:
-                    print(f"   ✔ Usando selección del panel: {len(chats)} destinatario(s)")
-                    return chats
-            except Exception as e:
-                print(f"   ⚠  Error leyendo selección temporal: {e}")
-
-        # todos los activos de grupos.json
+        """Carga lista de chats seleccionados por defecto en configurador"""
         if not os.path.exists(self.archivo_grupos):
             raise Exception(f"No se encontró {self.archivo_grupos}")
 
         with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
             datos = json.load(f)
 
-        chats_activos = [g for g in datos.get('grupos', []) if g.get('activo', False)]
+        chats = [g for g in datos.get('grupos', []) if g.get('seleccionado', True) and g.get('activo', True)]
 
-        if not chats_activos:
-            raise Exception("No hay chats activos en grupos.json")
+        if not chats:
+            raise Exception("No hay destinatarios seleccionados. Configura en Configurador → Oraciones → Seleccionar destinatarios por defecto.")
 
-        return chats_activos
+        return chats
 
     def seleccionar_mensaje_aleatorio(self, tipo_chat):
         """Selecciona mensaje aleatorio según tipo de chat"""
@@ -154,25 +138,10 @@ class PublicadorWhatsAppOracion:
                 opciones.add_argument("--disable-blink-features=AutomationControlled")
                 opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
 
-                if usar_perfil:
-                    if platform.system() == "Windows":
-                        perfil_path = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
-                    else:
-                        perfil_path = os.path.expanduser("~/.config/google-chrome")
-
-                    if os.path.exists(perfil_path):
-                        opciones.add_argument(f"--user-data-dir={perfil_path}")
-                        opciones.add_argument("--profile-directory=Default")
-                        print(f"   ✓ Usando perfil Chrome existente: {perfil_path}")
-                    else:
-                        print("   ⚠️  Perfil Chrome no encontrado, usando perfil dedicado")
-                        usar_perfil = False
-
-                if not usar_perfil:
-                    perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_oracion_chrome")
-                    os.makedirs(perfil_dedicado, exist_ok=True)
-                    opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
-                    print(f"   ✓ Usando perfil Chrome dedicado: {perfil_dedicado}")
+                perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_oracion_chrome")
+                os.makedirs(perfil_dedicado, exist_ok=True)
+                opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+                print(f"   ✓ Usando perfil Chrome dedicado: {perfil_dedicado}")
 
                 self.driver = webdriver.Chrome(options=opciones)
             else:

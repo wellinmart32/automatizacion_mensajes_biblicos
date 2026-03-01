@@ -35,7 +35,7 @@ class ConfiguradorGUI:
 
         self.root.withdraw()
         width = 620
-        height = 560
+        height = 620
         self.root.geometry(f'{width}x{height}')
         self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
@@ -141,25 +141,23 @@ class ConfiguradorGUI:
                     if not grupo:
                         advertencias.append("• Falta el nombre del grupo de WhatsApp (pestaña Extractor)")
 
-                # 2. Sin grupos de oraciones
-                if 'oraciones' in lista_seq:
-                    archivo_grupos = self.archivo_grupos
-                    grupos_ok = False
-                    if os.path.exists(archivo_grupos):
-                        try:
-                            with open(archivo_grupos, 'r', encoding='utf-8') as fg:
-                                datos = json.load(fg)
-                            grupos_ok = len([g for g in datos.get('grupos', []) if g.get('activo', True)]) > 0
-                        except:
-                            pass
-                    if not grupos_ok:
-                        advertencias.append("• No hay grupos/contactos de oraciones configurados")
+                # 2. Sin grupos de oraciones (siempre validar si es FULL)
+                archivo_grupos = self.archivo_grupos
+                grupos_ok = False
+                if os.path.exists(archivo_grupos):
+                    try:
+                        with open(archivo_grupos, 'r', encoding='utf-8') as fg:
+                            datos = json.load(fg)
+                        grupos_ok = len([g for g in datos.get('grupos', []) if g.get('activo', True)]) > 0
+                    except:
+                        pass
+                if not grupos_ok:
+                    advertencias.append("• No hay grupos/contactos de oraciones configurados (pestaña Oraciones)")
 
-                # 3. Sin mensajes de oración
-                if 'oraciones' in lista_seq:
-                    archivo_msg = os.path.join(self.base_dir, 'llamados-oracion', 'mensajes_oracion.txt')
-                    if not os.path.exists(archivo_msg):
-                        advertencias.append("• No hay mensajes de oración configurados")
+                # 3. Sin mensajes de oración (siempre validar si es FULL)
+                archivo_msg = os.path.join(self.base_dir, 'llamados-oracion', 'mensajes_oracion.txt')
+                if not os.path.exists(archivo_msg):
+                    advertencias.append("• No hay mensajes de oración configurados (pestaña Oraciones)")
 
                 if advertencias:
                     texto = "Configuración guardada, pero hay items pendientes:\n\n"
@@ -354,6 +352,15 @@ class ConfiguradorGUI:
             fg="white" if self.es_full else "#9e9e9e",
             command=self._abrir_gestor_mensajes_oracion if self.es_full else lambda: messagebox.showinfo(
                 "🔒 Versión Completa", "Adquiere la versión Completa en automapro.com para gestionar mensajes.")
+        ).pack(fill='x', pady=(0, 8), ipady=6)
+
+        tk.Button(frame_btns_ora,
+            text="✅  Seleccionar destinatarios por defecto" if self.es_full else "🔒  Seleccionar destinatarios  —  versión Completa",
+            font=("Segoe UI", 10, "bold") if self.es_full else ("Segoe UI", 10),
+            bg="#17a2b8" if self.es_full else "#e0e0e0",
+            fg="white" if self.es_full else "#9e9e9e",
+            command=self._abrir_selector_destinatarios if self.es_full else lambda: messagebox.showinfo(
+                "🔒 Versión Completa", "Adquiere la versión Completa en automapro.com.")
         ).pack(fill='x', ipady=6)
 
         # ==================== PESTAÑA SECUENCIA ====================
@@ -714,17 +721,15 @@ class ConfiguradorGUI:
                     if linea.strip():
                         lista_ind_msg.insert(tk.END, linea.strip())
 
-        def guardar_mensajes():
+        def _guardar_en_archivo():
             grupos = list(lista_grupos_msg.get(0, tk.END))
             inds = list(lista_ind_msg.get(0, tk.END))
-            if not grupos or not inds:
-                messagebox.showerror("❌ Error", "Debe haber al menos un mensaje en cada sección")
+            if not grupos and not inds:
                 return
             contenido = "[GRUPOS]\n" + "\n".join(grupos) + "\n\n[INDIVIDUALES]\n" + "\n".join(inds) + "\n"
             os.makedirs(os.path.dirname(archivo_msg), exist_ok=True)
             with open(archivo_msg, 'w', encoding='utf-8') as f:
                 f.write(contenido)
-            Toast.exito(self.root, "Mensajes de oración guardados correctamente")
 
         def agregar_msg(lista):
             v = tk.Toplevel(ventana)
@@ -742,6 +747,7 @@ class ConfiguradorGUI:
                 if not texto:
                     return
                 lista.insert(tk.END, texto)
+                _guardar_en_archivo()
                 v.destroy()
             fb = tk.Frame(v, bg="#f0f0f0")
             fb.pack(fill='x', padx=20, pady=15)
@@ -774,6 +780,7 @@ class ConfiguradorGUI:
                     return
                 lista.delete(idx)
                 lista.insert(idx, texto)
+                _guardar_en_archivo()
                 v.destroy()
             fb = tk.Frame(v, bg="#f0f0f0")
             fb.pack(fill='x', padx=20, pady=15)
@@ -789,6 +796,7 @@ class ConfiguradorGUI:
                 return
             if messagebox.askyesno("🗑️ Confirmar", "¿Eliminar este mensaje?"):
                 lista.delete(sel[0])
+                _guardar_en_archivo()
 
         tk.Button(frame_btn_g, text="✚ Agregar", font=("Segoe UI", 9, "bold"), bg="#1a73e8", fg="white", command=lambda: agregar_msg(lista_grupos_msg)).pack(side='left', padx=(0, 5), ipady=3)
         tk.Button(frame_btn_g, text="✏️ Editar", font=("Segoe UI", 9), bg="#ffc107", command=lambda: editar_msg(lista_grupos_msg)).pack(side='left', padx=(0, 5), ipady=3)
@@ -798,20 +806,119 @@ class ConfiguradorGUI:
         tk.Button(frame_btn_i, text="✏️ Editar", font=("Segoe UI", 9), bg="#ffc107", command=lambda: editar_msg(lista_ind_msg)).pack(side='left', padx=(0, 5), ipady=3)
         tk.Button(frame_btn_i, text="🗑️ Eliminar", font=("Segoe UI", 9), bg="#dc3545", fg="white", command=lambda: eliminar_msg(lista_ind_msg)).pack(side='left', ipady=3)
 
-        def cerrar_guardando():
-            guardar_mensajes()
-            ventana.destroy()
-
         frame_footer = tk.Frame(ventana, bg="#f0f0f0")
         frame_footer.pack(fill='x', padx=20, pady=(0, 15))
-        tk.Button(frame_footer, text="✅ Guardar y cerrar", font=("Segoe UI", 10, "bold"),
-                  bg="#28a745", fg="white", command=cerrar_guardando, width=20).pack(ipady=4)
+        tk.Button(frame_footer, text="Cerrar", font=("Segoe UI", 10),
+                  bg="#6c757d", fg="white", command=lambda: [ventana.grab_release(), ventana.destroy()], width=20).pack(ipady=4)
 
-        ventana.protocol("WM_DELETE_WINDOW", cerrar_guardando)
+        ventana.protocol("WM_DELETE_WINDOW", lambda: [ventana.grab_release(), ventana.destroy()])
         cargar_mensajes()
         x = (self.root.winfo_screenwidth() // 2) - 240
         y = (self.root.winfo_screenheight() // 2) - 300
         ventana.geometry(f'480x580+{x}+{y}')
+        ventana.deiconify()
+
+    def _abrir_selector_destinatarios(self):
+        """Panel para marcar qué grupos/contactos reciben oraciones por defecto"""
+        import json
+
+        ventana = tk.Toplevel(self.root)
+        ventana.withdraw()
+        ventana.title("✅ Destinatarios por defecto")
+        ventana.resizable(False, False)
+        ventana.configure(bg="#f0f0f0")
+        ventana.transient(self.root)
+        ventana.grab_set()
+
+        header = tk.Frame(ventana, bg="#17a2b8", pady=12)
+        header.pack(fill='x')
+        tk.Label(header, text="✅ Destinatarios por defecto",
+                 font=("Segoe UI", 12, "bold"), bg="#17a2b8", fg="white").pack()
+        tk.Label(header, text="Marca quiénes recibirán oraciones al ejecutar automáticamente",
+                 font=("Segoe UI", 8), bg="#17a2b8", fg="#d0f5ff").pack()
+
+        frame = tk.Frame(ventana, bg="#f0f0f0", padx=20, pady=10)
+        frame.pack(fill='both', expand=True)
+
+        # Cargar grupos
+        grupos = []
+        if os.path.exists(self.archivo_grupos):
+            try:
+                with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                grupos = datos.get('grupos', [])
+            except:
+                pass
+
+        if not grupos:
+            tk.Label(frame, text="No hay grupos/contactos registrados.\nAgrega primero en 'Gestionar grupos y contactos'.",
+                     font=("Segoe UI", 10), bg="#f0f0f0", fg="#555", justify='center').pack(pady=20)
+        else:
+            vars_sel = []
+
+            # Seleccionar todos
+            var_todos = tk.BooleanVar()
+            def toggle_todos():
+                for v in vars_sel:
+                    v.set(var_todos.get())
+            tk.Checkbutton(frame, text="Seleccionar todos", variable=var_todos,
+                           command=toggle_todos, font=("Segoe UI", 10, "bold"), bg="#f0f0f0").pack(anchor='w', pady=(0,4))
+            tk.Frame(frame, bg="#ccc", height=1).pack(fill='x', pady=(0, 8))
+
+            # Frame con scroll
+            canvas = tk.Canvas(frame, bg="#f0f0f0", highlightthickness=0, height=200)
+            scroll = tk.Scrollbar(frame, orient='vertical', command=canvas.yview)
+            frame_scroll = tk.Frame(canvas, bg="#f0f0f0")
+            frame_scroll.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
+            canvas.create_window((0, 0), window=frame_scroll, anchor='nw')
+            canvas.configure(yscrollcommand=scroll.set)
+            canvas.pack(side='left', fill='both', expand=True)
+            scroll.pack(side='right', fill='y')
+
+            for g in grupos:
+                seleccionado = g.get('seleccionado', True)
+                var = tk.BooleanVar(value=seleccionado)
+                vars_sel.append(var)
+                icono = "👥" if g.get('tipo') == 'grupo' else "👤"
+                tk.Checkbutton(frame_scroll,
+                               text=f"{icono} {g['nombre']} ({g.get('tipo','grupo')})",
+                               variable=var, bg="#f0f0f0",
+                               font=("Segoe UI", 10)).pack(anchor='w', pady=2)
+
+            def actualizar_todos(*args):
+                var_todos.set(all(v.get() for v in vars_sel))
+            for v in vars_sel:
+                v.trace_add('write', actualizar_todos)
+            actualizar_todos()
+
+            def guardar_seleccion():
+                try:
+                    with open(self.archivo_grupos, 'r', encoding='utf-8') as f:
+                        datos = json.load(f)
+                    for i, g in enumerate(datos['grupos']):
+                        if i < len(vars_sel):
+                            datos['grupos'][i]['seleccionado'] = vars_sel[i].get()
+                    with open(self.archivo_grupos, 'w', encoding='utf-8') as f:
+                        json.dump(datos, f, ensure_ascii=False, indent=2)
+                    Toast.exito(self.root, "Destinatarios\nGuardados correctamente")
+                    ventana.grab_release()
+                    ventana.destroy()
+                except Exception as e:
+                    messagebox.showerror("❌ Error", f"Error guardando: {e}")
+
+            frame_footer = tk.Frame(ventana, bg="#f0f0f0", padx=20)
+            frame_footer.pack(fill='x', pady=(8, 15))
+            tk.Button(frame_footer, text="Cancelar", font=("Segoe UI", 10),
+                      bg="#e0e0e0", command=lambda: [ventana.grab_release(), ventana.destroy()],
+                      width=12).pack(side='left')
+            tk.Button(frame_footer, text="💾 Guardar", font=("Segoe UI", 10, "bold"),
+                      bg="#17a2b8", fg="white", command=guardar_seleccion,
+                      width=14).pack(side='right')
+
+        ventana.protocol("WM_DELETE_WINDOW", lambda: [ventana.grab_release(), ventana.destroy()])
+        x = (self.root.winfo_screenwidth() // 2) - 220
+        y = (self.root.winfo_screenheight() // 2) - 200
+        ventana.geometry(f'440x380+{x}+{y}')
         ventana.deiconify()
 
     def _guardar_grupo_nuevo(self, nombre, tipo):
