@@ -168,6 +168,7 @@ def _publicar_predicacion(config):
     if config.get('agregar_introduccion_predica', True):
         intro = config.get('texto_introduccion_predica', '🎬 Predicación recomendada:\n\n')
         if intro:
+            intro = intro.rstrip() + '\n\n'
             contenido = f"{intro}{contenido}"
 
     print(f"\n📹 Publicando predicación: {titulo}")

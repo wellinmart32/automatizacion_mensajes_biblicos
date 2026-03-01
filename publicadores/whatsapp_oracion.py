@@ -91,14 +91,18 @@ class PublicadorWhatsAppOracion:
             partes = contenido.split('[INDIVIDUALES]')
             seccion_grupos = partes[0].replace('[GRUPOS]', '').strip()
             seccion_individuales = partes[1].strip()
-
             self.mensajes_grupos = [l.strip() for l in seccion_grupos.split('\n') if l.strip()]
             self.mensajes_individuales = [l.strip() for l in seccion_individuales.split('\n') if l.strip()]
+        elif '[GRUPOS]' in contenido:
+            seccion_grupos = contenido.replace('[GRUPOS]', '').strip()
+            self.mensajes_grupos = [l.strip() for l in seccion_grupos.split('\n') if l.strip()]
+            self.mensajes_individuales = self.mensajes_grupos
         else:
-            raise Exception("El archivo debe tener las secciones [GRUPOS] e [INDIVIDUALES]")
+            self.mensajes_grupos = [l.strip() for l in contenido.split('\n') if l.strip()]
+            self.mensajes_individuales = self.mensajes_grupos
 
-        if not self.mensajes_grupos or not self.mensajes_individuales:
-            raise Exception("Debe haber al menos un mensaje en cada sección")
+        if not self.mensajes_grupos:
+            raise Exception("No hay mensajes configurados en el archivo de oraciones")
 
         return True
 
