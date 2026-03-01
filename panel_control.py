@@ -771,19 +771,207 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"Error mostrando estadísticas:\n{e}")
 
     def _mostrar_ayuda(self):
-        messagebox.showinfo("❓ Ayuda - Mensajes Bíblicos",
-            "📘 GUÍA RÁPIDA\n\n"
-            "⚡ ACCIONES\n"
-            "   Publicar Mensaje Bíblico → publica mensaje en Facebook\n"
-            "   Enviar Oraciones por WhatsApp → envía llamados de oración\n"
-            "   Extraer Predicaciones → trae mensajes de tu grupo\n"
-            "   Publicar Predicaciones → sube lo extraído a Facebook\n\n"
-            "⚙ GESTIÓN\n"
-            "   Configurador → ajusta navegador, tiempos y módulos\n"
-            "   Mensajes → crea y edita tus mensajes bíblicos\n"
-            "   Estadísticas → consulta el historial\n"
-            "   Tareas Automáticas → programa publicaciones (Completa)"
-        )
+        ventana = tk.Toplevel(self.root)
+        ventana.withdraw()
+        ventana.title("❓ Centro de Ayuda")
+        ventana.resizable(False, False)
+        ventana.configure(bg="#f0f0f0")
+        ventana.transient(self.root)
+        ventana.grab_set()
+
+        TEMAS = [
+            ("▶️  Publicar Mensaje Bíblico",
+             "▶️ PUBLICAR MENSAJE BÍBLICO EN FACEBOOK\n\n"
+             "Publica automáticamente un mensaje bíblico en tu página o perfil de Facebook.\n\n"
+             "¿Qué hace?\n"
+             "• Abre el navegador configurado (Firefox o Chrome)\n"
+             "• Inicia sesión usando tu perfil guardado\n"
+             "• Selecciona un mensaje de tu carpeta 'mensajes/'\n"
+             "• Lo publica en Facebook y registra la actividad\n\n"
+             "¿Cuándo usarlo?\n"
+             "• Cuando quieras publicar manualmente un mensaje bíblico\n"
+             "• Si no tienes tareas automáticas programadas\n\n"
+             "Configuración relacionada:\n"
+             "• Configurador → pestaña General (navegador, selección de mensaje)\n"
+             "• Configurador → pestaña Mensajes (hashtags, firma, historial)"),
+
+            ("📱  Enviar Oraciones por WhatsApp",
+             "📱 ENVIAR ORACIONES POR WHATSAPP\n\n"
+             "Envía un llamado de oración a los grupos y contactos configurados en WhatsApp.\n\n"
+             "¿Qué hace?\n"
+             "• Abre WhatsApp Web en el navegador\n"
+             "• Busca cada grupo o contacto configurado\n"
+             "• Envía el mensaje de oración correspondiente\n"
+             "• Usa mensajes distintos para grupos e individuales\n\n"
+             "¿Cuándo usarlo?\n"
+             "• Para convocar a tu comunidad a momentos de oración\n"
+             "• Se puede programar con Tareas Automáticas\n\n"
+             "Configuración relacionada:\n"
+             "• Configurador → pestaña Oraciones (navegador, mensajes)\n"
+             "• Configurador → pestaña Oraciones → Destinatarios por defecto\n\n"
+             "⚠️ Requiere versión Completa"),
+
+            ("🎬  Extraer Predicaciones de WhatsApp",
+             "🎬 EXTRAER PREDICACIONES DE WHATSAPP\n\n"
+             "Extrae enlaces de predicaciones desde un grupo de WhatsApp y los guarda "
+             "para publicarlos después en Facebook.\n\n"
+             "¿Qué hace?\n"
+             "• Abre WhatsApp Web\n"
+             "• Accede al grupo configurado\n"
+             "• Extrae los enlaces más recientes (YouTube, Instagram, etc.)\n"
+             "• Los guarda en 'cola-facebook/pendientes/'\n\n"
+             "¿Cuándo usarlo?\n"
+             "• Antes de usar 'Publicar Prédica Extraída'\n"
+             "• Cuando tu grupo haya recibido predicaciones nuevas\n\n"
+             "Configuración relacionada:\n"
+             "• Configurador → pestaña Extractor WhatsApp\n"
+             "• Debes configurar el nombre exacto del grupo\n\n"
+             "⚠️ Requiere versión Completa"),
+
+            ("📤  Publicar Prédica Extraída",
+             "📤 PUBLICAR PRÉDICA EXTRAÍDA EN FACEBOOK\n\n"
+             "Toma las predicaciones extraídas del grupo de WhatsApp y las publica "
+             "en Facebook, una por una.\n\n"
+             "¿Qué hace?\n"
+             "• Lee el primer archivo de 'cola-facebook/pendientes/'\n"
+             "• Agrega el mensaje introductorio configurado\n"
+             "• Publica el enlace en Facebook con previsualización\n"
+             "• Mueve el archivo a 'cola-facebook/publicados/'\n\n"
+             "¿Cuándo usarlo?\n"
+             "• Después de haber extraído predicaciones\n"
+             "• El botón aparece desactivado si no hay pendientes\n\n"
+             "Configuración relacionada:\n"
+             "• Configurador → pestaña Extractor (mensaje introductorio)\n\n"
+             "⚠️ Requiere versión Completa"),
+
+            ("⚡  Ejecutar Secuencia",
+             "⚡ EJECUTAR SECUENCIA CONFIGURADA\n\n"
+             "Ejecuta automáticamente todos los módulos activados, en el orden "
+             "definido en el Configurador, uno tras otro.\n\n"
+             "¿Qué hace?\n"
+             "• Lee la lista de módulos activos desde la configuración\n"
+             "• Los ejecuta en orden: Bíblico → Extraer → Prédica → Oraciones\n"
+             "• Cada módulo espera a que el anterior termine antes de iniciar\n\n"
+             "¿Cuándo usarlo?\n"
+             "• Cuando quieras correr todo el flujo de una sola vez\n"
+             "• Ideal para programar con Tareas Automáticas\n\n"
+             "Configuración relacionada:\n"
+             "• Configurador → pestaña Secuencia (activa/desactiva y ordena módulos)\n\n"
+             "⚠️ Requiere versión Completa"),
+
+            ("⚙️  Configurador",
+             "⚙️ CONFIGURADOR\n\n"
+             "Panel principal de configuración del sistema. Desde aquí controlas "
+             "el comportamiento de todos los módulos.\n\n"
+             "Pestañas disponibles:\n"
+             "• General → navegador, perfil, modo debug\n"
+             "• Mensajes → selección, hashtags, firma, historial\n"
+             "• Publicación → tiempos de espera, reintentos\n"
+             "• Extractor WhatsApp → grupo, cantidad a extraer, mensaje intro\n"
+             "• Oraciones → navegador, mensajes de oración, destinatarios\n"
+             "• Secuencia → módulos activos y su orden de ejecución\n"
+             "• Límites → tiempo mínimo entre publicaciones\n\n"
+             "Recuerda presionar 💾 Guardar antes de cerrar."),
+
+            ("📝  Gestor de Mensajes",
+             "📝 GESTOR DE MENSAJES\n\n"
+             "Editor visual para crear, editar y organizar los mensajes bíblicos "
+             "que se publicarán en Facebook.\n\n"
+             "¿Qué puedes hacer?\n"
+             "• Ver todos los mensajes en tu carpeta 'mensajes/'\n"
+             "• Crear mensajes nuevos con el editor\n"
+             "• Editar o eliminar mensajes existentes\n"
+             "• Los archivos se guardan como .txt con nombre 'mensaje-XXX.txt'\n\n"
+             "Consejos:\n"
+             "• Un mensaje por archivo\n"
+             "• Puedes incluir saltos de línea y emojis\n"
+             "• El sistema los selecciona en orden aleatorio o secuencial"),
+
+            ("📊  Estadísticas",
+             "📊 ESTADÍSTICAS\n\n"
+             "Muestra un resumen del historial de publicaciones del sistema.\n\n"
+             "¿Qué información muestra?\n"
+             "• Total de publicaciones realizadas\n"
+             "• Publicaciones exitosas y fallidas\n"
+             "• Tasa de éxito en porcentaje\n"
+             "• Tiempo promedio por publicación\n"
+             "• Fecha de la última publicación\n\n"
+             "Los datos se guardan en 'registro_publicaciones.json' y se "
+             "acumulan con el tiempo."),
+
+            ("🗓️  Tareas Automáticas",
+             "🗓️ TAREAS AUTOMÁTICAS\n\n"
+             "Programa el sistema para que se ejecute automáticamente en los "
+             "días y horas que elijas, sin que tengas que abrirlo manualmente.\n\n"
+             "¿Qué puedes programar?\n"
+             "• Días de la semana y hora de ejecución\n"
+             "• Qué módulo ejecutar (bíblico, secuencia completa, etc.)\n"
+             "• Múltiples tareas con distintos horarios\n\n"
+             "¿Cómo funciona?\n"
+             "• Usa el Programador de Tareas de Windows\n"
+             "• La tarea se activa aunque no tengas el panel abierto\n"
+             "• El equipo debe estar encendido a la hora programada\n\n"
+             "⚠️ Requiere versión Completa"),
+        ]
+
+        header = tk.Frame(ventana, bg="#1a73e8", pady=12)
+        header.pack(fill='x')
+        tk.Label(header, text="❓ Centro de Ayuda",
+                 font=("Segoe UI", 14, "bold"), bg="#1a73e8", fg="white").pack()
+        tk.Label(header, text="Selecciona una opción para ver su explicación",
+                 font=("Segoe UI", 9), bg="#1a73e8", fg="white").pack()
+
+        cuerpo = tk.Frame(ventana, bg="#f0f0f0")
+        cuerpo.pack(fill='both', expand=True, padx=15, pady=12)
+
+        panel_izq = tk.Frame(cuerpo, bg="#f0f0f0", width=210)
+        panel_izq.pack(side='left', fill='y', padx=(0, 10))
+        panel_izq.pack_propagate(False)
+
+        tk.Label(panel_izq, text="Opciones", font=("Segoe UI", 9, "bold"),
+                 bg="#f0f0f0", fg="#555").pack(anchor='w', pady=(0, 5))
+
+        panel_der = tk.Frame(cuerpo, bg="white", relief='solid', borderwidth=1)
+        panel_der.pack(side='left', fill='both', expand=True)
+
+        texto_detalle = tk.Text(panel_der, font=("Segoe UI", 10), bg="white",
+                                fg="#333", wrap='word', relief='flat',
+                                padx=15, pady=12, state='disabled', cursor="arrow")
+        scroll = tk.Scrollbar(panel_der, command=texto_detalle.yview)
+        texto_detalle.configure(yscrollcommand=scroll.set)
+        scroll.pack(side='right', fill='y')
+        texto_detalle.pack(fill='both', expand=True)
+
+        botones = []
+
+        def seleccionar(idx):
+            for i, btn in enumerate(botones):
+                btn.config(bg="#1a73e8" if i == idx else "white",
+                           fg="white" if i == idx else "#333")
+            texto_detalle.config(state='normal')
+            texto_detalle.delete('1.0', tk.END)
+            texto_detalle.insert(tk.END, TEMAS[idx][1])
+            texto_detalle.config(state='disabled')
+
+        for i, (nombre, _) in enumerate(TEMAS):
+            btn = tk.Button(panel_izq, text=nombre, font=("Segoe UI", 9),
+                            bg="white", fg="#333", anchor='w', padx=8, pady=5,
+                            relief='solid', borderwidth=1, cursor="hand2",
+                            command=lambda idx=i: seleccionar(idx))
+            btn.pack(fill='x', pady=2)
+            botones.append(btn)
+
+        seleccionar(0)
+
+        tk.Button(ventana, text="Cerrar", font=("Segoe UI", 10),
+                  bg="#6c757d", fg="white", width=12,
+                  command=lambda: [ventana.grab_release(), ventana.destroy()]
+                  ).pack(pady=10)
+
+        ventana.protocol("WM_DELETE_WINDOW",
+                         lambda: [ventana.grab_release(), ventana.destroy()])
+        self._centrar_ventana(ventana, 780, 520)
+        ventana.deiconify()
 
     def _toast(self, titulo, mensaje, duracion=3000, color="#28a745"):
         """Delega al sistema centralizado de toasts"""

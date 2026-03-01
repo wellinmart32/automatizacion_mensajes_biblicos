@@ -127,21 +127,18 @@ class ConfiguradorGUI:
                 f.write("# ============================================================\n\n")
                 self.config.write(f)
 
-            Toast.exito(self.root, "Configuración guardada correctamente")
-
             # Validaciones post-guardado — advertencias opcionales
+            revisar = False
             if self.es_full:
                 advertencias = []
                 secuencia = self.config.get('SECUENCIA', 'modulos_activos', fallback='')
                 lista_seq = [m.strip() for m in secuencia.split(',') if m.strip()]
 
-                # 1. Grupo WhatsApp vacío
                 if 'extraer' in lista_seq or 'publicar_predica' in lista_seq:
                     grupo = self.var_grupo_predicaciones.get().strip()
                     if not grupo:
                         advertencias.append("• Falta el nombre del grupo de WhatsApp (pestaña Extractor)")
 
-                # 2. Sin grupos de oraciones (siempre validar si es FULL)
                 archivo_grupos = self.archivo_grupos
                 grupos_ok = False
                 if os.path.exists(archivo_grupos):
@@ -154,7 +151,6 @@ class ConfiguradorGUI:
                 if not grupos_ok:
                     advertencias.append("• No hay grupos/contactos de oraciones configurados (pestaña Oraciones)")
 
-                # 3. Sin mensajes de oración (siempre validar si es FULL)
                 archivo_msg = os.path.join(self.base_dir, 'llamados-oracion', 'mensajes_oracion.txt')
                 if not os.path.exists(archivo_msg):
                     advertencias.append("• No hay mensajes de oración configurados (pestaña Oraciones)")
@@ -163,10 +159,11 @@ class ConfiguradorGUI:
                     texto = "Configuración guardada, pero hay items pendientes:\n\n"
                     texto += "\n".join(advertencias)
                     texto += "\n\n¿Deseas revisar la configuración ahora?"
-                    if messagebox.askyesno("⚠️ Configuración incompleta", texto):
-                        return  # No cerrar — el usuario puede completar
-                    
-            self.root.after(100, self.root.destroy)
+                    revisar = messagebox.askyesno("⚠️ Configuración incompleta", texto)
+
+            Toast.exito(self.root, "Configuración guardada correctamente")
+            if not revisar:
+                self.root.after(3500, self.root.destroy)
 
         except Exception as e:
             messagebox.showerror("❌ Error", f"Error al guardar: {e}")
