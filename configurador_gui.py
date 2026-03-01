@@ -102,7 +102,7 @@ class ConfiguradorGUI:
                 if not os.path.exists(archivo_oraciones):
                     os.makedirs(carpeta_oraciones, exist_ok=True)
                     with open(archivo_oraciones, 'w', encoding='utf-8') as f:
-                        f.write("🙏 Te invitamos a un momento de oración.\n\nDios te bendiga.")
+                        f.write("[GRUPOS]\n🙏 Hermanos, tomemos un momento para orar juntos.\n\n[INDIVIDUALES]\n🙏 Hola, te invito a un momento de oración.\n")
 
             self.config['NAVEGADOR']['usar_perfil_existente'] = self.var_usar_perfil.get()
             self.config['NAVEGADOR']['maximizar_ventana'] = self.var_maximizar.get()

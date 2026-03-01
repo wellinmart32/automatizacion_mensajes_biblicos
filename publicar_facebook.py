@@ -154,7 +154,6 @@ def _publicar_predicacion(config):
         print("❌ No hay predicaciones pendientes")
         return
 
-    # Leer contenido del archivo
     try:
         with open(ruta_archivo, 'r', encoding='utf-8') as f:
             contenido = f.read().strip()
@@ -164,6 +163,12 @@ def _publicar_predicacion(config):
     except Exception as e:
         print(f"❌ Error leyendo predicación: {e}")
         return
+
+    # FIX Bug 2: Agregar mensaje introductorio desde configuración
+    if config.get('agregar_introduccion_predica', True):
+        intro = config.get('texto_introduccion_predica', '🎬 Predicación recomendada:\n\n')
+        if intro:
+            contenido = f"{intro}{contenido}"
 
     print(f"\n📹 Publicando predicación: {titulo}")
     print("\n🌐 Inicializando navegador...")
@@ -223,15 +228,18 @@ def _ejecutar_secuencia_full(config):
                 print("⚠️  OracionesWhatsApp.exe no encontrado")
 
 
+# FIX Bug 1: Se agrega --secuencia para ejecutar el flujo completo sincrónico
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--solo-biblico', action='store_true')
+    parser.add_argument('--secuencia', action='store_true')
     args, _ = parser.parse_known_args()
 
     estado_licencia = verificar_licencia_inicio()
     if not estado_licencia:
-        print("\n❌ No se pudo verificar la licencia. Cerrando aplicación...")
+        print("\n❌ No se pudo verificar la licencia.")
+        input("\nPresiona Enter para cerrar...")
         return
 
     mostrar_banner()
@@ -248,8 +256,9 @@ def main():
 
     try:
         if args.solo_biblico:
-            # Acción directa desde Panel — solo mensaje bíblico sin importar licencia
             _publicar_mensaje_biblico(config)
+        elif args.secuencia:
+            _ejecutar_secuencia_full(config)
         elif es_full:
             _ejecutar_secuencia_full(config)
         else:

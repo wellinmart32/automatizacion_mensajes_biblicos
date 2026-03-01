@@ -462,40 +462,15 @@ class PanelControl:
                     self._abrir_configurador(pestana='extractor')
                 return
 
-        from compartido.gestor_archivos import leer_estado_predicaciones
-
-        for modulo in lista:
-            try:
-                if modulo == 'biblico':
-                    self._publicar_facebook()
-
-                elif modulo == 'extraer':
-                    self._extraer_predicaciones()
-
-                elif modulo == 'publicar_predica':
-                    # Verificar si hay predicaciones pendientes
-                    estado = leer_estado_predicaciones()
-                    hay_pendientes = estado.get('pendientes', 0) > 0
-                    if hay_pendientes:
-                        self._publicar_predicaciones()
-                    else:
-                        # No hay pendientes — extraer primero si no está ya en la secuencia
-                        if 'extraer' not in lista:
-                            respuesta = messagebox.askokcancel(
-                                "📭 Sin predicaciones",
-                                "No hay predicaciones extraídas.\n\n"
-                                "¿Deseas extraer predicaciones ahora antes de publicar?"
-                            )
-                            if respuesta:
-                                self._extraer_predicaciones()
-                        # Si extraer ya está en la secuencia, fue ejecutado antes — skip publicar
-
-                elif modulo == 'oraciones':
-                    self._enviar_oraciones()
-
-            except Exception as e:
-                messagebox.showerror("❌ Error en secuencia", f"Error ejecutando '{modulo}':\n{e}")
-                break
+        try:
+            exe = self._exe("MensajesBiblicos.exe")
+            if os.path.exists(exe):
+                subprocess.Popen([exe, "--secuencia"]).wait()
+            else:
+                subprocess.Popen([sys.executable, "publicar_facebook.py", "--secuencia"]).wait()
+            self._toast("⚡ Secuencia completada", "Todos los módulos ejecutados")
+        except Exception as e:
+            messagebox.showerror("❌ Error en secuencia", f"Error ejecutando la secuencia:\n{e}")
 
     def _publicar_facebook(self):
         try:
@@ -547,7 +522,8 @@ class PanelControl:
             if os.path.exists(exe):
                 subprocess.Popen([exe])
             else:
-                subprocess.Popen([sys.executable, os.path.join("publicadores", "whatsapp_oracion.py")])
+                script = os.path.join(self.base_dir, "publicadores", "whatsapp_oracion.py")
+                subprocess.Popen([sys.executable, script])
             self._toast("📱 Oraciones WhatsApp", f"Enviando a {len(grupos)} destinatario(s)...")
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo iniciar el módulo:\n{e}")
