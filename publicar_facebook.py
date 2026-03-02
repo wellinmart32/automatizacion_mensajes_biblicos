@@ -228,8 +228,68 @@ def _ejecutar_secuencia_full(config):
             else:
                 print("⚠️  OracionesWhatsApp.exe no encontrado")
 
+def _validar_y_ejecutar_secuencia(config):
+    """Valida configuración antes de ejecutar secuencia (doble clic en exe)"""
+    import tkinter as tk
+    from tkinter import messagebox
+    import configparser as _cp
+    import subprocess as _sp
 
-# FIX Bug 1: Se agrega --secuencia para ejecutar el flujo completo sincrónico
+    base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+
+    cfg = _cp.ConfigParser()
+    cfg.read(os.path.join(base_dir, "config_global.txt"), encoding='utf-8')
+    modulos = cfg.get('SECUENCIA', 'modulos_activos', fallback='').strip()
+
+    root = tk.Tk()
+    root.withdraw()
+
+    # Validación 1: secuencia no configurada
+    if not modulos:
+        respuesta = messagebox.askokcancel(
+            "⚙️ Secuencia no configurada",
+            "No has configurado la secuencia de módulos.\n\n"
+            "¿Deseas ir al Configurador para definirla ahora?",
+            parent=root
+        )
+        root.destroy()
+        if respuesta:
+            exe_cfg = os.path.join(base_dir, "ConfiguradorMensajes.exe")
+            if os.path.exists(exe_cfg):
+                _sp.Popen([exe_cfg, "--pestana=secuencia"]).wait()
+            else:
+                _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=secuencia"]).wait()
+        else:
+            _ejecutar_secuencia_full(config)
+        return
+
+    # Validación 2: grupo WhatsApp no configurado
+    lista = [m.strip() for m in modulos.split(',') if m.strip()]
+    necesita_grupo = 'extraer' in lista or 'publicar_predica' in lista
+    if necesita_grupo:
+        grupo = cfg.get('PREDICACIONES', 'nombre_grupo_whatsapp', fallback='').strip()
+        if not grupo:
+            respuesta = messagebox.askokcancel(
+                "⚠️ Configuración incompleta",
+                "La secuencia incluye 'Extraer Predicaciones' pero no has configurado\n"
+                "el nombre del grupo de WhatsApp.\n\n"
+                "¿Deseas ir al Configurador para completarlo ahora?",
+                parent=root
+            )
+            root.destroy()
+            if respuesta:
+                exe_cfg = os.path.join(base_dir, "ConfiguradorMensajes.exe")
+                if os.path.exists(exe_cfg):
+                    _sp.Popen([exe_cfg, "--pestana=extractor"]).wait()
+                else:
+                    _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=extractor"]).wait()
+            else:
+                _ejecutar_secuencia_full(config)
+            return
+
+    root.destroy()
+    _ejecutar_secuencia_full(config)
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -261,7 +321,7 @@ def main():
         elif args.secuencia:
             _ejecutar_secuencia_full(config)
         elif es_full:
-            _ejecutar_secuencia_full(config)
+            _validar_y_ejecutar_secuencia(config)
         else:
             _publicar_mensaje_biblico(config)
     except KeyboardInterrupt:
