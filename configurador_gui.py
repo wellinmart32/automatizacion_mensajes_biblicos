@@ -89,7 +89,6 @@ class ConfiguradorGUI:
                 self.config['PREDICACIONES']['activar_predicaciones'] = 'si'
                 self.config['PREDICACIONES']['nombre_grupo_whatsapp'] = self.var_grupo_predicaciones.get()
                 self.config['PREDICACIONES']['mensajes_por_extraccion'] = self.var_mensajes_extraccion.get()
-                self.config['PREDICACIONES']['alternar_con_predicaciones'] = self.var_alternar.get()
                 self.config['PREDICACIONES']['navegador'] = self.var_nav_predicaciones.get()
                 self.config['PREDICACIONES']['mensaje_intro_predica'] = self.var_mensaje_intro_predica.get()
 
@@ -253,11 +252,6 @@ class ConfiguradorGUI:
         self.var_hashtags_texto = tk.StringVar(value=self._get('MENSAJES', 'hashtags', '#Fe,#Biblia'))
         tk.Entry(tab_mensajes, textvariable=self.var_hashtags_texto, width=40, font=("Segoe UI", 10)).pack(anchor='w', padx=20, pady=(0, 12))
 
-        self._seccion(tab_mensajes, "🔄 Alternar mensajes bíblicos con predicaciones extraídas")
-        tk.Label(tab_mensajes, text="Sí = publica 1 bíblico, 1 predicación, 1 bíblico...", font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
-        self.var_alternar = tk.StringVar(value=self._get('PREDICACIONES', 'alternar_con_predicaciones', 'no'))
-        self._radio_si_no(tab_mensajes, self.var_alternar)
-
         # ==================== PESTAÑA EXTRACTOR WHATSAPP ====================
         tab_pred = ttk.Frame(notebook)
         notebook.add(tab_pred, text="🎬 Extractor WhatsApp")
@@ -297,15 +291,6 @@ class ConfiguradorGUI:
         self.var_mensaje_intro_predica = tk.StringVar(value=self._get('PREDICACIONES', 'mensaje_intro_predica', ''))
         tk.Entry(tab_pred, textvariable=self.var_mensaje_intro_predica, width=50, font=("Segoe UI", 10),
                  state='normal' if self.es_full else 'disabled').pack(anchor='w', padx=20, pady=(0, 12))
-
-        self._seccion(tab_pred, "🔄 Alternancia con mensajes bíblicos")
-        tk.Label(tab_pred, text="Sí = alterna: 1 mensaje bíblico + 1 predicación + ...", font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
-        frame_alt = tk.Frame(tab_pred, bg="#f0f0f0")
-        frame_alt.pack(anchor='w', padx=20, pady=(4, 0))
-        tk.Radiobutton(frame_alt, text="Sí", variable=self.var_alternar, value="si", bg="#f0f0f0", font=("Segoe UI", 10),
-                       state='normal' if self.es_full else 'disabled').pack(side='left', padx=(0, 15))
-        tk.Radiobutton(frame_alt, text="No", variable=self.var_alternar, value="no", bg="#f0f0f0", font=("Segoe UI", 10),
-                       state='normal' if self.es_full else 'disabled').pack(side='left')
 
         # ==================== PESTAÑA ORACIONES ====================
         tab_ora = ttk.Frame(notebook)
