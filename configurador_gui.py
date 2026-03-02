@@ -17,7 +17,7 @@ class ConfiguradorGUI:
         args, _ = parser.parse_known_args()
         self.pestana_inicial = args.pestana
 
-        self.config = configparser.ConfigParser()
+        self.config = configparser.RawConfigParser(delimiters=('=',))
         self.cambios = {}
 
         if getattr(sys, 'frozen', False):
@@ -202,7 +202,7 @@ class ConfiguradorGUI:
 
         # ==================== PESTAÑA FACEBOOK ====================
         tab_fb = ttk.Frame(notebook)
-        notebook.add(tab_fb, text="📘 Facebook")
+        notebook.add(tab_fb, text="▶️ Publicar Bíblico")
 
         tk.Label(tab_fb, text="Configuración para publicar mensajes bíblicos en Facebook automáticamente",
                  font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))

@@ -21,7 +21,7 @@ def leer_config_global():
         print("⚠️  No existe config_global.txt. Creando configuración por defecto...")
         crear_config_defecto()
     
-    config = configparser.ConfigParser()
+    config = configparser.RawConfigParser(delimiters=('=',))
     config.read(archivo_config, encoding='utf-8')
     
     # Convertir a diccionario con tipos correctos
@@ -499,7 +499,7 @@ def guardar_nombre_grupo_whatsapp(nombre_grupo):
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     archivo_config = os.path.join(base_dir, "config_global.txt")
-    config = configparser.ConfigParser()
+    config = configparser.RawConfigParser(delimiters=('=',))
     config.read(archivo_config, encoding='utf-8')
     
     if not config.has_section('PREDICACIONES'):

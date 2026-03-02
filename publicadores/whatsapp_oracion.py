@@ -234,10 +234,11 @@ class PublicadorWhatsAppOracion:
             campo_busqueda.click()
             time.sleep(1)
 
-            campo_busqueda.clear()
+            campo_busqueda.send_keys(Keys.CONTROL + 'a')
+            time.sleep(0.3)
+            campo_busqueda.send_keys(Keys.DELETE)
             time.sleep(0.5)
 
-            # Escribir letra por letra
             for caracter in nombre_chat:
                 campo_busqueda.send_keys(caracter)
                 time.sleep(0.05)
@@ -284,12 +285,11 @@ class PublicadorWhatsAppOracion:
             campo_mensaje.click()
             time.sleep(0.5)
 
-            # Escribir letra por letra
-            for caracter in mensaje:
-                campo_mensaje.send_keys(caracter)
-                time.sleep(0.05)
-
+            import pyperclip
+            pyperclip.copy(mensaje)
+            campo_mensaje.send_keys(Keys.CONTROL + 'v')
             time.sleep(0.5)
+
             campo_mensaje.send_keys(Keys.ENTER)
             time.sleep(2)
 

@@ -62,8 +62,10 @@ class PublicadorFacebook:
                 base = os.path.expanduser("~/.config/google-chrome")
             perfil_dedicado = os.path.join(os.path.dirname(os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/facebook_publicador'))), "chrome_mensajes")
         else:
-            perfil_dedicado = os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/facebook_publicador'))
-        os.makedirs(perfil_dedicado, exist_ok=True)
+            import tempfile
+            perfil_dedicado = tempfile.mkdtemp(prefix="chrome_mb_tmp_")
+        if usar_perfil:
+            os.makedirs(perfil_dedicado, exist_ok=True)
         opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
         opciones.add_argument("--no-first-run")
         opciones.add_argument("--no-default-browser-check")
