@@ -22,6 +22,8 @@ Name: "desktopicon"; Description: "Crear icono en el Escritorio"; GroupDescripti
 Source: "dist\MensajesBiblicos.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\ConfiguradorMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\OracionesWhatsApp.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\WizardMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\PanelControl.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "config_global.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "compartido\*"; DestDir: "{app}\compartido"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "publicadores\*"; DestDir: "{app}\publicadores"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -33,9 +35,10 @@ Name: "{app}\perfiles"
 
 [Icons]
 Name: "{autoprograms}\Mensajes Biblicos\Mensajes Biblicos"; Filename: "{app}\MensajesBiblicos.exe"
+Name: "{autoprograms}\Mensajes Biblicos\Panel de Control"; Filename: "{app}\PanelControl.exe"
 Name: "{autoprograms}\Mensajes Biblicos\Configurador"; Filename: "{app}\ConfiguradorMensajes.exe"
 Name: "{autodesktop}\Mensajes Biblicos"; Filename: "{app}\MensajesBiblicos.exe"; Tasks: desktopicon
-Name: "{autodesktop}\Configurador MB"; Filename: "{app}\ConfiguradorMensajes.exe"; Tasks: desktopicon
+Name: "{autodesktop}\Panel de Control MB"; Filename: "{app}\PanelControl.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\MensajesBiblicos.exe"; Description: "Ejecutar Mensajes Biblicos"; Flags: nowait postinstall skipifsilent
