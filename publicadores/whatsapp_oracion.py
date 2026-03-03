@@ -147,7 +147,7 @@ class PublicadorWhatsAppOracion:
                 opciones.add_argument("--disable-blink-features=AutomationControlled")
                 opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
 
-                perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_oracion_chrome")
+                perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_chrome_compartido")
                 os.makedirs(perfil_dedicado, exist_ok=True)
                 opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
                 print(f"   ✓ Usando perfil Chrome dedicado: {perfil_dedicado}")

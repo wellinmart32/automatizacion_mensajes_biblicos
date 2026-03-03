@@ -117,24 +117,10 @@ class ExtractorWhatsAppPredicaciones:
                 opciones.add_argument("--disable-blink-features=AutomationControlled")
                 opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
 
-                if usar_perfil:
-                    if platform.system() == "Windows":
-                        perfil_path = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
-                    else:
-                        perfil_path = os.path.expanduser("~/.config/google-chrome")
-
-                    if os.path.exists(perfil_path):
-                        opciones.add_argument(f"--user-data-dir={perfil_path}")
-                        opciones.add_argument("--profile-directory=Default")
-                        print(f"   ✓ Usando perfil Chrome: {perfil_path}")
-                    else:
-                        usar_perfil = False
-
-                if not usar_perfil:
-                    perfil_dedicado = os.path.join(self.base_dir, "perfiles", "predicaciones_chrome")
-                    os.makedirs(perfil_dedicado, exist_ok=True)
-                    opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
-                    print(f"   ✓ Usando perfil Chrome dedicado")
+                perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_chrome_compartido")
+                os.makedirs(perfil_dedicado, exist_ok=True)
+                opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+                print(f"   ✓ Usando perfil Chrome dedicado: {perfil_dedicado}")
 
                 self.driver = webdriver.Chrome(options=opciones)
             else:

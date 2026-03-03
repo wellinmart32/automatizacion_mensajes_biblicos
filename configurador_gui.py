@@ -46,6 +46,13 @@ class ConfiguradorGUI:
         self.es_full = self._verificar_licencia_full()
         self._construir_ui()
 
+        try:
+            ico = os.path.join(self.base_dir, "compartido", "icono_configurador.ico")
+            if os.path.exists(ico):
+                self.root.iconbitmap(ico)
+        except Exception:
+            pass
+
         self.root.deiconify()
 
     def _verificar_licencia_full(self):
