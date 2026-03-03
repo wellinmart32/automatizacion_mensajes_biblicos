@@ -86,25 +86,28 @@ class ExtractorWhatsAppPredicaciones:
         return max(todos) + 1 if todos else 1
     
     def _leer_config_navegador(self):
-        """Lee navegador y perfil desde [PREDICACIONES] en config_global.txt"""
+        """Lee navegador, perfil y maximizar desde config_global.txt"""
         try:
-            config = configparser.ConfigParser()
+            config = configparser.RawConfigParser(delimiters=('=',))
             if os.path.exists(self.archivo_config):
                 config.read(self.archivo_config, encoding='utf-8')
                 nav = 'firefox'
                 usar_perfil = True
+                maximizar = True
                 if config.has_option('PREDICACIONES', 'navegador'):
                     nav = config['PREDICACIONES']['navegador'].split('#')[0].strip()
                 if config.has_option('PREDICACIONES', 'usar_perfil_existente'):
                     usar_perfil = config['PREDICACIONES']['usar_perfil_existente'].split('#')[0].strip().lower() == 'si'
-                return nav, usar_perfil
+                if config.has_option('NAVEGADOR', 'maximizar_ventana'):
+                    maximizar = config['NAVEGADOR']['maximizar_ventana'].split('#')[0].strip().lower() == 'si'
+                return nav, usar_perfil, maximizar
         except Exception as e:
             print(f"⚠️  Error leyendo config navegador: {e}")
-        return 'firefox', True
+        return 'firefox', True, True
 
     def iniciar_navegador(self):
         """Inicializa el navegador configurado en [PREDICACIONES]"""
-        navegador, usar_perfil = self._leer_config_navegador()
+        navegador, usar_perfil, maximizar = self._leer_config_navegador()
         print(f"🌐 Iniciando {navegador.capitalize()} para WhatsApp Web...")
 
         try:
@@ -164,7 +167,8 @@ class ExtractorWhatsAppPredicaciones:
 
                 self.driver = webdriver.Firefox(options=opciones)
 
-            self.driver.maximize_window()
+            if maximizar:
+                self.driver.maximize_window()
             print("✅ Navegador iniciado")
 
             print("📱 Abriendo WhatsApp Web...")

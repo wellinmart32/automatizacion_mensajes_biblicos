@@ -90,7 +90,7 @@ class ConfiguradorGUI:
                 self.config['PREDICACIONES']['nombre_grupo_whatsapp'] = self.var_grupo_predicaciones.get()
                 self.config['PREDICACIONES']['mensajes_por_extraccion'] = self.var_mensajes_extraccion.get()
                 self.config['PREDICACIONES']['navegador'] = self.var_nav_predicaciones.get()
-                self.config['PREDICACIONES']['mensaje_intro_predica'] = self.var_mensaje_intro_predica.get()
+                self.config['PREDICACIONES']['texto_introduccion_predica'] = self.var_mensaje_intro_predica.get()
 
             if self.es_full:
                 if not self.config.has_section('ORACIONES'):
@@ -290,7 +290,7 @@ class ConfiguradorGUI:
         self._seccion(tab_pred, "💬 Mensaje introductorio al publicar prédica")
         tk.Label(tab_pred, text="Se agrega antes del enlace. Si está vacío, publica solo el enlace.",
                  font=("Segoe UI", 8), fg="gray", bg="#f0f0f0").pack(anchor='w', padx=20)
-        self.var_mensaje_intro_predica = tk.StringVar(value=self._get('PREDICACIONES', 'mensaje_intro_predica', ''))
+        self.var_mensaje_intro_predica = tk.StringVar(value=self._get('PREDICACIONES', 'texto_introduccion_predica', ''))
         tk.Entry(tab_pred, textvariable=self.var_mensaje_intro_predica, width=50, font=("Segoe UI", 10),
                  state='normal' if self.es_full else 'disabled').pack(anchor='w', padx=20, pady=(0, 12))
 
