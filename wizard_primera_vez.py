@@ -1098,7 +1098,7 @@ class WizardPrimeraVez:
             else:
                 subprocess.Popen([sys.executable, 'publicar_facebook.py'])
             self._mostrar_toast(
-                "✅ Publicación Iniciada\n\nEl navegador se abrirá en unos segundos...",
+                "🚀 Publicación Iniciada\n\nEl navegador se abrirá en unos segundos...",
                 duracion=3000,
                 color="#28a745"
             )

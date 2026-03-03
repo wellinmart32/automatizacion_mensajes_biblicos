@@ -204,7 +204,7 @@ def _ejecutar_secuencia_full(config):
     import subprocess
     base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
-    cfg = configparser.ConfigParser()
+    cfg = configparser.RawConfigParser(delimiters=('=',))
     cfg.read(os.path.join(base_dir, "config_global.txt"), encoding='utf-8')
     modulos = cfg.get('SECUENCIA', 'modulos_activos', fallback='biblico,extraer,publicar_predica').strip()
     lista = [m.strip() for m in modulos.split(',') if m.strip()]

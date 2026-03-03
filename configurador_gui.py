@@ -240,15 +240,7 @@ class ConfiguradorGUI:
         tk.Label(tab_mensajes, text="Configura cómo se eligen y formatean los mensajes bíblicos al publicar",
                  font=("Segoe UI", 9), fg="#555", bg="#f0f0f0").pack(anchor='w', padx=20, pady=(10, 0))
 
-        self._seccion(tab_mensajes, "🎲 Método de selección de mensajes")
-        sel_valor = self._get('MENSAJES', 'seleccion', 'aleatorio')
-        if sel_valor not in ['aleatorio', 'secuencial']:
-            sel_valor = 'aleatorio'
-        self.var_seleccion = tk.StringVar(value=sel_valor)
-        frame_sel = tk.Frame(tab_mensajes, bg="#f0f0f0")
-        frame_sel.pack(anchor='w', padx=20, pady=(0, 12))
-        for opcion in ['aleatorio', 'secuencial']:
-            tk.Radiobutton(frame_sel, text=opcion.capitalize(), variable=self.var_seleccion, value=opcion, bg="#f0f0f0", font=("Segoe UI", 10)).pack(side='left', padx=8)
+        self.var_seleccion = tk.StringVar(value='aleatorio')
 
         self._seccion(tab_mensajes, "🧠 Memoria: últimos N mensajes a evitar repetir")
         self.var_historial = tk.StringVar(value=self._get('MENSAJES', 'historial_evitar_repetir', '5'))
@@ -701,7 +693,17 @@ class ConfiguradorGUI:
             lista_grupos_msg.delete(0, tk.END)
             lista_ind_msg.delete(0, tk.END)
             if not os.path.exists(archivo_msg):
-                return
+                # Crear archivo con mensajes por defecto
+                os.makedirs(os.path.dirname(archivo_msg), exist_ok=True)
+                with open(archivo_msg, 'w', encoding='utf-8') as f:
+                    f.write(
+                        "[GRUPOS]\n"
+                        "🙏 Hermanos, tomemos un momento para orar juntos. ¡Los invito a elevar una oración!\n"
+                        "🙏 Familia, detengámonos un instante para orar. ¡El Señor nos escucha!\n\n"
+                        "[INDIVIDUALES]\n"
+                        "🙏 Hola, te invito a un momento de oración. ¡Oremos juntos!\n"
+                        "🙏 Amigo/a, ¿podemos orar juntos un momento? ¡Dios tiene algo para ti hoy!\n"
+                    )
             with open(archivo_msg, 'r', encoding='utf-8') as f:
                 contenido = f.read()
             if '[GRUPOS]' in contenido and '[INDIVIDUALES]' in contenido:

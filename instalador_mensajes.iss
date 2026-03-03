@@ -24,6 +24,7 @@ Source: "dist\ConfiguradorMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\OracionesWhatsApp.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\WizardMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\PanelControl.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\ExtractorPredicaciones.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "config_global.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "compartido\*"; DestDir: "{app}\compartido"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "publicadores\*"; DestDir: "{app}\publicadores"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -479,7 +479,7 @@ class PanelControl:
                 subprocess.Popen([exe, "--solo-biblico"])
             else:
                 subprocess.Popen([sys.executable, "flujo_completo_facebook.py", "--solo-biblico"])
-            self._toast("✅ Publicación iniciada", "El navegador se abrirá en unos segundos...")
+            self._toast("🚀 Publicación iniciada", "El navegador se abrirá en unos segundos...")
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo iniciar la publicación:\n{e}")
 
