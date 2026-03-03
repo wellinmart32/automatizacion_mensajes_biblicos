@@ -125,7 +125,7 @@ class PublicadorWhatsAppOracion:
         """Selecciona mensaje aleatorio según tipo de chat"""
         if tipo_chat == "grupo":
             return random.choice(self.mensajes_grupos)
-        elif tipo_chat == "individual":
+        elif tipo_chat in ["individual", "contacto"]:
             return random.choice(self.mensajes_individuales)
         else:
             return random.choice(self.mensajes_grupos)
