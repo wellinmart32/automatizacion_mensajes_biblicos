@@ -224,73 +224,98 @@ class PublicadorWhatsAppOracion:
             return False
 
     def buscar_chat(self, nombre_chat):
-        """Busca chat por nombre - escribe letra por letra"""
+        """Busca chat por nombre"""
         print(f"\n🔍 Buscando chat: {nombre_chat}")
-
         try:
-            campo_busqueda = self.driver.find_element(
-                By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"
+            from selenium.webdriver.common.action_chains import ActionChains
+            try:
+                ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+                time.sleep(0.5)
+            except:
+                pass
+
+            campo_busqueda = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
+                )
             )
             campo_busqueda.click()
-            time.sleep(1)
+            time.sleep(0.8)
 
-            campo_busqueda.send_keys(Keys.CONTROL + 'a')
-            time.sleep(0.3)
-            campo_busqueda.send_keys(Keys.DELETE)
+            self.driver.execute_script("""
+                var el = arguments[0];
+                el.focus();
+                el.innerHTML = '';
+                el.dispatchEvent(new Event('input', {bubbles: true}));
+            """, campo_busqueda)
             time.sleep(0.5)
 
-            for caracter in nombre_chat:
-                campo_busqueda.send_keys(caracter)
-                time.sleep(0.05)
+            import pyperclip
+            pyperclip.copy(nombre_chat)
+            ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+            time.sleep(2.5)
 
-            time.sleep(2)
-
-            # Buscar resultado
             try:
-                contacto = WebDriverWait(self.driver, 20).until(
+                contacto = WebDriverWait(self.driver, 15).until(
                     EC.element_to_be_clickable((By.XPATH, f"//span[@title='{nombre_chat}']"))
                 )
                 contacto.click()
-                time.sleep(3)
+                time.sleep(2)
                 print(f"   ✅ Chat '{nombre_chat}' abierto")
                 return True
             except:
-                contacto_alt = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable(
-                        (By.XPATH, f"//span[contains(text(), '{nombre_chat}')]")
+                try:
+                    contacto_alt = WebDriverWait(self.driver, 8).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, f"//span[contains(@title, '{nombre_chat}')]")
+                        )
                     )
-                )
-                contacto_alt.click()
-                time.sleep(3)
-                print(f"   ✅ Chat '{nombre_chat}' abierto")
-                return True
+                    contacto_alt.click()
+                    time.sleep(2)
+                    print(f"   ✅ Chat '{nombre_chat}' abierto")
+                    return True
+                except:
+                    print(f"   ❌ No se encontró '{nombre_chat}'")
+                    return False
 
         except Exception as e:
             print(f"   ❌ Error buscando chat: {e}")
             return False
 
     def enviar_mensaje(self, mensaje):
-        """Envía mensaje en chat activo - escribe letra por letra"""
+        """Envía mensaje en chat activo"""
         print(f"\n✉️  Enviando mensaje...")
-
         try:
-            time.sleep(2)
+            from selenium.webdriver.common.action_chains import ActionChains
+            time.sleep(1.5)
 
-            campo_mensaje = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located(
+            campo_mensaje = WebDriverWait(self.driver, 15).until(
+                EC.element_to_be_clickable(
                     (By.XPATH, "//div[@contenteditable='true'][@data-tab='10']")
                 )
             )
 
+            self.driver.execute_script("arguments[0].focus();", campo_mensaje)
+            time.sleep(0.5)
             campo_mensaje.click()
             time.sleep(0.5)
 
             import pyperclip
             pyperclip.copy(mensaje)
-            campo_mensaje.send_keys(Keys.CONTROL + 'v')
-            time.sleep(0.5)
+            time.sleep(0.3)
+            ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+            time.sleep(1.0)
 
-            campo_mensaje.send_keys(Keys.ENTER)
+            contenido = self.driver.execute_script(
+                "return arguments[0].innerText || '';", campo_mensaje)
+            if not contenido.strip():
+                print("   ⚠️  Campo vacío, reintentando...")
+                campo_mensaje.click()
+                time.sleep(0.5)
+                ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+                time.sleep(1.0)
+
+            ActionChains(self.driver).send_keys(Keys.ENTER).perform()
             time.sleep(2)
 
             print(f"   ✅ Mensaje enviado: {mensaje[:50]}...")

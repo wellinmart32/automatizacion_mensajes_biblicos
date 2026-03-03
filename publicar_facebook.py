@@ -192,8 +192,15 @@ def _publicar_predicacion(config):
     finally:
         publicador.cerrar_navegador()
 
-
 def _ejecutar_secuencia_full(config):
+    if not getattr(sys, '_consola_abierta', False):
+        try:
+            ctypes.windll.kernel32.AllocConsole()
+            sys.stdout = open('CONOUT$', 'w')
+            sys.stderr = open('CONOUT$', 'w')
+            sys._consola_abierta = True
+        except:
+            pass
     import subprocess
     base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
@@ -355,9 +362,18 @@ def _verificar_wizard_completado():
 if __name__ == "__main__":
     if not _verificar_wizard_completado():
         sys.exit(0)
-    ctypes.windll.kernel32.AllocConsole()
-    sys.stdout = open('CONOUT$', 'w')
-    sys.stderr = open('CONOUT$', 'w')
+
+    import argparse as _ap
+    _p = _ap.ArgumentParser()
+    _p.add_argument('--solo-biblico', action='store_true')
+    _p.add_argument('--secuencia', action='store_true')
+    _args, _ = _p.parse_known_args()
+
+    if _args.solo_biblico or _args.secuencia:
+        ctypes.windll.kernel32.AllocConsole()
+        sys.stdout = open('CONOUT$', 'w')
+        sys.stderr = open('CONOUT$', 'w')
+
     try:
         main()
     except KeyboardInterrupt:

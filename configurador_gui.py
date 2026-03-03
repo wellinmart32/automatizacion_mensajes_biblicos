@@ -159,8 +159,11 @@ class ConfiguradorGUI:
                     texto += "\n".join(advertencias)
                     texto += "\n\n¿Deseas revisar la configuración ahora?"
                     revisar = messagebox.askyesno("⚠️ Configuración incompleta", texto)
+                else:
+                    Toast.exito(self.root, "Configuración guardada correctamente")
+            else:
+                Toast.exito(self.root, "Configuración guardada correctamente")
 
-            Toast.exito(self.root, "Configuración guardada correctamente")
             if not revisar:
                 self.root.after(3500, self.root.destroy)
 
