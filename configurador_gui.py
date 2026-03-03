@@ -867,15 +867,52 @@ class ConfiguradorGUI:
             canvas.pack(side='left', fill='both', expand=True)
             scroll.pack(side='right', fill='y')
 
+            # Cargar mensajes disponibles para el dropdown
+            mensajes_grupos_lista = []
+            mensajes_ind_lista = []
+            archivo_msg = os.path.join(self.base_dir, "llamados-oracion", "mensajes_oracion.txt")
+            if os.path.exists(archivo_msg):
+                with open(archivo_msg, 'r', encoding='utf-8') as f:
+                    contenido_msg = f.read()
+                if '[GRUPOS]' in contenido_msg and '[INDIVIDUALES]' in contenido_msg:
+                    partes = contenido_msg.split('[INDIVIDUALES]')
+                    mensajes_grupos_lista = [l.strip() for l in partes[0].replace('[GRUPOS]', '').strip().split('\n') if l.strip()]
+                    mensajes_ind_lista = [l.strip() for l in partes[1].strip().split('\n') if l.strip()]
+                else:
+                    todas = [l.strip() for l in contenido_msg.split('\n') if l.strip() and not l.startswith('[')]
+                    mensajes_grupos_lista = todas
+                    mensajes_ind_lista = todas
+
+            vars_msg = []
+
             for g in grupos:
                 seleccionado = g.get('seleccionado', True)
                 var = tk.BooleanVar(value=seleccionado)
                 vars_sel.append(var)
                 icono = "👥" if g.get('tipo') == 'grupo' else "👤"
-                tk.Checkbutton(frame_scroll,
-                               text=f"{icono} {g['nombre']} ({g.get('tipo','grupo')})",
+
+                # Mensajes disponibles según tipo
+                msgs_disponibles = mensajes_grupos_lista if g.get('tipo') == 'grupo' else mensajes_ind_lista
+                opciones = ["🎲 Aleatorio"] + msgs_disponibles
+
+                # Valor guardado
+                msg_guardado = g.get('mensaje_asignado', None)
+                val_inicial = msg_guardado if msg_guardado and msg_guardado in msgs_disponibles else "🎲 Aleatorio"
+                var_msg = tk.StringVar(value=val_inicial)
+                vars_msg.append(var_msg)
+
+                fila = tk.Frame(frame_scroll, bg="#f0f0f0")
+                fila.pack(fill='x', pady=3)
+
+                tk.Checkbutton(fila,
+                               text=f"{icono} {g['nombre']}",
                                variable=var, bg="#f0f0f0",
-                               font=("Segoe UI", 10)).pack(anchor='w', pady=2)
+                               font=("Segoe UI", 10), width=20, anchor='w').pack(side='left')
+
+                cb = ttk.Combobox(fila, textvariable=var_msg,
+                                  values=opciones, state='readonly',
+                                  width=30, font=("Segoe UI", 8))
+                cb.pack(side='left', padx=(5, 0))
 
             def actualizar_todos(*args):
                 var_todos.set(all(v.get() for v in vars_sel))
@@ -890,6 +927,9 @@ class ConfiguradorGUI:
                     for i, g in enumerate(datos['grupos']):
                         if i < len(vars_sel):
                             datos['grupos'][i]['seleccionado'] = vars_sel[i].get()
+                        if i < len(vars_msg):
+                            val = vars_msg[i].get()
+                            datos['grupos'][i]['mensaje_asignado'] = None if val == "🎲 Aleatorio" else val
                     with open(self.archivo_grupos, 'w', encoding='utf-8') as f:
                         json.dump(datos, f, ensure_ascii=False, indent=2)
                     Toast.exito(self.root, "Destinatarios\nGuardados correctamente")

@@ -121,8 +121,13 @@ class PublicadorWhatsAppOracion:
 
         return chats
 
-    def seleccionar_mensaje_aleatorio(self, tipo_chat):
-        """Selecciona mensaje aleatorio según tipo de chat"""
+    def seleccionar_mensaje(self, chat):
+        """Selecciona mensaje para el chat — usa asignado si existe, aleatorio si no"""
+        mensaje_asignado = chat.get('mensaje_asignado', None)
+        if mensaje_asignado and mensaje_asignado.strip():
+            return mensaje_asignado.strip()
+
+        tipo_chat = chat.get('tipo', 'grupo')
         if tipo_chat == "grupo":
             return random.choice(self.mensajes_grupos)
         elif tipo_chat in ["individual", "contacto"]:
@@ -228,8 +233,22 @@ class PublicadorWhatsAppOracion:
         print(f"\n🔍 Buscando chat: {nombre_chat}")
         try:
             from selenium.webdriver.common.action_chains import ActionChains
+
+            # Cerrar chat abierto volviendo al panel lateral
             try:
                 ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+                time.sleep(0.5)
+            except:
+                pass
+
+            # Clic en el panel lateral para asegurar foco correcto
+            try:
+                panel = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//div[@id='pane-side']")
+                    )
+                )
+                panel.click()
                 time.sleep(0.5)
             except:
                 pass
@@ -242,11 +261,13 @@ class PublicadorWhatsAppOracion:
             campo_busqueda.click()
             time.sleep(0.8)
 
+            # Limpiar campo con JavaScript + disparo de evento
             self.driver.execute_script("""
                 var el = arguments[0];
                 el.focus();
                 el.innerHTML = '';
                 el.dispatchEvent(new Event('input', {bubbles: true}));
+                el.dispatchEvent(new InputEvent('input', {bubbles: true}));
             """, campo_busqueda)
             time.sleep(0.5)
 
@@ -381,7 +402,7 @@ class PublicadorWhatsAppOracion:
             print(f"📨 CHAT {i}/{len(chats)}: {tipo_emoji} {nombre_chat} ({tipo_chat})")
             print(f"{'='*70}")
 
-            mensaje = self.seleccionar_mensaje_aleatorio(tipo_chat)
+            mensaje = self.seleccionar_mensaje(chat)
             print(f"🎲 Mensaje seleccionado: '{mensaje}'")
 
             if not self.buscar_chat(nombre_chat):
