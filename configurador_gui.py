@@ -49,9 +49,11 @@ class ConfiguradorGUI:
         self._construir_ui()
 
         try:
-            ico = os.path.join(self.base_dir, "compartido", "icono_configurador.ico")
-            if os.path.exists(ico):
-                self.root.iconbitmap(ico)
+            for nombre in ["icono_configurador.ico", "pluma.ico", "configurador.ico"]:
+                ico = os.path.join(self.base_dir, "compartido", nombre)
+                if os.path.exists(ico):
+                    self.root.iconbitmap(ico)
+                    break
         except Exception:
             pass
 

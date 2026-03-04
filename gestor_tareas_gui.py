@@ -34,7 +34,13 @@ class GestorTareasGUI:
             return
 
         self.prefijo_tarea = "AutomaPro_MensajesBiblicos"
-        self.ruta_script = os.path.abspath("publicar_facebook.py")
+        if getattr(sys, 'frozen', False):
+            self.base_dir = os.path.dirname(sys.executable)
+            self.ruta_exe = os.path.join(self.base_dir, "MensajesBiblicos.exe")
+        else:
+            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+            self.ruta_exe = None
+        self.ruta_script = os.path.join(self.base_dir, "publicar_facebook.py")
         
         self.dias_map = {
             'L': 'MON', 'M': 'TUE', 'X': 'WED', 
@@ -560,8 +566,11 @@ class GestorTareasGUI:
     def _crear_tarea_windows(self, nombre, frecuencia, horario, dias=None, ya_mostro_aviso=False):
         try:
             nombre_completo = nombre if nombre.startswith(self.prefijo_tarea) else f"{self.prefijo_tarea}_{nombre}"
-            directorio_trabajo = os.path.dirname(self.ruta_script)
-            comando_tarea = f'cmd /c "cd /d "{directorio_trabajo}" && py "{self.ruta_script}""'
+            if self.ruta_exe and os.path.exists(self.ruta_exe):
+                comando_tarea = f'"{self.ruta_exe}"'
+            else:
+                directorio_trabajo = os.path.dirname(self.ruta_script)
+                comando_tarea = f'cmd /c "cd /d "{directorio_trabajo}" && py "{self.ruta_script}""'
             
             comando = ['schtasks', '/Create', '/TN', nombre_completo, '/TR', comando_tarea, '/SC', frecuencia, '/ST', horario]
             if frecuencia == 'WEEKLY' and dias:

@@ -173,7 +173,7 @@ class PanelControl:
         # Fila 2
         if es_full:
             self._boton(grid, "🗓️\nTareas Automáticas", "Programar publicaciones",
-                        self._gestionar_tareas, row=2, col=0, color="#28a745", en_hilo=True)
+                        self._gestionar_tareas, row=2, col=0, color="#28a745", en_hilo=False)
         else:
             self._boton(grid, "🔒\nTareas Automáticas", "Solo versión Completa",
                         self._mostrar_mensaje_upgrade, row=2, col=0, color="#9e9e9e")
@@ -635,9 +635,12 @@ class PanelControl:
         try:
             exe = self._exe("GestorTareasMensajes.exe")
             if os.path.exists(exe):
-                subprocess.run([exe])
+                self.root.grab_release()
+                proceso = subprocess.Popen([exe])
+                proceso.wait()
+                self.root.grab_set()
             else:
-                subprocess.run([sys.executable, "gestor_tareas_gui.py"])
+                messagebox.showerror("❌ Error", "No se encontró GestorTareasMensajes.exe")
         except Exception as e:
             messagebox.showerror("❌ Error", f"No se pudo abrir el gestor de tareas:\n{e}")
 
