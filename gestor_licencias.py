@@ -163,7 +163,7 @@ class GestorLicencias:
 
         return True
 
-    def verificar_licencia(self, codigo_licencia, mostrar_mensajes=True):
+    def verificar_licencia(self, codigo_licencia, mostrar_mensajes=True, forzar_backend=False):
         """
         Verifica la licencia contra el backend
         
@@ -244,7 +244,7 @@ class GestorLicencias:
                 
         except requests.exceptions.ConnectionError:
             # Backend no disponible
-            if cache and cache.get('valida'):
+            if not forzar_backend and cache and cache.get('valida'):
                 # SI hay cache válido → Modo offline permitido
                 if mostrar_mensajes:
                     print("⚠️  Backend no disponible. Usando cache local.")
@@ -288,7 +288,7 @@ class GestorLicencias:
                 
         except requests.exceptions.Timeout:
             # Timeout
-            if cache and cache.get('valida'):
+            if not forzar_backend and cache and cache.get('valida'):
                 if mostrar_mensajes:
                     print("⚠️  Timeout al verificar. Usando cache local.")
                 
@@ -329,7 +329,7 @@ class GestorLicencias:
                 
         except Exception as e:
             # Error general
-            if cache and cache.get('valida'):
+            if not forzar_backend and cache and cache.get('valida'):
                 if mostrar_mensajes:
                     print(f"⚠️  Error al verificar ({e}). Usando cache local.")
                 

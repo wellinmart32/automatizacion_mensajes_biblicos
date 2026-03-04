@@ -311,14 +311,14 @@ class WizardPrimeraVez:
                             json.dump(config, f, indent=2, ensure_ascii=False)
 
                 # Limpiar cache de respaldo en AppData
-                archivo_respaldo = Path(os.environ.get('LOCALAPPDATA', '~')) / 'AutomaPro' / 'MensajesBiblicos' / 'licencia_respaldo.json'
+                archivo_respaldo = Path(os.environ.get('LOCALAPPDATA', '~')) / 'AutomaPro' / 'MensajesBiblicos' / 'lic.json'
                 if archivo_respaldo.exists():
                     archivo_respaldo.unlink()
             except:
                 pass
        
             # Verificar contra backend (sin cache)
-            resultado = self.gestor_licencias.verificar_licencia(codigo_formateado, mostrar_mensajes=False)
+            resultado = self.gestor_licencias.verificar_licencia(codigo_formateado, mostrar_mensajes=False, forzar_backend=True)
             
             if resultado['valida']:
                 if resultado.get('developer_permanente'):
@@ -373,7 +373,6 @@ class WizardPrimeraVez:
 
     def _paso_configuracion(self):
         """Paso 2: Configuración básica"""
-        # Header
         header = tk.Frame(self.root, bg="#1a73e8", pady=15)
         header.pack(fill='x')
         tk.Label(
@@ -384,7 +383,6 @@ class WizardPrimeraVez:
             fg="white"
         ).pack()
 
-        # Contenido
         frame = tk.Frame(self.root, bg="#f0f0f0")
         frame.pack(fill='both', expand=True, padx=40, pady=30)
 
@@ -395,16 +393,24 @@ class WizardPrimeraVez:
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 5))
 
-        self.var_navegador = tk.StringVar(value=self.datos_config.get('navegador', 'firefox'))
+        tk.Label(
+            frame,
+            text="(Se usará para Facebook, WhatsApp Oraciones y Extractor de Predicaciones)",
+            font=("Segoe UI", 9),
+            bg="#f0f0f0",
+            fg="gray"
+        ).pack(anchor='w', pady=(0, 10))
+
+        self.var_navegador = tk.StringVar(value=self.datos_config.get('navegador', 'chrome'))
         frame_nav = tk.Frame(frame, bg="#f0f0f0")
-        frame_nav.pack(anchor='w', pady=(0, 20))
-        
+        frame_nav.pack(anchor='w', pady=(0, 25))
+
         tk.Radiobutton(
             frame_nav, text="Firefox",
             variable=self.var_navegador, value="firefox",
             bg="#f0f0f0", font=("Segoe UI", 10)
         ).pack(side='left', padx=(0, 20))
-        
+
         tk.Radiobutton(
             frame_nav, text="Chrome",
             variable=self.var_navegador, value="chrome",
@@ -413,10 +419,10 @@ class WizardPrimeraVez:
 
         tk.Label(
             frame,
-            text="Usar tu sesión de Facebook guardada:",
+            text="Usar tu sesión guardada:",
             font=("Segoe UI", 11, "bold"),
             bg="#f0f0f0"
-        ).pack(anchor='w', pady=(20, 5))
+        ).pack(anchor='w', pady=(0, 5))
 
         tk.Label(
             frame,
@@ -424,57 +430,24 @@ class WizardPrimeraVez:
             font=("Segoe UI", 9),
             bg="#f0f0f0",
             fg="gray"
-        ).pack(anchor='w', pady=(0, 5))
+        ).pack(anchor='w', pady=(0, 10))
 
         self.var_perfil = tk.StringVar(value=self.datos_config.get('usar_perfil', 'si'))
         frame_perfil = tk.Frame(frame, bg="#f0f0f0")
         frame_perfil.pack(anchor='w', pady=(0, 20))
-        
+
         tk.Radiobutton(
             frame_perfil, text="Sí",
             variable=self.var_perfil, value="si",
             bg="#f0f0f0", font=("Segoe UI", 10)
         ).pack(side='left', padx=(0, 20))
-        
+
         tk.Radiobutton(
             frame_perfil, text="No",
             variable=self.var_perfil, value="no",
             bg="#f0f0f0", font=("Segoe UI", 10)
         ).pack(side='left')
 
-        if self.tipo_licencia in ['FULL', 'MASTER']:
-            tk.Label(
-                frame,
-                text="Navegador para WhatsApp (Oraciones):",
-                font=("Segoe UI", 11, "bold"),
-                bg="#f0f0f0"
-            ).pack(anchor='w', pady=(20, 5))
-
-            tk.Label(
-                frame,
-                text="(Usado para enviar oraciones por WhatsApp Web)",
-                font=("Segoe UI", 9),
-                bg="#f0f0f0",
-                fg="gray"
-            ).pack(anchor='w', pady=(0, 5))
-
-            self.var_navegador_whatsapp = tk.StringVar(value=self.datos_config.get('navegador_whatsapp', 'chrome'))
-            frame_nav_wa = tk.Frame(frame, bg="#f0f0f0")
-            frame_nav_wa.pack(anchor='w', pady=(0, 10))
-
-            tk.Radiobutton(
-                frame_nav_wa, text="Firefox",
-                variable=self.var_navegador_whatsapp, value="firefox",
-                bg="#f0f0f0", font=("Segoe UI", 10)
-            ).pack(side='left', padx=(0, 20))
-
-            tk.Radiobutton(
-                frame_nav_wa, text="Chrome",
-                variable=self.var_navegador_whatsapp, value="chrome",
-                bg="#f0f0f0", font=("Segoe UI", 10)
-            ).pack(side='left')
-
-        # Botones
         frame_btn = tk.Frame(self.root, bg="#f0f0f0", pady=20)
         frame_btn.pack(fill='x', side='bottom')
 
@@ -865,10 +838,11 @@ class WizardPrimeraVez:
         self._siguiente()
 
     def _guardar_config_basica(self):
-        self.datos_config['navegador'] = self.var_navegador.get()
+        nav = self.var_navegador.get()
+        self.datos_config['navegador'] = nav
         self.datos_config['usar_perfil'] = self.var_perfil.get()
-        if self.tipo_licencia in ['FULL', 'MASTER']:
-            self.datos_config['navegador_whatsapp'] = self.var_navegador_whatsapp.get()
+        self.datos_config['navegador_whatsapp'] = nav
+        self.datos_config['navegador_extractor'] = nav
         self._crear_config_completa()
         self._siguiente()
 
@@ -978,6 +952,7 @@ class WizardPrimeraVez:
             'alternar_con_predicaciones': 'no',
             'nombre_grupo_whatsapp': '',
             'mensajes_por_extraccion': '10',
+            'navegador': self.datos_config.get('navegador_extractor', 'chrome'),
             'agregar_introduccion_predica': 'si',
             'texto_introduccion_predica': '⏰ Vale la pena ver esto',
             'agregar_hashtags_predicaciones': 'no',
@@ -999,11 +974,16 @@ class WizardPrimeraVez:
     def _crear_tareas_predeterminadas(self):
         """Crea las 4 tareas automáticas predeterminadas"""
         try:
-            ruta_script = os.path.abspath("publicar_facebook.py")
             prefijo = "AutomaPro_MensajesBiblicos"
-            directorio_trabajo = os.path.dirname(ruta_script)
-            
-            comando_tarea = f'cmd /c "cd /d "{directorio_trabajo}" && py "{ruta_script}""'
+
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+                exe = os.path.join(base_dir, "MensajesBiblicos.exe")
+                comando_tarea = f'"{exe}"'
+            else:
+                ruta_script = os.path.abspath("publicar_facebook.py")
+                directorio_trabajo = os.path.dirname(ruta_script)
+                comando_tarea = f'cmd /c "cd /d "{directorio_trabajo}" && py "{ruta_script}""'
             
             # Definir las 4 tareas
             tareas = [

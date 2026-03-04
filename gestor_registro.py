@@ -303,11 +303,12 @@ class GestorRegistro:
         total_exitosas = stats.get('publicaciones_exitosas', 0)
         promedio_intentos = round(total_intentos / total_exitosas, 2) if total_exitosas > 0 else 0
         
-        total_publicaciones = total_exitosas + stats.get('publicaciones_fallidas', 0)
+        total_fallidas = stats.get('publicaciones_fallidas', 0)
+        total_publicaciones = total_exitosas + total_fallidas
         tasa_exito = round((total_exitosas / total_publicaciones * 100), 1) if total_publicaciones > 0 else 0
         
         return {
-            'total_publicaciones': self.registro['total_publicaciones'],
+            'total_publicaciones': total_publicaciones,
             'publicaciones_exitosas': total_exitosas,
             'publicaciones_fallidas': stats.get('publicaciones_fallidas', 0),
             'publicaciones_biblicas': stats.get('publicaciones_biblicas', 0),
