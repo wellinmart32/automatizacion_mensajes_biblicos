@@ -202,25 +202,10 @@ class GestorLicencias:
                 'developer_permanente': True
             }
         
-        # Intentar usar cache si está disponible
+        # Intentar verificar contra backend SIEMPRE primero
+        # El cache solo se usa como fallback cuando el backend no está disponible
         cache = self._obtener_cache_local()
         
-        if cache and cache.get('valida') and cache.get('es_developer_permanente'):
-            # Developer permanente siempre válido desde cache
-            if mostrar_mensajes:
-                print("👑 Licencia MASTER desde cache")
-            
-            return {
-                'tipo': cache.get('tipo', 'FULL'),
-                'valida': cache.get('valida', False),
-                'expirada': cache.get('expirada', False),
-                'diasRestantes': cache.get('dias_restantes'),
-                'mensaje': 'Licencia MASTER (desde cache local)',
-                'desde_cache': True,
-                'developer_permanente': cache.get('es_developer_permanente', False)
-            }
-        
-        # Intentar verificar contra backend
         try:
             if mostrar_mensajes:
                 print(f"🔍 Verificando licencia: {codigo_licencia}")

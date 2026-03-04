@@ -263,9 +263,9 @@ def _validar_y_ejecutar_secuencia(config):
         if respuesta:
             exe_cfg = os.path.join(base_dir, "ConfiguradorMensajes.exe")
             if os.path.exists(exe_cfg):
-                _sp.Popen([exe_cfg, "--pestana=secuencia"]).wait()
+                _sp.Popen([exe_cfg, "--pestana=secuencia", "--ejecutar-despues"]).wait()
             else:
-                _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=secuencia"]).wait()
+                _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=secuencia", "--ejecutar-despues"]).wait()
         else:
             _ejecutar_secuencia_full(config)
         return
@@ -287,9 +287,9 @@ def _validar_y_ejecutar_secuencia(config):
             if respuesta:
                 exe_cfg = os.path.join(base_dir, "ConfiguradorMensajes.exe")
                 if os.path.exists(exe_cfg):
-                    _sp.Popen([exe_cfg, "--pestana=extractor"]).wait()
+                    _sp.Popen([exe_cfg, "--pestana=extractor", "--ejecutar-despues"]).wait()
                 else:
-                    _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=extractor"]).wait()
+                    _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=extractor", "--ejecutar-despues"]).wait()
             else:
                 _ejecutar_secuencia_full(config)
             return

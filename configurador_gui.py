@@ -14,8 +14,10 @@ class ConfiguradorGUI:
         import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument('--pestana', default=None)
+        parser.add_argument('--ejecutar-despues', action='store_true', default=False)
         args, _ = parser.parse_known_args()
         self.pestana_inicial = args.pestana
+        self.ejecutar_despues = args.ejecutar_despues
 
         self.config = configparser.RawConfigParser(delimiters=('=',))
         self.cambios = {}
@@ -179,6 +181,11 @@ class ConfiguradorGUI:
                 Toast.exito(self.root, "Configuración guardada correctamente")
 
             if not revisar:
+                if self.ejecutar_despues:
+                    import subprocess
+                    exe = os.path.join(self.base_dir, "MensajesBiblicos.exe")
+                    if os.path.exists(exe):
+                        subprocess.Popen([exe])
                 self.root.after(3500, self.root.destroy)
 
         except Exception as e:

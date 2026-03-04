@@ -299,19 +299,24 @@ class WizardPrimeraVez:
                     base_path = Path(os.environ.get('USERPROFILE', '~'))
                 else:
                     base_path = Path.home()
+
+                # Limpiar cache principal
                 archivo_config = base_path / '.config' / 'AutomaPro' / 'MensajesBiblicos' / 'config.json'
-                
                 if archivo_config.exists():
                     with open(archivo_config, 'r', encoding='utf-8') as f:
                         config = json.load(f)
-                    # Eliminar cache de licencia pero mantener código guardado
                     if 'datos_licencia' in config:
                         del config['datos_licencia']
                         with open(archivo_config, 'w', encoding='utf-8') as f:
                             json.dump(config, f, indent=2, ensure_ascii=False)
+
+                # Limpiar cache de respaldo en AppData
+                archivo_respaldo = Path(os.environ.get('LOCALAPPDATA', '~')) / 'AutomaPro' / 'MensajesBiblicos' / 'licencia_respaldo.json'
+                if archivo_respaldo.exists():
+                    archivo_respaldo.unlink()
             except:
                 pass
-            
+       
             # Verificar contra backend (sin cache)
             resultado = self.gestor_licencias.verificar_licencia(codigo_formateado, mostrar_mensajes=False)
             
