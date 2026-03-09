@@ -33,6 +33,7 @@ class ConfiguradorGUI:
         self.root = tk.Tk()
         self.root.title("⚙️ Configurador - Mensajes Bíblicos")
         self.root.resizable(False, False)
+        self.root.iconbitmap(default='')
         self.root.configure(bg="#f0f0f0")
 
         self.root.withdraw()

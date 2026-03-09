@@ -132,9 +132,10 @@ def _publicar_mensaje_biblico(config):
     publicador.iniciar_navegador()
 
     try:
+        inicio = time.time()
         exito = publicar_con_reintentos(publicador, contenido, tipo_pub, config, gestor, nombre_archivo)
         if exito:
-            gestor.registrar_publicacion_exitosa(nombre_archivo, '', 0, 1, 0, tipo='biblico')
+            gestor.registrar_publicacion_exitosa(nombre_archivo, '', 0, 1, round(time.time() - inicio, 2), tipo='biblico')
             print("\n" + "="*70)
             print("✅ MENSAJE BÍBLICO PUBLICADO EXITOSAMENTE")
             print("="*70)
