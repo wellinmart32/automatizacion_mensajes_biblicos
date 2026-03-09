@@ -158,7 +158,7 @@ class PanelControl:
         self._boton(grid, "⚡\nAcciones", "Publicar y automatizar",
                     self._abrir_acciones, row=0, col=0, color="#e65100")
         self._boton(grid, "⚙️\nConfigurador", "Ajustar configuración",
-                    self._abrir_configurador, row=0, col=1, en_hilo=False)
+                    self._abrir_configurador, row=0, col=1, en_hilo=True)
 
         # Fila 1
         if es_full:
@@ -530,30 +530,14 @@ class PanelControl:
 
     def _abrir_configurador(self, pestaña=None, pestana=None):
         """Abre el configurador — bloquea el grid mientras está abierto"""
-        if getattr(self, '_configurador_abierto', False):
-            return
-        self._configurador_abierto = True
         try:
             exe = self._exe("ConfiguradorMensajes.exe")
             pestana_final = pestaña or pestana
             args = [exe] if os.path.exists(exe) else [sys.executable, "configurador_gui.py"]
             if pestana_final:
                 args.append(f"--pestana={pestana_final}")
-
-            proceso = subprocess.Popen(args)
-            self.root.after(350, self._bloquear_grid)
-
-            def _esperar_cierre():
-                proceso.wait()
-                self._configurador_abierto = False
-                self.root.after(0, self._desbloquear_grid)
-
-            import threading
-            threading.Thread(target=_esperar_cierre, daemon=True).start()
-
+            subprocess.run(args)
         except Exception as e:
-            self._configurador_abierto = False
-            self._desbloquear_grid()
             messagebox.showerror("❌ Error", f"No se pudo abrir el configurador:\n{e}")
 
     def _extraer_predicaciones(self):

@@ -244,7 +244,7 @@ def obtener_mensaje_aleatorio_sin_repetir(registro_publicaciones):
         tuple: (contenido_mensaje, nombre_archivo) o (None, None) si no hay mensajes
     """
     config = leer_config_global()
-    carpeta = config['carpeta_mensajes']
+    carpeta = os.path.join(_base_dir(), config['carpeta_mensajes'])
     
     # Verificar que exista la carpeta
     if not os.path.exists(carpeta):
@@ -316,7 +316,7 @@ def obtener_mensaje_secuencial(registro_publicaciones):
         tuple: (contenido_mensaje, nombre_archivo) o (None, None) si no hay mensajes
     """
     config = leer_config_global()
-    carpeta = config['carpeta_mensajes']
+    carpeta = os.path.join(_base_dir(), config['carpeta_mensajes'])
     
     # Verificar que exista la carpeta
     if not os.path.exists(carpeta):
@@ -427,7 +427,7 @@ def obtener_ruta_perfil_navegador():
             return None
     else:
         # Usar carpeta de perfil personalizada
-        carpeta_perfil = config['carpeta_perfil_custom']
+        carpeta_perfil = os.path.join(_base_dir(), config['carpeta_perfil_custom'])
         
         # Crear carpeta si no existe
         if not os.path.exists(carpeta_perfil):
@@ -469,7 +469,7 @@ def obtener_estadisticas_mensajes():
         dict: Estadísticas de mensajes
     """
     config = leer_config_global()
-    carpeta = config['carpeta_mensajes']
+    carpeta = os.path.join(_base_dir(), config['carpeta_mensajes'])
     
     if not os.path.exists(carpeta):
         return {
