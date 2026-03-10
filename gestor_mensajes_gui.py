@@ -8,6 +8,12 @@ class GestorMensajesGUI:
     """Interfaz gráfica para gestionar mensajes bíblicos (.txt)"""
 
     def __init__(self):
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.GestorMensajes')
+        except Exception:
+            pass
+
         # Ruta siempre relativa al ejecutable, no al directorio de trabajo
         if getattr(sys, 'frozen', False):
             base = os.path.dirname(sys.executable)
@@ -21,6 +27,12 @@ class GestorMensajesGUI:
         self.root.minsize(700, 500)
         self.root.resizable(True, True)
         self.root.configure(bg="#f0f0f0")
+
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            self.root.iconbitmap(os.path.join(base_ico, 'iconos', 'edit.ico'))
+        except Exception:
+            pass
 
         self.root.withdraw()
         self.root.update_idletasks()

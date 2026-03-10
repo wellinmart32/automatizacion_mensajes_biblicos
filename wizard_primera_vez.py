@@ -13,12 +13,24 @@ class WizardPrimeraVez:
     """Wizard de configuración inicial para primera ejecución"""
 
     def __init__(self):
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.WizardMensajes')
+        except Exception:
+            pass
+
         self.root = tk.Tk()
         self.root.title("🎉 Bienvenido - Mensajes Bíblicos")
         self.root.geometry("600x500")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
-        
+
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            self.root.iconbitmap(os.path.join(base_ico, 'iconos', 'wizard.ico'))
+        except Exception:
+            pass
+
         # Centrar ventana
         self.root.withdraw()
         self.root.update_idletasks()
@@ -858,10 +870,13 @@ class WizardPrimeraVez:
                     messagebox.showwarning("Aviso", "El gestor de mensajes no se encontró.\nAbriendo carpeta de mensajes.")
                     subprocess.Popen(['explorer', os.path.abspath('mensajes')])
             else:
-                carpeta = os.path.abspath('mensajes')
-                os.makedirs(carpeta, exist_ok=True)
-                subprocess.Popen(['explorer', carpeta])
-                self._mostrar_toast("Carpeta abierta — agrega archivos .txt con tus mensajes y presiona Siguiente", duracion=5000)
+                gestor_exe = os.path.join(os.path.dirname(sys.executable), 'GestorMensajes.exe')
+                if os.path.exists(gestor_exe):
+                    subprocess.Popen([gestor_exe])
+                else:
+                    carpeta = os.path.abspath('mensajes')
+                    os.makedirs(carpeta, exist_ok=True)
+                    subprocess.Popen(['explorer', carpeta])
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el gestor: {e}")
 

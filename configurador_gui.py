@@ -30,38 +30,38 @@ class ConfiguradorGUI:
         self.archivo_config = os.path.join(self.base_dir, "config_global.txt")
         self.archivo_grupos = os.path.join(self.base_dir, "llamados-oracion", "grupos.json")
 
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.ConfiguradorMensajes')
+        except Exception:
+            pass
+
         self.root = tk.Tk()
         self.root.title("⚙️ Configurador - Mensajes Bíblicos")
         self.root.resizable(False, False)
-        self.root.iconbitmap(default='')
         self.root.configure(bg="#f0f0f0")
 
-        self.root.withdraw()
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            self.root.iconbitmap(os.path.join(base_ico, 'iconos', 'settings.ico'))
+        except Exception:
+            pass
+
         width = 620
         height = 620
-        self.root.geometry(f'{width}x{height}')
-        self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
+        self.root.withdraw()
 
         self._cargar_config()
         self.es_full = self._verificar_licencia_full()
         self._construir_ui()
 
-        try:
-            for nombre in ["icono_configurador.ico", "pluma.ico", "configurador.ico"]:
-                ico = os.path.join(self.base_dir, "compartido", nombre)
-                if os.path.exists(ico):
-                    self.root.iconbitmap(ico)
-                    break
-        except Exception:
-            pass
-
         self.root.deiconify()
 
     def _verificar_licencia_full(self):
-        """Verifica si la licencia es FULL/MASTER — usa cache primero"""
+        """Verifica si la licencia es FULL/MASTER — solo cache, sin llamada de red"""
         try:
             from gestor_licencias import GestorLicencias
             gl = GestorLicencias("MensajesBiblicos")
@@ -69,11 +69,7 @@ class ConfiguradorGUI:
             if cache and cache.get('valida'):
                 tipo = cache.get('tipo', 'TRIAL')
                 return tipo in ['FULL', 'MASTER'] or cache.get('es_developer_permanente', False)
-            codigo = gl.obtener_codigo_guardado()
-            if not codigo:
-                return False
-            resultado = gl.verificar_licencia(codigo, mostrar_mensajes=False)
-            return resultado.get('valida') and (resultado.get('tipo') in ['FULL', 'MASTER'] or resultado.get('developer_permanente'))
+            return False
         except Exception:
             return False
 

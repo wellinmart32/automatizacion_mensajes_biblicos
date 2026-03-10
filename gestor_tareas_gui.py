@@ -11,12 +11,24 @@ class GestorTareasGUI:
     """Gestor de tareas automáticas - Windows Task Scheduler"""
 
     def __init__(self):
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.GestorTareasMensajes')
+        except Exception:
+            pass
+
         self.root = tk.Tk()
         self.root.title("🗓️ Gestor de Tareas Automáticas")
         self.root.geometry("900x600")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
-        
+
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            self.root.iconbitmap(os.path.join(base_ico, 'iconos', 'calendar.ico'))
+        except Exception:
+            pass
+
         self.root.withdraw()
         self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - 450

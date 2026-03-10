@@ -18,6 +18,12 @@ class PanelControl:
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
 
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            self.root.iconbitmap(os.path.join(base_ico, 'iconos', 'dashboard.ico'))
+        except Exception:
+            pass
+
         self.root.withdraw()
         self.root.update_idletasks()
         width = self.root.winfo_width()
