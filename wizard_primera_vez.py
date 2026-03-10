@@ -20,8 +20,9 @@ class WizardPrimeraVez:
             pass
 
         self.root = tk.Tk()
+        self.root.withdraw()
+
         self.root.title("🎉 Bienvenido - Mensajes Bíblicos")
-        self.root.geometry("600x500")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
 
@@ -31,11 +32,8 @@ class WizardPrimeraVez:
         except Exception:
             pass
 
-        # Centrar ventana
-        self.root.withdraw()
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
+        width = 600
+        height = 500
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
