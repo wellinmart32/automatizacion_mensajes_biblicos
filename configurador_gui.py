@@ -37,6 +37,8 @@ class ConfiguradorGUI:
             pass
 
         self.root = tk.Tk()
+        self.root.withdraw()
+
         self.root.title("⚙️ Configurador - Mensajes Bíblicos")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
@@ -52,7 +54,6 @@ class ConfiguradorGUI:
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
-        self.root.withdraw()
 
         self._cargar_config()
         self.es_full = self._verificar_licencia_full()

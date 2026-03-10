@@ -101,6 +101,12 @@ def confirmar_extraccion(config, indice_actual, es_automatico=False):
 
 
 def main():
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.ExtractorPredicaciones')
+    except Exception:
+        pass
+
     es_automatico = len(sys.argv) > 1 and sys.argv[1] == '--auto'
 
     if not es_automatico:

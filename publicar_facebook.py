@@ -197,8 +197,10 @@ def _ejecutar_secuencia_full(config):
     if not getattr(sys, '_consola_abierta', False):
         try:
             ctypes.windll.kernel32.AllocConsole()
-            sys.stdout = open('CONOUT$', 'w')
-            sys.stderr = open('CONOUT$', 'w')
+            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+            import io
+            sys.stdout = io.TextIOWrapper(open('CONOUT$', 'wb', 0), encoding='utf-8', errors='replace')
+            sys.stderr = io.TextIOWrapper(open('CONOUT$', 'wb', 0), encoding='utf-8', errors='replace')
             sys._consola_abierta = True
         except:
             pass
@@ -303,6 +305,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--solo-biblico', action='store_true')
     parser.add_argument('--secuencia', action='store_true')
+    parser.add_argument('--modulo', default=None)
     args, _ = parser.parse_known_args()
 
     estado_licencia = verificar_licencia_inicio()
@@ -324,7 +327,9 @@ def main():
     es_full = estado_licencia.get('tipo') in ['FULL', 'MASTER'] or estado_licencia.get('developer_permanente')
 
     try:
-        if args.solo_biblico:
+        if args.modulo == 'publicar_predicaciones':
+            _publicar_predicacion(config)
+        elif args.solo_biblico:
             _publicar_mensaje_biblico(config)
         elif args.secuencia:
             _ejecutar_secuencia_full(config)

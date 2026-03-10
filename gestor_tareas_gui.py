@@ -18,8 +18,9 @@ class GestorTareasGUI:
             pass
 
         self.root = tk.Tk()
+        self.root.withdraw()
+
         self.root.title("🗓️ Gestor de Tareas Automáticas")
-        self.root.geometry("900x600")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f0f0")
 
@@ -29,8 +30,6 @@ class GestorTareasGUI:
         except Exception:
             pass
 
-        self.root.withdraw()
-        self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - 450
         y = (self.root.winfo_screenheight() // 2) - 300
         self.root.geometry(f'900x600+{x}+{y}')

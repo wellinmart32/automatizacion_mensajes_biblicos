@@ -447,6 +447,12 @@ class PublicadorWhatsAppOracion:
 
 def main():
     """Función principal"""
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.OracionesWhatsApp')
+    except Exception:
+        pass
+
     publicador = PublicadorWhatsAppOracion()
 
     try:

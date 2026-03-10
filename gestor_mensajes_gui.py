@@ -22,8 +22,9 @@ class GestorMensajesGUI:
         self.carpeta_mensajes = os.path.join(base, "mensajes")
 
         self.root = tk.Tk()
+        self.root.withdraw()
+
         self.root.title("📝 Gestor de Mensajes Bíblicos")
-        self.root.geometry("800x600")
         self.root.minsize(700, 500)
         self.root.resizable(True, True)
         self.root.configure(bg="#f0f0f0")
@@ -34,8 +35,6 @@ class GestorMensajesGUI:
         except Exception:
             pass
 
-        self.root.withdraw()
-        self.root.update_idletasks()
         width = 800
         height = 600
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
