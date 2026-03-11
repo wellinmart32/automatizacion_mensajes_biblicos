@@ -128,13 +128,16 @@ def main():
     # Ícono personalizado en ventana de consola
     try:
         import ctypes as _ct
-        time.sleep(0.3)
-        _base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
-        _ico = os.path.join(_base, 'iconos', 'clapper.ico')
-        _hwnd = _ct.windll.kernel32.GetConsoleWindow()
+        _exe = sys.executable
+        _hwnd = 0
+        for _ in range(20):
+            _hwnd = _ct.windll.kernel32.GetConsoleWindow()
+            if _hwnd:
+                break
+            time.sleep(0.1)
         if _hwnd:
-            _hicon = _ct.windll.user32.LoadImageW(None, _ico, 1, 0, 0, 0x00000050)
-            if _hicon:
+            _hicon = _ct.windll.shell32.ExtractIconW(None, _exe, 0)
+            if _hicon and _hicon != 1:
                 _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
                 _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
     except Exception:

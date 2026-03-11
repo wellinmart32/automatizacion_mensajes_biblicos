@@ -4,6 +4,15 @@ import os
 import ctypes
 import configparser
 
+# ── Colores ANSI ──────────────────────────────────────────────
+V  = '\033[92m'   # verde
+R  = '\033[91m'   # rojo
+A  = '\033[93m'   # amarillo
+C  = '\033[96m'   # cian
+N  = '\033[1m'    # negrita
+X  = '\033[0m'    # reset
+# ─────────────────────────────────────────────────────────────
+
 from datetime import datetime
 from compartido.gestor_archivos import (
     leer_config_global,
@@ -112,6 +121,7 @@ def publicar_con_reintentos(publicador, contenido, tipo_publicacion, config, ges
 
 
 def _publicar_mensaje_biblico(config):
+    _abrir_consola()
     gestor = GestorRegistro()
     gestor.mostrar_estadisticas()
     gestor.mostrar_historial_reciente(5)
@@ -149,10 +159,16 @@ def _publicar_mensaje_biblico(config):
 
 
 def _publicar_predicacion(config):
+    _abrir_consola()
     gestor = GestorRegistro()
+    print(f"\n{N}{C}" + "="*70 + X)
+    print(f"{N}{C}" + " " * 15 + "📤 PUBLICADOR DE PRÉDICAS EXTRAÍDAS" + X)
+    print(f"{N}{C}" + " " * 20 + "Facebook - Cola de predicaciones" + X)
+    print(f"{N}{C}" + "="*70 + X + "\n")
+
     ruta_archivo, titulo = obtener_siguiente_predicacion()
     if not ruta_archivo:
-        print("❌ No hay predicaciones pendientes")
+        print(f"{A}❌ No hay predicaciones pendientes{X}")
         return
 
     try:
@@ -182,18 +198,19 @@ def _publicar_predicacion(config):
         if exito:
             gestor.registrar_publicacion_exitosa(titulo, '', 0, 1, 0, tipo='predicacion')
             mover_predicacion_a_publicados(titulo)
-            print("\n" + "="*70)
-            print("✅ PREDICACIÓN PUBLICADA EXITOSAMENTE")
-            print("="*70)
+            print(f"\n{V}{N}" + "="*70 + X)
+            print(f"{V}{N}✅ PREDICACIÓN PUBLICADA EXITOSAMENTE{X}")
+            print(f"{V}{N}" + "="*70 + X)
         else:
-            print("\n" + "="*70)
-            print("❌ NO SE PUDO PUBLICAR LA PREDICACIÓN")
-            print("="*70)
+            print(f"\n{R}{N}" + "="*70 + X)
+            print(f"{R}{N}❌ NO SE PUDO PUBLICAR LA PREDICACIÓN{X}")
+            print(f"{R}{N}" + "="*70 + X)
             gestor.registrar_error(titulo, 'predicacion', "Falló después de todos los intentos")
     finally:
         publicador.cerrar_navegador()
 
 def _ejecutar_secuencia_full(config):
+    _abrir_consola()
     import subprocess
     base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
@@ -290,6 +307,19 @@ def _validar_y_ejecutar_secuencia(config):
     root.destroy()
     _ejecutar_secuencia_full(config)
 
+def _abrir_consola():
+    if getattr(sys, 'frozen', False) and not getattr(sys, '_consola_abierta', False):
+        try:
+            import msvcrt
+            ctypes.windll.kernel32.AllocConsole()
+            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+            sys.stdout = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
+            sys.stderr = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
+            ctypes.windll.kernel32.SetConsoleMode(msvcrt.get_osfhandle(sys.stdout.fileno()), 7)
+            sys._consola_abierta = True
+        except Exception:
+            pass
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -297,16 +327,6 @@ def main():
     parser.add_argument('--secuencia', action='store_true')
     parser.add_argument('--modulo', default=None)
     args, _ = parser.parse_known_args()
-
-    if getattr(sys, 'frozen', False) and not getattr(sys, '_consola_abierta', False):
-        try:
-            ctypes.windll.kernel32.AllocConsole()
-            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
-            sys.stdout = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
-            sys.stderr = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
-            sys._consola_abierta = True
-        except Exception:
-            pass
 
     estado_licencia = verificar_licencia_inicio()
     if not estado_licencia:
