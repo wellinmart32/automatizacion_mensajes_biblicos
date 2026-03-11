@@ -5,6 +5,15 @@ import json
 import random
 import platform
 import configparser
+
+# ── Colores ANSI ──────────────────────────────────────────────
+V  = '\033[92m'   # verde
+R  = '\033[91m'   # rojo
+A  = '\033[93m'   # amarillo
+C  = '\033[96m'   # cian
+N  = '\033[1m'    # negrita
+X  = '\033[0m'    # reset
+# ─────────────────────────────────────────────────────────────
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -350,10 +359,10 @@ class PublicadorWhatsAppOracion:
 
     def publicar_en_todos_los_chats(self):
         """Función principal - publica en todos los chats"""
-        print("\n" + "="*70)
-        print(" " * 15 + "📱 PUBLICADOR DE LLAMADOS DE ORACIÓN")
-        print(" " * 20 + "WhatsApp Web - Chats")
-        print("="*70 + "\n")
+        print(f"\n{N}{C}" + "="*70 + X)
+        print(f"{N}{C}" + " " * 15 + "📱 PUBLICADOR DE LLAMADOS DE ORACIÓN" + X)
+        print(f"{N}{C}" + " " * 20 + "WhatsApp Web - Chats" + X)
+        print(f"{N}{C}" + "="*70 + X + "\n")
 
         print(f"🌐 Navegador configurado: {self.navegador.capitalize()}")
 
@@ -389,9 +398,9 @@ class PublicadorWhatsAppOracion:
         exitos = 0
         fallos = 0
 
-        print("\n" + "="*70)
-        print("▶ INICIANDO PUBLICACIONES")
-        print("="*70)
+        print(f"\n{N}{A}" + "="*70 + X)
+        print(f"{N}{A}▶ INICIANDO PUBLICACIONES{X}")
+        print(f"{N}{A}" + "="*70 + X)
 
         for i, chat in enumerate(chats, 1):
             nombre_chat = chat['nombre']
@@ -421,15 +430,16 @@ class PublicadorWhatsAppOracion:
                 print(f"\n   ⏳ Esperando {self.ESPERA_ENTRE_GRUPOS}s antes del siguiente chat...")
                 time.sleep(self.ESPERA_ENTRE_GRUPOS)
 
-        print("\n" + "="*70)
-        print("📈 RESUMEN DE PUBLICACIONES")
-        print("="*70)
-        print(f"   ✅ Exitosas: {exitos}")
-        print(f"   ❌ Fallidas: {fallos}")
+        print(f"\n{N}" + "="*70 + X)
+        print(f"{N}📈 RESUMEN DE PUBLICACIONES{X}")
+        print(f"{N}" + "="*70 + X)
+        print(f"   {V}✅ Exitosas: {exitos}{X}")
+        print(f"   {R}❌ Fallidas: {fallos}{X}")
         print(f"   📈 Total chats: {len(chats)}")
         if len(chats) > 0:
-            print(f"   🎯 Tasa de éxito: {(exitos/len(chats)*100):.1f}%")
-        print("="*70)
+            color_tasa = V if exitos == len(chats) else A
+            print(f"   {color_tasa}🎯 Tasa de éxito: {(exitos/len(chats)*100):.1f}%{X}")
+        print(f"{N}" + "="*70 + X)
 
         self.cerrar_navegador()
         return exitos > 0
@@ -453,15 +463,37 @@ def main():
     except Exception:
         pass
 
+    # Habilitar colores ANSI en consola Windows
+    try:
+        import ctypes as _ct
+        _ct.windll.kernel32.SetConsoleMode(_ct.windll.kernel32.GetStdHandle(-11), 7)
+    except Exception:
+        pass
+
+    # Ícono personalizado en ventana de consola
+    try:
+        import ctypes as _ct
+        time.sleep(0.3)
+        _base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _ico = os.path.join(_base, 'iconos', 'pray.ico')
+        _hwnd = _ct.windll.kernel32.GetConsoleWindow()
+        if _hwnd:
+            _hicon = _ct.windll.user32.LoadImageW(None, _ico, 1, 0, 0, 0x00000050)
+            if _hicon:
+                _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+    except Exception:
+        pass
+
     publicador = PublicadorWhatsAppOracion()
 
     try:
         exito = publicador.publicar_en_todos_los_chats()
 
         if exito:
-            print("\n✅ Proceso completado exitosamente")
+            print(f"\n{V}{N}✅ Proceso completado exitosamente{X}")
         else:
-            print("\n⚠️  Proceso completado con errores")
+            print(f"\n{A}{N}⚠️  Proceso completado con errores{X}")
 
     except KeyboardInterrupt:
         print("\n\n❌ Proceso cancelado por el usuario")

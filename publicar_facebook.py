@@ -194,16 +194,6 @@ def _publicar_predicacion(config):
         publicador.cerrar_navegador()
 
 def _ejecutar_secuencia_full(config):
-    if not getattr(sys, '_consola_abierta', False):
-        try:
-            ctypes.windll.kernel32.AllocConsole()
-            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
-            import io
-            sys.stdout = io.TextIOWrapper(open('CONOUT$', 'wb', 0), encoding='utf-8', errors='replace')
-            sys.stderr = io.TextIOWrapper(open('CONOUT$', 'wb', 0), encoding='utf-8', errors='replace')
-            sys._consola_abierta = True
-        except:
-            pass
     import subprocess
     base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
@@ -307,6 +297,16 @@ def main():
     parser.add_argument('--secuencia', action='store_true')
     parser.add_argument('--modulo', default=None)
     args, _ = parser.parse_known_args()
+
+    if getattr(sys, 'frozen', False) and not getattr(sys, '_consola_abierta', False):
+        try:
+            ctypes.windll.kernel32.AllocConsole()
+            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+            sys.stdout = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
+            sys.stderr = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
+            sys._consola_abierta = True
+        except Exception:
+            pass
 
     estado_licencia = verificar_licencia_inicio()
     if not estado_licencia:

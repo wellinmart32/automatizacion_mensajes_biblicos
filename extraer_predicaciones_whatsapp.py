@@ -1,6 +1,16 @@
 import sys
 import time
 from datetime import datetime
+
+# ── Colores ANSI ──────────────────────────────────────────────
+V  = '\033[92m'   # verde
+R  = '\033[91m'   # rojo
+A  = '\033[93m'   # amarillo
+C  = '\033[96m'   # cian
+N  = '\033[1m'    # negrita
+X  = '\033[0m'    # reset
+# ─────────────────────────────────────────────────────────────
+
 from compartido.gestor_archivos import (
     leer_config_global,
     verificar_y_crear_estructura,
@@ -13,10 +23,10 @@ from gestor_registro import GestorRegistro
 
 
 def mostrar_banner():
-    print("\n" + "="*70)
-    print(" " * 10 + "📱 EXTRACTOR DE PREDICACIONES DE WHATSAPP")
-    print(" " * 15 + "Sistema de Predicaciones Automáticas")
-    print("="*70 + "\n")
+    print(f"\n{N}{C}" + "="*70 + X)
+    print(f"{N}{C}" + " " * 10 + "📱 EXTRACTOR DE PREDICACIONES DE WHATSAPP" + X)
+    print(f"{N}{C}" + " " * 15 + "Sistema de Predicaciones Automáticas" + X)
+    print(f"{N}{C}" + "="*70 + X + "\n")
 
 
 def mostrar_estado_sistema(gestor, config):
@@ -101,9 +111,32 @@ def confirmar_extraccion(config, indice_actual, es_automatico=False):
 
 
 def main():
+    import os
     try:
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.ExtractorPredicaciones')
+    except Exception:
+        pass
+
+    # Habilitar colores ANSI en consola Windows
+    try:
+        import ctypes as _ct
+        _ct.windll.kernel32.SetConsoleMode(_ct.windll.kernel32.GetStdHandle(-11), 7)
+    except Exception:
+        pass
+
+    # Ícono personalizado en ventana de consola
+    try:
+        import ctypes as _ct
+        time.sleep(0.3)
+        _base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+        _ico = os.path.join(_base, 'iconos', 'clapper.ico')
+        _hwnd = _ct.windll.kernel32.GetConsoleWindow()
+        if _hwnd:
+            _hicon = _ct.windll.user32.LoadImageW(None, _ico, 1, 0, 0, 0x00000050)
+            if _hicon:
+                _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
     except Exception:
         pass
 
@@ -164,9 +197,9 @@ def main():
                 nombre_grupo=config['nombre_grupo_whatsapp']
             )
 
-            print("\n" + "="*70)
-            print("✅ EXTRACCIÓN COMPLETADA EXITOSAMENTE")
-            print("="*70)
+            print(f"\n{V}{N}" + "="*70 + X)
+            print(f"{V}{N}✅ EXTRACCIÓN COMPLETADA EXITOSAMENTE{X}")
+            print(f"{V}{N}" + "="*70 + X)
             print(f"📦 Predicaciones extraídas: {len(predicaciones_extraidas)}")
             print(f"📍 Nueva posición: {nuevo_indice}")
             print(f"💾 Guardadas en: cola-facebook/pendientes/")
@@ -192,7 +225,7 @@ def main():
                 print("   Solo se publicarán mensajes bíblicos")
 
         else:
-            print("\n⚠️  NO SE EXTRAJO NINGUNA PREDICACIÓN")
+            print(f"\n{A}{N}⚠️  NO SE EXTRAJO NINGUNA PREDICACIÓN{X}")
             print("\n💡 Posibles causas:")
             print("   • Ya no hay mensajes nuevos en el grupo")
             print("   • El índice actual ya llegó al final")
