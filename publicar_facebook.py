@@ -60,10 +60,10 @@ def verificar_licencia_inicio():
 
 
 def mostrar_banner():
-    print("\n" + "="*70)
-    print(" " * 15 + "🚀 PUBLICADOR AUTOMÁTICO DE FACEBOOK")
-    print(" " * 20 + "Sistema de Mensajes Bíblicos")
-    print("="*70 + "\n")
+    print(f"\n{N}{C}" + "="*70 + X)
+    print(f"{N}{C}" + " " * 15 + "🚀 PUBLICADOR AUTOMÁTICO DE FACEBOOK" + X)
+    print(f"{N}{C}" + " " * 20 + "Sistema de Mensajes Bíblicos" + X)
+    print(f"{N}{C}" + "="*70 + X + "\n")
 
 
 def mostrar_configuracion(config):
@@ -146,13 +146,13 @@ def _publicar_mensaje_biblico(config):
         exito = publicar_con_reintentos(publicador, contenido, tipo_pub, config, gestor, nombre_archivo)
         if exito:
             gestor.registrar_publicacion_exitosa(nombre_archivo, '', 0, 1, round(time.time() - inicio, 2), tipo='biblico')
-            print("\n" + "="*70)
-            print("✅ MENSAJE BÍBLICO PUBLICADO EXITOSAMENTE")
-            print("="*70)
+            print(f"\n{V}{N}" + "="*70 + X)
+            print(f"{V}{N}✅ MENSAJE BÍBLICO PUBLICADO EXITOSAMENTE{X}")
+            print(f"{V}{N}" + "="*70 + X)
         else:
-            print("\n" + "="*70)
-            print("❌ NO SE PUDO PUBLICAR EL MENSAJE")
-            print("="*70)
+            print(f"\n{R}{N}" + "="*70 + X)
+            print(f"{R}{N}❌ NO SE PUDO PUBLICAR EL MENSAJE{X}")
+            print(f"{R}{N}" + "="*70 + X)
             gestor.registrar_error(nombre_archivo, tipo_pub, "Falló después de todos los intentos")
     finally:
         publicador.cerrar_navegador()
@@ -315,9 +315,10 @@ def _abrir_consola():
             import msvcrt
             ctypes.windll.kernel32.AllocConsole()
             ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+            _hout = ctypes.windll.kernel32.GetStdHandle(-11)
+            ctypes.windll.kernel32.SetConsoleMode(_hout, 7)
             sys.stdout = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
             sys.stderr = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
-            ctypes.windll.kernel32.SetConsoleMode(msvcrt.get_osfhandle(sys.stdout.fileno()), 7)
             sys._consola_abierta = True
         except Exception:
             pass
@@ -341,6 +342,8 @@ def main():
     parser.add_argument('--secuencia', action='store_true')
     parser.add_argument('--modulo', default=None)
     args, _ = parser.parse_known_args()
+
+    _abrir_consola()
 
     estado_licencia = verificar_licencia_inicio()
     if not estado_licencia:

@@ -5,6 +5,15 @@ import json
 import platform
 import configparser
 import requests
+
+# ── Colores ANSI ──────────────────────────────────────────────
+V  = '\033[92m'   # verde
+R  = '\033[91m'   # rojo
+A  = '\033[93m'   # amarillo
+C  = '\033[96m'   # cian
+N  = '\033[1m'    # negrita
+X  = '\033[0m'    # reset
+# ─────────────────────────────────────────────────────────────
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -294,12 +303,12 @@ class ExtractorWhatsAppPredicaciones:
         if cantidad is None:
             cantidad = self.PREDICACIONES_OBJETIVO
         
-        print(f"\n{'='*80}")
-        print(f"🎯 EXTRACCIÓN INTELIGENTE DE PREDICACIONES")
-        print(f"{'='*80}")
-        print(f"   🎯 Objetivo: {self.PREDICACIONES_OBJETIVO} predicaciones pendientes")
-        print(f"   📊 Actualmente pendientes: {self.contar_pendientes()}")
-        print(f"{'='*80}\n")
+        print(f"\n{N}{C}" + "="*70 + X)
+        print(f"{N}{C}🎯 EXTRACCIÓN INTELIGENTE DE PREDICACIONES{X}")
+        print(f"{N}{C}" + "="*70 + X)
+        print(f"   {N}🎯 Objetivo:{X} {self.PREDICACIONES_OBJETIVO} predicaciones pendientes")
+        print(f"   {N}📊 Actualmente pendientes:{X} {self.contar_pendientes()}")
+        print(f"{N}{C}" + "="*70 + X + "\n")
         
         # Cargar historial de publicadas
         historial = self.cargar_historial()
@@ -399,13 +408,13 @@ class ExtractorWhatsAppPredicaciones:
                 # Esperar a que WhatsApp cargue mensajes
                 time.sleep(5)
             
-            print(f"\n{'='*80}")
-            print(f"📊 RESUMEN DE EXTRACCIÓN")
-            print(f"{'='*80}")
-            print(f"   Total extraídas: {len(predicaciones_extraidas)}")
+            print(f"\n{N}" + "="*70 + X)
+            print(f"{N}📊 RESUMEN DE EXTRACCIÓN{X}")
+            print(f"{N}" + "="*70 + X)
+            print(f"   {V}Total extraídas: {len(predicaciones_extraidas)}{X}")
             print(f"   Scrolls realizados: {scrolls_realizados}")
             print(f"   Pendientes finales: {self.contar_pendientes() + len(predicaciones_extraidas)}")
-            print(f"{'='*80}\n")
+            print(f"{N}" + "="*70 + X + "\n")
             
             return predicaciones_extraidas
             

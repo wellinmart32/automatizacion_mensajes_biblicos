@@ -1,3 +1,12 @@
+# ── Colores ANSI ──────────────────────────────────────────────
+V  = '\033[92m'   # verde
+R  = '\033[91m'   # rojo
+A  = '\033[93m'   # amarillo
+C  = '\033[96m'   # cian
+N  = '\033[1m'    # negrita
+X  = '\033[0m'    # reset
+# ─────────────────────────────────────────────────────────────
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -21,7 +30,7 @@ class PublicadorFacebook:
 
     def iniciar_navegador(self):
         navegador = self.config['navegador']
-        print(f"🌐 Iniciando {navegador.upper()}...")
+        print(f"{N}🌐 Iniciando {navegador.upper()}...{X}")
         if navegador == 'firefox':
             self._iniciar_firefox()
         elif navegador == 'chrome':
@@ -31,7 +40,7 @@ class PublicadorFacebook:
         self.wait = WebDriverWait(self.driver, 20)
         if self.config['maximizar_ventana']:
             self.driver.maximize_window()
-        print("✅ Navegador iniciado correctamente")
+        print(f"{V}✅ Navegador iniciado correctamente{X}")
 
     def _iniciar_firefox(self):
         import sys
@@ -146,7 +155,7 @@ class PublicadorFacebook:
         threading.Thread(target=_mostrar, daemon=True).start()
 
     def verificar_sesion_facebook(self):
-        print("🔐 Verificando sesión de Facebook...")
+        print(f"{N}🔐 Verificando sesión de Facebook...{X}")
         try:
             self.driver.get("https://www.facebook.com")
             time.sleep(3)
@@ -158,11 +167,11 @@ class PublicadorFacebook:
                         "Iniciar sesión en Facebook",
                         "Ingresa tus credenciales.\nTienes 2 minutos."
                     )
-                    print("\n⚠️  NO HAS INICIADO SESIÓN EN FACEBOOK")
-                    print("=" * 60)
-                    print("Por favor INICIA SESIÓN en Facebook ahora.")
-                    print("Tienes 2 MINUTOS para iniciar sesión.")
-                    print("=" * 60 + "\n")
+                    print(f"\n{A}{N}⚠️  NO HAS INICIADO SESIÓN EN FACEBOOK{X}")
+                    print(f"{A}" + "=" * 60 + X)
+                    print(f"{A}Por favor INICIA SESIÓN en Facebook ahora.{X}")
+                    print(f"{A}Tienes 2 MINUTOS para iniciar sesión.{X}")
+                    print(f"{A}" + "=" * 60 + X + "\n")
                     timeout = 120
                     tiempo_transcurrido = 0
                     while tiempo_transcurrido < timeout:
@@ -172,7 +181,7 @@ class PublicadorFacebook:
                             login_check = self.driver.find_elements(By.XPATH,
                                 "//input[@name='email' or @name='pass']")
                             if len(login_check) == 0:
-                                print("✅ Sesión iniciada correctamente")
+                                print(f"{V}✅ Sesión iniciada correctamente{X}")
                                 time.sleep(3)
                                 return True
                             else:
@@ -181,10 +190,10 @@ class PublicadorFacebook:
                             print("✅ Sesión iniciada correctamente")
                             time.sleep(3)
                             return True
-                    print("\n❌ Tiempo de espera agotado.")
+                    print(f"\n{R}❌ Tiempo de espera agotado.{X}")
                     return False
                 else:
-                    print("✅ Ya tienes sesión activa en Facebook")
+                    print(f"{V}✅ Ya tienes sesión activa en Facebook{X}")
                     return True
             except:
                 print("✅ Ya tienes sesión activa en Facebook")
@@ -579,6 +588,9 @@ class PublicadorFacebook:
 
     def cerrar_navegador(self):
         if self.driver:
-            print("🔒 Cerrando navegador...")
-            time.sleep(2)
-            self.driver.quit()
+            print("\n🔒 Cerrando navegador...")
+            try:
+                self.driver.quit()
+                print(f"   {V}✅ Navegador cerrado{X}")
+            except:
+                pass
