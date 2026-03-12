@@ -177,11 +177,12 @@ class GestorTareasGUI:
                         detalles = self._obtener_detalles_tarea(nombre_corto)
                         dias_texto = self._extraer_dias_cortos(detalles) if detalles else 'N/A'
                         
-                        if 'Ready' in estado_raw or 'Listo' in estado_raw:
+                        estado_lower = estado_raw.lower()
+                        if any(x in estado_lower for x in ['ready', 'listo', 'en espera', 'queued']):
                             estado = '✅ Activa'
-                        elif 'Disabled' in estado_raw or 'Deshabilitado' in estado_raw:
+                        elif any(x in estado_lower for x in ['disabled', 'deshabilitado', 'desactivado']):
                             estado = '⏸️ Pausada'
-                        elif 'Running' in estado_raw or 'En ejecución' in estado_raw:
+                        elif any(x in estado_lower for x in ['running', 'en ejecución', 'ejecutando']):
                             estado = '▶️ En ejecución'
                         else:
                             estado = estado_raw

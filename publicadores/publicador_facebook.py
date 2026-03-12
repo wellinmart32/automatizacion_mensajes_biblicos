@@ -34,49 +34,116 @@ class PublicadorFacebook:
         print("✅ Navegador iniciado correctamente")
 
     def _iniciar_firefox(self):
-        opciones = FirefoxOptions()
-        if self.config['desactivar_notificaciones']:
-            opciones.set_preference("dom.webnotifications.enabled", False)
+        import sys
+        import subprocess
+        base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        perfil_fallback = os.path.join(base_dir, "perfiles", "firefox_facebook")
+        os.makedirs(perfil_fallback, exist_ok=True)
+
+        # Detectar si Firefox ya está corriendo
+        try:
+            resultado = subprocess.run(
+                ['tasklist', '/FI', 'IMAGENAME eq firefox.exe', '/NH'],
+                capture_output=True, text=True
+            )
+            firefox_ya_abierto = 'firefox.exe' in resultado.stdout.lower()
+        except Exception:
+            firefox_ya_abierto = False
+
         usar_perfil = self.config.get('usar_perfil_existente', True)
-        if usar_perfil:
+        if usar_perfil and not firefox_ya_abierto:
             from compartido.gestor_archivos import obtener_ruta_perfil_navegador
             ruta_perfil = obtener_ruta_perfil_navegador()
             if ruta_perfil:
+                opciones = FirefoxOptions()
+                if self.config['desactivar_notificaciones']:
+                    opciones.set_preference("dom.webnotifications.enabled", False)
                 opciones.add_argument("-profile")
                 opciones.add_argument(ruta_perfil)
+                try:
+                    self.driver = webdriver.Firefox(options=opciones)
+                    return
+                except Exception as e:
+                    print(f"   ⚠️  Perfil principal bloqueado ({e}), usando perfil dedicado...")
+        elif firefox_ya_abierto:
+            print(f"   ℹ️  Firefox ya está abierto, usando perfil dedicado...")
+
+        opciones = FirefoxOptions()
+        if self.config['desactivar_notificaciones']:
+            opciones.set_preference("dom.webnotifications.enabled", False)
+        opciones.add_argument("-profile")
+        opciones.add_argument(perfil_fallback)
+        print(f"   ✓ Usando perfil dedicado: {perfil_fallback}")
         self.driver = webdriver.Firefox(options=opciones)
 
     def _iniciar_chrome(self):
-        import platform as _platform
-        opciones = ChromeOptions()
-        if self.config['desactivar_notificaciones']:
-            opciones.add_argument("--disable-notifications")
-        opciones.add_argument("--disable-blink-features=AutomationControlled")
-        opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
-        opciones.add_experimental_option('useAutomationExtension', False)
+        import sys
+        import subprocess
+        import tempfile
+
+        def _opciones_base():
+            op = ChromeOptions()
+            if self.config['desactivar_notificaciones']:
+                op.add_argument("--disable-notifications")
+            op.add_argument("--disable-blink-features=AutomationControlled")
+            op.add_experimental_option("excludeSwitches", ["enable-automation"])
+            op.add_experimental_option('useAutomationExtension', False)
+            op.add_argument("--no-first-run")
+            op.add_argument("--no-default-browser-check")
+            op.add_argument("--disable-session-crashed-bubble")
+            op.add_argument("--hide-crash-restore-bubble")
+            op.add_argument("--disable-features=InfiniteSessionRestore")
+            op.add_experimental_option("prefs", {
+                "profile.exit_type": "Normal",
+                "profile.exited_cleanly": True
+            })
+            return op
+
+        # Detectar si Chrome ya está corriendo
+        try:
+            resultado = subprocess.run(
+                ['tasklist', '/FI', 'IMAGENAME eq chrome.exe', '/NH'],
+                capture_output=True, text=True
+            )
+            chrome_ya_abierto = 'chrome.exe' in resultado.stdout.lower()
+        except Exception:
+            chrome_ya_abierto = False
+
+        base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        perfil_dedicado = os.path.join(base_dir, "perfiles", "chrome_facebook")
+        os.makedirs(perfil_dedicado, exist_ok=True)
+
         usar_perfil = self.config.get('usar_perfil_existente', True)
+
+        if chrome_ya_abierto:
+            print(f"   ℹ️  Chrome ya está abierto, iniciando instancia separada con perfil dedicado...")
+
         if usar_perfil:
-            if _platform.system() == "Windows":
-                base = os.path.expanduser("~/AppData/Local/Google/Chrome/User Data")
-            else:
-                base = os.path.expanduser("~/.config/google-chrome")
-            perfil_dedicado = os.path.join(os.path.dirname(os.path.abspath(self.config.get('carpeta_perfil_custom', 'perfiles/facebook_publicador'))), "chrome_mensajes")
-        else:
-            import tempfile
-            perfil_dedicado = tempfile.mkdtemp(prefix="chrome_mb_tmp_")
-        if usar_perfil:
-            os.makedirs(perfil_dedicado, exist_ok=True)
-        opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
-        opciones.add_argument("--no-first-run")
-        opciones.add_argument("--no-default-browser-check")
-        opciones.add_argument("--disable-session-crashed-bubble")
-        opciones.add_argument("--hide-crash-restore-bubble")
-        opciones.add_argument("--disable-features=InfiniteSessionRestore")
-        opciones.add_experimental_option("prefs", {
-            "profile.exit_type": "Normal",
-            "profile.exited_cleanly": True
-        })
+            opciones = _opciones_base()
+            opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
+            try:
+                self.driver = webdriver.Chrome(options=opciones)
+                return
+            except Exception as e:
+                print(f"   ⚠️  Perfil dedicado bloqueado ({e}), usando perfil temporal...")
+
+        perfil_tmp = tempfile.mkdtemp(prefix="chrome_fb_tmp_")
+        opciones = _opciones_base()
+        opciones.add_argument(f"--user-data-dir={perfil_tmp}")
         self.driver = webdriver.Chrome(options=opciones)
+
+    @staticmethod
+    def _notificar_login(titulo, mensaje):
+        import threading
+        def _mostrar():
+            import tkinter as tk
+            from compartido.toast import Toast
+            root = tk.Tk()
+            root.withdraw()
+            Toast.advertencia(root, f"{titulo}\n{mensaje}", duracion=8000)
+            root.after(8500, root.destroy)
+            root.mainloop()
+        threading.Thread(target=_mostrar, daemon=True).start()
 
     def verificar_sesion_facebook(self):
         print("🔐 Verificando sesión de Facebook...")
@@ -87,6 +154,11 @@ class PublicadorFacebook:
                 login_elements = self.driver.find_elements(By.XPATH,
                     "//input[@name='email' or @name='pass']")
                 if len(login_elements) > 0:
+                    self._notificar_login(
+                        "⚠️ Iniciar sesión en Facebook",
+                        "El navegador está esperando que ingreses tus credenciales de Facebook.\n\n"
+                        "Tienes 2 minutos para iniciar sesión."
+                    )
                     print("\n⚠️  NO HAS INICIADO SESIÓN EN FACEBOOK")
                     print("=" * 60)
                     print("Por favor INICIA SESIÓN en Facebook ahora.")

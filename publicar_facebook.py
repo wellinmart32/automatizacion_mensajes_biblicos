@@ -260,10 +260,11 @@ def _validar_y_ejecutar_secuencia(config):
 
     root = tk.Tk()
     root.withdraw()
+    root.attributes('-topmost', True)
 
     # Validación 1: secuencia no configurada
     if not modulos:
-        respuesta = messagebox.askokcancel(
+        respuesta = messagebox.askyesno(
             "⚙️ Secuencia no configurada",
             "No has configurado la secuencia de módulos.\n\n"
             "¿Deseas ir al Configurador para definirla ahora?",
@@ -286,7 +287,7 @@ def _validar_y_ejecutar_secuencia(config):
     if necesita_grupo:
         grupo = cfg.get('PREDICACIONES', 'nombre_grupo_whatsapp', fallback='').strip()
         if not grupo:
-            respuesta = messagebox.askokcancel(
+            respuesta = messagebox.askyesno(
                 "⚠️ Configuración incompleta",
                 "La secuencia incluye 'Extraer Predicaciones' pero no has configurado\n"
                 "el nombre del grupo de WhatsApp.\n\n"

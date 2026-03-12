@@ -163,28 +163,54 @@ class PublicadorWhatsAppOracion:
 
                 self.driver = webdriver.Chrome(options=opciones)
             else:
-                # Firefox (default)
-                opciones = FirefoxOptions()
-                if platform.system() == "Windows":
-                    ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
-                else:
-                    ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
+                import subprocess as _sp
+                try:
+                    _r = _sp.run(['tasklist', '/FI', 'IMAGENAME eq firefox.exe', '/NH'], capture_output=True, text=True)
+                    firefox_ya_abierto = 'firefox.exe' in _r.stdout.lower()
+                except Exception:
+                    firefox_ya_abierto = False
 
-                perfil_path = None
-                if os.path.exists(ruta_perfiles):
-                    for carpeta in os.listdir(ruta_perfiles):
-                        if 'default-release' in carpeta:
-                            perfil_path = os.path.join(ruta_perfiles, carpeta)
-                            print(f"   ✓ Usando perfil Firefox: {carpeta}")
-                            break
+                perfil_fallback = os.path.join(self.base_dir, "perfiles", "whatsapp_firefox")
+                os.makedirs(perfil_fallback, exist_ok=True)
 
-                if perfil_path:
+                if firefox_ya_abierto:
+                    print(f"   ℹ️  Firefox ya está abierto, usando perfil dedicado...")
+                    opciones = FirefoxOptions()
                     opciones.add_argument('-profile')
-                    opciones.add_argument(perfil_path)
+                    opciones.add_argument(perfil_fallback)
+                    print(f"   ✓ Usando perfil dedicado: {perfil_fallback}")
+                    self.driver = webdriver.Firefox(options=opciones)
                 else:
-                    print("   ⚠️  No se encontró perfil default-release")
+                    if platform.system() == "Windows":
+                        ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
+                    else:
+                        ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
 
-                self.driver = webdriver.Firefox(options=opciones)
+                    perfil_path = None
+                    if os.path.exists(ruta_perfiles):
+                        for carpeta in os.listdir(ruta_perfiles):
+                            if 'default-release' in carpeta:
+                                perfil_path = os.path.join(ruta_perfiles, carpeta)
+                                print(f"   ✓ Usando perfil Firefox: {carpeta}")
+                                break
+
+                    opciones = FirefoxOptions()
+                    if perfil_path:
+                        opciones.add_argument('-profile')
+                        opciones.add_argument(perfil_path)
+                        try:
+                            self.driver = webdriver.Firefox(options=opciones)
+                        except Exception as e:
+                            print(f"   ⚠️  Perfil principal bloqueado ({e}), usando perfil dedicado...")
+                            opciones = FirefoxOptions()
+                            opciones.add_argument('-profile')
+                            opciones.add_argument(perfil_fallback)
+                            self.driver = webdriver.Firefox(options=opciones)
+                    else:
+                        print("   ⚠️  No se encontró perfil default-release, usando perfil dedicado...")
+                        opciones.add_argument('-profile')
+                        opciones.add_argument(perfil_fallback)
+                        self.driver = webdriver.Firefox(options=opciones)
 
             self.driver.maximize_window()
             print("   ✅ Navegador iniciado")
@@ -193,6 +219,19 @@ class PublicadorWhatsAppOracion:
         except Exception as e:
             print(f"   ❌ Error iniciando navegador: {e}")
             return False
+
+    @staticmethod
+    def _notificar_login(titulo, mensaje):
+        import threading
+        def _mostrar():
+            import tkinter as tk
+            from compartido.toast import Toast
+            root = tk.Tk()
+            root.withdraw()
+            Toast.advertencia(root, f"{titulo}\n{mensaje}", duracion=8000)
+            root.after(8500, root.destroy)
+            root.mainloop()
+        threading.Thread(target=_mostrar, daemon=True).start()
 
     def abrir_whatsapp_web(self):
         """Abre WhatsApp Web y espera a que cargue completamente"""
@@ -209,6 +248,7 @@ class PublicadorWhatsAppOracion:
             inicio = time.time()
             cargado = False
 
+            notificado = False
             while (time.time() - inicio) < self.ESPERA_MAX_CARGA_WHATSAPP:
                 try:
                     # Verificar si ya cargó la interfaz principal (campo de búsqueda visible)
@@ -220,6 +260,18 @@ class PublicadorWhatsAppOracion:
                     cargado = True
                     break
                 except TimeoutException:
+                    if not notificado:
+                        try:
+                            qr_elements = self.driver.find_elements(By.XPATH, "//canvas[@aria-label]")
+                            if qr_elements:
+                                self._notificar_login(
+                                    "📱 Escanea el código QR",
+                                    "WhatsApp Web necesita que escanees el código QR con tu teléfono.\n\n"
+                                    "Abre WhatsApp en tu móvil → Dispositivos vinculados → Vincular dispositivo."
+                                )
+                                notificado = True
+                        except Exception:
+                            pass
                     segundos_esperados = int(time.time() - inicio)
                     print(f"   ⏳ Esperando interfaz... {segundos_esperados}s", end='\r')
                     time.sleep(3)

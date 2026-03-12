@@ -112,20 +112,50 @@ class ExtractorWhatsAppPredicaciones:
 
         try:
             if navegador == 'chrome':
+                import subprocess as _sp
                 from selenium.webdriver.chrome.options import Options as ChromeOptions
-                opciones = ChromeOptions()
-                opciones.add_argument("--disable-blink-features=AutomationControlled")
-                opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
+                try:
+                    _r = _sp.run(['tasklist', '/FI', 'IMAGENAME eq chrome.exe', '/NH'], capture_output=True, text=True)
+                    chrome_ya_abierto = 'chrome.exe' in _r.stdout.lower()
+                except Exception:
+                    chrome_ya_abierto = False
+
+                if chrome_ya_abierto:
+                    print(f"   ℹ️  Chrome ya está abierto, usando instancia separada...")
 
                 perfil_dedicado = os.path.join(self.base_dir, "perfiles", "whatsapp_chrome_compartido")
                 os.makedirs(perfil_dedicado, exist_ok=True)
+
+                opciones = ChromeOptions()
+                opciones.add_argument("--disable-blink-features=AutomationControlled")
+                opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
                 opciones.add_argument(f"--user-data-dir={perfil_dedicado}")
                 print(f"   ✓ Usando perfil Chrome dedicado: {perfil_dedicado}")
 
-                self.driver = webdriver.Chrome(options=opciones)
+                try:
+                    self.driver = webdriver.Chrome(options=opciones)
+                except Exception as e:
+                    print(f"   ⚠️  Perfil bloqueado ({e}), usando perfil temporal...")
+                    import tempfile
+                    perfil_tmp = tempfile.mkdtemp(prefix="chrome_wp_tmp_")
+                    opciones2 = ChromeOptions()
+                    opciones2.add_argument("--disable-blink-features=AutomationControlled")
+                    opciones2.add_experimental_option("excludeSwitches", ["enable-automation"])
+                    opciones2.add_argument(f"--user-data-dir={perfil_tmp}")
+                    self.driver = webdriver.Chrome(options=opciones2)
             else:
+                import subprocess as _sp
+                try:
+                    _r = _sp.run(['tasklist', '/FI', 'IMAGENAME eq firefox.exe', '/NH'], capture_output=True, text=True)
+                    firefox_ya_abierto = 'firefox.exe' in _r.stdout.lower()
+                except Exception:
+                    firefox_ya_abierto = False
+
+                perfil_fallback = os.path.join(self.base_dir, "perfiles", "whatsapp_firefox")
+                os.makedirs(perfil_fallback, exist_ok=True)
+
                 opciones = FirefoxOptions()
-                if usar_perfil:
+                if usar_perfil and not firefox_ya_abierto:
                     if platform.system() == "Windows":
                         ruta_perfiles = os.path.expanduser("~/AppData/Roaming/Mozilla/Firefox/Profiles")
                     else:
@@ -142,15 +172,20 @@ class ExtractorWhatsAppPredicaciones:
                     if perfil_path:
                         opciones.add_argument('-profile')
                         opciones.add_argument(perfil_path)
+                        try:
+                            self.driver = webdriver.Firefox(options=opciones)
+                            return True
+                        except Exception as e:
+                            print(f"   ⚠️  Perfil principal bloqueado ({e}), usando perfil dedicado...")
+                            opciones = FirefoxOptions()
                     else:
                         print("   ⚠️  No se encontró perfil default-release")
-                else:
-                    perfil_dedicado = os.path.join(self.base_dir, "perfiles", "predicaciones_firefox")
-                    os.makedirs(perfil_dedicado, exist_ok=True)
-                    opciones.add_argument('-profile')
-                    opciones.add_argument(perfil_dedicado)
-                    print(f"   ✓ Usando perfil Firefox dedicado")
+                elif firefox_ya_abierto:
+                    print(f"   ℹ️  Firefox ya está abierto, usando perfil dedicado...")
 
+                opciones.add_argument('-profile')
+                opciones.add_argument(perfil_fallback)
+                print(f"   ✓ Usando perfil dedicado: {perfil_fallback}")
                 self.driver = webdriver.Firefox(options=opciones)
 
             if maximizar:
@@ -166,21 +201,54 @@ class ExtractorWhatsAppPredicaciones:
             print(f"❌ Error iniciando navegador: {e}")
             return False
 
+    @staticmethod
+    def _notificar_login(titulo, mensaje):
+        import threading
+        def _mostrar():
+            import tkinter as tk
+            from compartido.toast import Toast
+            root = tk.Tk()
+            root.withdraw()
+            Toast.advertencia(root, f"{titulo}\n{mensaje}", duracion=8000)
+            root.after(8500, root.destroy)
+            root.mainloop()
+        threading.Thread(target=_mostrar, daemon=True).start()
+
     def esperar_whatsapp_cargado(self, timeout=60):
         """Espera a que WhatsApp Web esté completamente cargado"""
         print("⏳ Esperando que WhatsApp Web cargue...")
         print("   (Si no has iniciado sesión, escanea el código QR)")
-        
+
+        notificado = False
+        inicio = time.time()
         try:
-            WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"))
-            )
-            print("\n✅ WhatsApp Web cargado correctamente\n")
-            return True
-            
+            while True:
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"))
+                    )
+                    print("\n✅ WhatsApp Web cargado correctamente\n")
+                    return True
+                except Exception:
+                    if not notificado:
+                        try:
+                            qr_elements = self.driver.find_elements(By.XPATH, "//canvas[@aria-label]")
+                            if qr_elements:
+                                self._notificar_login(
+                                    "📱 Escanea el código QR",
+                                    "WhatsApp Web necesita que escanees el código QR con tu teléfono.\n\n"
+                                    "Abre WhatsApp en tu móvil → Dispositivos vinculados → Vincular dispositivo."
+                                )
+                                notificado = True
+                        except Exception:
+                            pass
+                    if time.time() - inicio >= timeout:
+                        break
         except Exception as e:
             print(f"\n❌ Error esperando carga de WhatsApp: {e}")
             return False
+        print(f"\n❌ WhatsApp no cargó en {timeout}s")
+        return False
     
     def buscar_grupo(self, nombre_grupo):
         """Busca y abre un grupo específico"""

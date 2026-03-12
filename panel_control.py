@@ -442,13 +442,22 @@ class PanelControl:
         modulos = cfg.get('SECUENCIA', 'modulos_activos', fallback='').strip()
 
         if not modulos:
-            respuesta = messagebox.askokcancel(
+            respuesta = messagebox.askyesno(
                 "⚙️ Secuencia no configurada",
                 "No has configurado la secuencia de módulos.\n\n"
                 "¿Deseas ir al Configurador para definirla ahora?"
             )
             if respuesta:
-                self._abrir_configurador(pestaña='secuencia')
+                self._abrir_configurador(pestana='secuencia')
+                return
+            # Si dice No → ejecutar con módulo por defecto
+            try:
+                exe = self._exe("MensajesBiblicos.exe")
+                if os.path.exists(exe):
+                    subprocess.Popen([exe, "--secuencia"]).wait()
+                self._toast("⚡ Secuencia completada", "Módulo bíblico ejecutado")
+            except Exception as e:
+                messagebox.showerror("❌ Error en secuencia", f"Error ejecutando la secuencia:\n{e}")
             return
 
         lista = [m.strip() for m in modulos.split(',') if m.strip()]
@@ -458,7 +467,7 @@ class PanelControl:
         if necesita_grupo:
             grupo = cfg.get('PREDICACIONES', 'nombre_grupo_whatsapp', fallback='').strip()
             if not grupo:
-                respuesta = messagebox.askokcancel(
+                respuesta = messagebox.askyesno(
                     "⚠️ Configuración incompleta",
                     "La secuencia incluye 'Extraer Predicaciones' pero no has configurado\n"
                     "el nombre del grupo de WhatsApp.\n\n"
@@ -496,7 +505,7 @@ class PanelControl:
         archivo_grupos = os.path.join(self.base_dir, "llamados-oracion", "grupos.json")
 
         if not os.path.exists(archivo_grupos):
-            respuesta = messagebox.askokcancel(
+            respuesta = messagebox.askyesno(
                 "⚠️ Sin grupos configurados",
                 "No hay grupos de oración configurados.\n\n"
                 "¿Deseas abrir el Configurador para agregarlos ahora?"
