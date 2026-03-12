@@ -235,9 +235,8 @@ class ExtractorWhatsAppPredicaciones:
                             qr_elements = self.driver.find_elements(By.XPATH, "//canvas[@aria-label]")
                             if qr_elements:
                                 self._notificar_login(
-                                    "📱 Escanea el código QR",
-                                    "WhatsApp Web necesita que escanees el código QR con tu teléfono.\n\n"
-                                    "Abre WhatsApp en tu móvil → Dispositivos vinculados → Vincular dispositivo."
+                                    "Escanea el código QR",
+                                    "Abre WhatsApp → Dispositivos vinculados\nVincular dispositivo."
                                 )
                                 notificado = True
                         except Exception:
@@ -541,9 +540,9 @@ class ExtractorWhatsAppPredicaciones:
         if cantidad is None:
             cantidad = self.PREDICACIONES_OBJETIVO
         
-        print("\n" + "="*80)
-        print("📱 EXTRACTOR DE PREDICACIONES - VERSIÓN FINAL")
-        print("="*80 + "\n")
+        print(f"\n{N}{C}" + "="*70 + X)
+        print(f"{N}{C}" + " " * 10 + "📱 EXTRACTOR DE PREDICACIONES - VERSIÓN FINAL" + X)
+        print(f"{N}{C}" + "="*70 + X + "\n")
         
         try:
             if not self.iniciar_navegador():
@@ -572,10 +571,12 @@ class ExtractorWhatsAppPredicaciones:
     def cerrar(self):
         """Cierra el navegador"""
         if self.driver:
-            print("\n⏳ Cerrando navegador en 5 segundos...")
-            time.sleep(5)
-            self.driver.quit()
-            print("✅ Navegador cerrado")
+            print("\n🔒 Cerrando navegador...")
+            try:
+                self.driver.quit()
+                print("   ✅ Navegador cerrado")
+            except:
+                pass
 
 
 if __name__ == "__main__":

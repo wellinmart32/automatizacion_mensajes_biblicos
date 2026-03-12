@@ -161,6 +161,7 @@ def _publicar_mensaje_biblico(config):
 def _publicar_predicacion(config):
     _abrir_consola()
     gestor = GestorRegistro()
+    gestor.mostrar_estadisticas()
     print(f"\n{N}{C}" + "="*70 + X)
     print(f"{N}{C}" + " " * 15 + "📤 PUBLICADOR DE PRÉDICAS EXTRAÍDAS" + X)
     print(f"{N}{C}" + " " * 20 + "Facebook - Cola de predicaciones" + X)
@@ -320,6 +321,18 @@ def _abrir_consola():
             sys._consola_abierta = True
         except Exception:
             pass
+        try:
+            _hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+            if _hwnd:
+                _base = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+                _ico = os.path.join(_base, 'iconos', 'bible.ico')
+                if os.path.exists(_ico):
+                    _hicon = ctypes.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
+                    if _hicon:
+                        ctypes.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                        ctypes.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+        except Exception:
+            pass
 
 def main():
     import argparse
@@ -364,6 +377,9 @@ def main():
         print(f"\n❌ Error inesperado: {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        print(f"\n{N}👋 Finalizando programa...{X}")
+        time.sleep(2)
 
 
 def _verificar_wizard_completado():

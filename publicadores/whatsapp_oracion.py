@@ -265,9 +265,8 @@ class PublicadorWhatsAppOracion:
                             qr_elements = self.driver.find_elements(By.XPATH, "//canvas[@aria-label]")
                             if qr_elements:
                                 self._notificar_login(
-                                    "📱 Escanea el código QR",
-                                    "WhatsApp Web necesita que escanees el código QR con tu teléfono.\n\n"
-                                    "Abre WhatsApp en tu móvil → Dispositivos vinculados → Vincular dispositivo."
+                                    "Escanea el código QR",
+                                    "Abre WhatsApp → Dispositivos vinculados\nVincular dispositivo."
                                 )
                                 notificado = True
                         except Exception:
@@ -525,7 +524,6 @@ def main():
     # Ícono personalizado en ventana de consola
     try:
         import ctypes as _ct
-        _exe = sys.executable
         _hwnd = 0
         for _ in range(20):
             _hwnd = _ct.windll.kernel32.GetConsoleWindow()
@@ -533,10 +531,13 @@ def main():
                 break
             time.sleep(0.1)
         if _hwnd:
-            _hicon = _ct.windll.shell32.ExtractIconW(None, _exe, 0)
-            if _hicon and _hicon != 1:
-                _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
-                _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+            _base = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            _ico = os.path.join(_base, 'iconos', 'pray.ico')
+            if os.path.exists(_ico):
+                _hicon = _ct.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
+                if _hicon:
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
     except Exception:
         pass
 

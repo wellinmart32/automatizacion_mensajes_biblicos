@@ -155,9 +155,8 @@ class PublicadorFacebook:
                     "//input[@name='email' or @name='pass']")
                 if len(login_elements) > 0:
                     self._notificar_login(
-                        "⚠️ Iniciar sesión en Facebook",
-                        "El navegador está esperando que ingreses tus credenciales de Facebook.\n\n"
-                        "Tienes 2 minutos para iniciar sesión."
+                        "Iniciar sesión en Facebook",
+                        "Ingresa tus credenciales.\nTienes 2 minutos."
                     )
                     print("\n⚠️  NO HAS INICIADO SESIÓN EN FACEBOOK")
                     print("=" * 60)
