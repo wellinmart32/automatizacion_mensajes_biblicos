@@ -121,7 +121,6 @@ def publicar_con_reintentos(publicador, contenido, tipo_publicacion, config, ges
 
 
 def _publicar_mensaje_biblico(config):
-    _abrir_consola()
     gestor = GestorRegistro()
     gestor.mostrar_estadisticas()
     gestor.mostrar_historial_reciente(5)
@@ -137,7 +136,6 @@ def _publicar_mensaje_biblico(config):
         return
 
     print(f"\n📖 Mensaje seleccionado: {nombre_archivo}")
-    print("\n🌐 Inicializando navegador...")
     publicador = PublicadorFacebook(config)
     publicador.iniciar_navegador()
 
@@ -159,7 +157,6 @@ def _publicar_mensaje_biblico(config):
 
 
 def _publicar_predicacion(config):
-    _abrir_consola()
     gestor = GestorRegistro()
     gestor.mostrar_estadisticas()
     print(f"\n{N}{C}" + "="*70 + X)
@@ -182,7 +179,6 @@ def _publicar_predicacion(config):
         print(f"❌ Error leyendo predicación: {e}")
         return
 
-    # FIX Bug 2: Agregar mensaje introductorio desde configuración
     if config.get('agregar_introduccion_predica', True):
         intro = config.get('texto_introduccion_predica', '🎬 Predicación recomendada:\n\n')
         if intro:
@@ -190,7 +186,6 @@ def _publicar_predicacion(config):
             contenido = f"{intro}{contenido}"
 
     print(f"\n📹 Publicando predicación: {titulo}")
-    print("\n🌐 Inicializando navegador...")
     publicador = PublicadorFacebook(config)
     publicador.iniciar_navegador()
 
@@ -210,8 +205,8 @@ def _publicar_predicacion(config):
     finally:
         publicador.cerrar_navegador()
 
+
 def _ejecutar_secuencia_full(config):
-    _abrir_consola()
     import subprocess
     base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
@@ -246,8 +241,8 @@ def _ejecutar_secuencia_full(config):
             else:
                 print("⚠️  OracionesWhatsApp.exe no encontrado")
 
+
 def _validar_y_ejecutar_secuencia(config):
-    """Valida configuración antes de ejecutar secuencia (doble clic en exe)"""
     import tkinter as tk
     from tkinter import messagebox
     import configparser as _cp
@@ -263,7 +258,6 @@ def _validar_y_ejecutar_secuencia(config):
     root.withdraw()
     root.attributes('-topmost', True)
 
-    # Validación 1: secuencia no configurada
     if not modulos:
         respuesta = messagebox.askyesno(
             "⚙️ Secuencia no configurada",
@@ -279,10 +273,12 @@ def _validar_y_ejecutar_secuencia(config):
             else:
                 _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=secuencia", "--ejecutar-despues"]).wait()
         else:
+            _abrir_consola()
+            mostrar_banner()
+            mostrar_configuracion(config)
             _ejecutar_secuencia_full(config)
         return
 
-    # Validación 2: grupo WhatsApp no configurado
     lista = [m.strip() for m in modulos.split(',') if m.strip()]
     necesita_grupo = 'extraer' in lista or 'publicar_predica' in lista
     if necesita_grupo:
@@ -303,37 +299,52 @@ def _validar_y_ejecutar_secuencia(config):
                 else:
                     _sp.Popen([sys.executable, "configurador_gui.py", "--pestana=extractor", "--ejecutar-despues"]).wait()
             else:
+                _abrir_consola()
+                mostrar_banner()
+                mostrar_configuracion(config)
                 _ejecutar_secuencia_full(config)
             return
 
     root.destroy()
+    _abrir_consola()
+    mostrar_banner()
+    mostrar_configuracion(config)
     _ejecutar_secuencia_full(config)
 
+
+def _ocultar_consola():
+    try:
+        _hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if _hwnd:
+            ctypes.windll.user32.ShowWindow(_hwnd, 0)
+    except Exception:
+        pass
+
+
 def _abrir_consola():
-    if getattr(sys, 'frozen', False) and not getattr(sys, '_consola_abierta', False):
-        try:
-            import msvcrt
-            ctypes.windll.kernel32.AllocConsole()
-            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
-            _hout = ctypes.windll.kernel32.GetStdHandle(-11)
-            ctypes.windll.kernel32.SetConsoleMode(_hout, 7)
-            sys.stdout = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
-            sys.stderr = open('CONOUT$', 'w', encoding='utf-8', errors='replace', buffering=1)
-            sys._consola_abierta = True
-        except Exception:
-            pass
-        try:
-            _hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-            if _hwnd:
-                _base = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
-                _ico = os.path.join(_base, 'iconos', 'bible.ico')
-                if os.path.exists(_ico):
-                    _hicon = ctypes.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
-                    if _hicon:
-                        ctypes.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
-                        ctypes.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
-        except Exception:
-            pass
+    try:
+        _hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if _hwnd:
+            ctypes.windll.user32.ShowWindow(_hwnd, 5)
+    except Exception:
+        pass
+    try:
+        ctypes.windll.kernel32.SetConsoleMode(ctypes.windll.kernel32.GetStdHandle(-11), 7)
+    except Exception:
+        pass
+    try:
+        _hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if _hwnd:
+            _base = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            _ico = os.path.join(_base, 'iconos', 'bible.ico')
+            if os.path.exists(_ico):
+                _hicon = ctypes.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
+                if _hicon:
+                    ctypes.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                    ctypes.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+    except Exception:
+        pass
+
 
 def main():
     import argparse
@@ -343,25 +354,31 @@ def main():
     parser.add_argument('--modulo', default=None)
     args, _ = parser.parse_known_args()
 
-    _abrir_consola()
+    es_doble_clic = not args.solo_biblico and not args.secuencia and args.modulo is None
 
     estado_licencia = verificar_licencia_inicio()
     if not estado_licencia:
+        _abrir_consola()
         print("\n❌ No se pudo verificar la licencia.")
         input("\nPresiona Enter para cerrar...")
         return
 
-    mostrar_banner()
-
     try:
         config = leer_config_global()
     except Exception as e:
+        _abrir_consola()
         print(f"❌ Error leyendo configuración: {e}")
         return
 
-    mostrar_configuracion(config)
-
     es_full = estado_licencia.get('tipo') in ['FULL', 'MASTER'] or estado_licencia.get('developer_permanente')
+
+    if es_doble_clic and es_full:
+        _validar_y_ejecutar_secuencia(config)
+        return
+
+    _abrir_consola()
+    mostrar_banner()
+    mostrar_configuracion(config)
 
     try:
         if args.modulo == 'publicar_predicaciones':
@@ -370,8 +387,6 @@ def main():
             _publicar_mensaje_biblico(config)
         elif args.secuencia:
             _ejecutar_secuencia_full(config)
-        elif es_full:
-            _validar_y_ejecutar_secuencia(config)
         else:
             _publicar_mensaje_biblico(config)
     except KeyboardInterrupt:
@@ -406,19 +421,10 @@ def _verificar_wizard_completado():
 
 
 if __name__ == "__main__":
+    _ocultar_consola()
+
     if not _verificar_wizard_completado():
         sys.exit(0)
-
-    import argparse as _ap
-    _p = _ap.ArgumentParser()
-    _p.add_argument('--solo-biblico', action='store_true')
-    _p.add_argument('--secuencia', action='store_true')
-    _args, _ = _p.parse_known_args()
-
-    if _args.solo_biblico or _args.secuencia:
-        ctypes.windll.kernel32.AllocConsole()
-        sys.stdout = open('CONOUT$', 'w')
-        sys.stderr = open('CONOUT$', 'w')
 
     try:
         main()

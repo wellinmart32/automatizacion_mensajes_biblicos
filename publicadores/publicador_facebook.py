@@ -40,7 +40,7 @@ class PublicadorFacebook:
         self.wait = WebDriverWait(self.driver, 20)
         if self.config['maximizar_ventana']:
             self.driver.maximize_window()
-        print(f"{V}✅ Navegador iniciado correctamente{X}")
+        print(f"   {V}✅ Navegador iniciado{X}")
 
     def _iniciar_firefox(self):
         import sys
