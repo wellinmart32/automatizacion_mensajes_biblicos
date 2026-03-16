@@ -193,6 +193,12 @@ def _publicar_predicacion(config):
         exito = publicar_con_reintentos(publicador, contenido, 'predicacion', config, gestor, titulo)
         if exito:
             gestor.registrar_publicacion_exitosa(titulo, '', 0, 1, 0, tipo='predicacion')
+            try:
+                from registro_historial import RegistroHistorialPredicaciones
+                reg = RegistroHistorialPredicaciones()
+                reg.registrar_publicacion(titulo)
+            except Exception as _e:
+                print(f"   ⚠️  No se pudo registrar en historial: {_e}")
             mover_predicacion_a_publicados(titulo)
             print(f"\n{V}{N}" + "="*70 + X)
             print(f"{V}{N}✅ PREDICACIÓN PUBLICADA EXITOSAMENTE{X}")

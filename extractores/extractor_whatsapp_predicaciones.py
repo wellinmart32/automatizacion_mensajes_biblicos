@@ -171,24 +171,38 @@ class ExtractorWhatsAppPredicaciones:
                         ruta_perfiles = os.path.expanduser("~/.mozilla/firefox")
 
                     perfil_path = None
+                    lock_libre = False
                     if os.path.exists(ruta_perfiles):
                         for carpeta in os.listdir(ruta_perfiles):
                             if 'default-release' in carpeta:
                                 perfil_path = os.path.join(ruta_perfiles, carpeta)
-                                print(f"   ✓ Usando perfil Firefox: {carpeta}")
+                                lock_path = os.path.join(perfil_path, 'lock')
+                                lock_path2 = os.path.join(perfil_path, '.parentlock')
+                                lock_libre = not os.path.exists(lock_path) and not os.path.exists(lock_path2)
+                                print(f"   ✓ Perfil Firefox encontrado: {carpeta}")
+                                if not lock_libre:
+                                    print(f"   ⚠️  Perfil en uso, usando perfil dedicado...")
                                 break
 
-                    if perfil_path:
+                    if perfil_path and lock_libre:
                         opciones.add_argument('-profile')
                         opciones.add_argument(perfil_path)
                         try:
                             self.driver = webdriver.Firefox(options=opciones)
+                            if maximizar:
+                                self.driver.maximize_window()
+                            print("📱 Abriendo WhatsApp Web...")
+                            self.driver.get("https://web.whatsapp.com")
                             return True
                         except Exception as e:
                             print(f"   ⚠️  Perfil principal bloqueado ({e}), usando perfil dedicado...")
+                            try:
+                                if self.driver:
+                                    self.driver.quit()
+                                    self.driver = None
+                            except Exception:
+                                pass
                             opciones = FirefoxOptions()
-                    else:
-                        print("   ⚠️  No se encontró perfil default-release")
                 elif firefox_ya_abierto:
                     print(f"   ℹ️  Firefox ya está abierto, usando perfil dedicado...")
 
@@ -199,8 +213,7 @@ class ExtractorWhatsAppPredicaciones:
 
             if maximizar:
                 self.driver.maximize_window()
-            print("✅ Navegador iniciado")
-
+            print("   ✅ Navegador iniciado")
             print("📱 Abriendo WhatsApp Web...")
             self.driver.get("https://web.whatsapp.com")
 
