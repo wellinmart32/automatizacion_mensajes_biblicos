@@ -47,6 +47,7 @@ class PanelControl:
             return
 
         self._construir_ui()
+        self._verificar_actualizacion()
 
     def _exe(self, nombre):
         """Retorna ruta al .exe en la misma carpeta del ejecutable"""
@@ -88,6 +89,145 @@ class PanelControl:
             return None
 
         return resultado
+
+    def _verificar_actualizacion(self):
+        """Verifica si hay una versión nueva disponible en segundo plano"""
+        import threading
+        def consultar():
+            try:
+                import sys, os
+                base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+                with open(os.path.join(base, 'version.txt'), 'r') as f:
+                    version_local = f.read().strip()
+            except Exception:
+                version_local = "1.0.0"
+            resultado = self.gestor_licencias.verificar_actualizacion(version_local)
+            if resultado.get('hay_actualizacion'):
+                version_nueva = resultado.get('version_nueva')
+                ruta_archivo = resultado.get('ruta_archivo', '')
+                self.root.after(0, lambda: self._mostrar_ventana_actualizacion(version_nueva, ruta_archivo))
+        threading.Thread(target=consultar, daemon=True).start()
+
+    def _mostrar_ventana_actualizacion(self, version_nueva, ruta_archivo):
+        """Muestra ventana modal de actualización disponible"""
+        import tkinter as tk
+        from tkinter import ttk
+        import urllib.request
+        import subprocess
+        import tempfile
+        import os
+        import threading
+
+        ventana = tk.Toplevel(self.root)
+        ventana.title("Actualización Disponible")
+        ventana.resizable(False, False)
+        ventana.configure(bg="#f0f0f0")
+        ventana.grab_set()
+
+        # Centrar ventana
+        ventana.withdraw()
+        ventana.update_idletasks()
+        w, h = 420, 280
+        x = (ventana.winfo_screenwidth() // 2) - (w // 2)
+        y = (ventana.winfo_screenheight() // 2) - (h // 2)
+        ventana.geometry(f"{w}x{h}+{x}+{y}")
+        ventana.deiconify()
+
+        # Header
+        header = tk.Frame(ventana, bg="#1a73e8", pady=15)
+        header.pack(fill='x')
+        tk.Label(
+            header,
+            text="🔄  Actualización Disponible",
+            font=("Segoe UI", 13, "bold"),
+            bg="#1a73e8",
+            fg="white"
+        ).pack()
+
+        # Cuerpo
+        cuerpo = tk.Frame(ventana, bg="#f0f0f0", padx=30, pady=15)
+        cuerpo.pack(fill='both', expand=True)
+
+        tk.Label(cuerpo, text=f"Versión actual:      1.0.0", font=("Segoe UI", 10), bg="#f0f0f0", anchor='w').pack(fill='x')
+        tk.Label(cuerpo, text=f"Nueva versión:       {version_nueva}", font=("Segoe UI", 10, "bold"), bg="#f0f0f0", fg="#1a73e8", anchor='w').pack(fill='x', pady=(0, 10))
+        tk.Label(
+            cuerpo,
+            text="Hay una nueva versión disponible.\nHaz clic en Actualizar para instalarla automáticamente.",
+            font=("Segoe UI", 9),
+            bg="#f0f0f0",
+            fg="#555555",
+            justify='left'
+        ).pack(fill='x')
+
+        # Barra de progreso (oculta inicialmente)
+        progreso_frame = tk.Frame(ventana, bg="#f0f0f0", padx=30)
+        progreso_frame.pack(fill='x')
+        label_progreso = tk.Label(progreso_frame, text="", font=("Segoe UI", 9), bg="#f0f0f0", fg="#555555")
+        label_progreso.pack(anchor='w')
+        barra = ttk.Progressbar(progreso_frame, mode='indeterminate', length=360)
+
+        # Botones
+        frame_btns = tk.Frame(ventana, bg="#f0f0f0", pady=10)
+        frame_btns.pack(fill='x', padx=30)
+
+        def recordar_despues():
+            ventana.grab_release()
+            ventana.destroy()
+
+        def actualizar_ahora():
+            if not ruta_archivo:
+                recordar_despues()
+                return
+
+            btn_actualizar.config(state='disabled')
+            btn_despues.config(state='disabled')
+            label_progreso.config(text="Descargando actualización...")
+            barra.pack(fill='x', pady=5)
+            barra.start(10)
+            ventana.update()
+
+            def descargar_e_instalar():
+                try:
+                    nombre_archivo = ruta_archivo.split('/')[-1]
+                    url_descarga = f"http://localhost:8080/api/archivos/descargar/{nombre_archivo}"
+                    tmp = tempfile.mktemp(suffix=".exe")
+                    urllib.request.urlretrieve(url_descarga, tmp)
+
+                    self.root.after(0, lambda: label_progreso.config(text="Instalando..."))
+                    self.root.after(500, lambda: _ejecutar_instalador(tmp))
+                except Exception as e:
+                    self.root.after(0, lambda: label_progreso.config(text=f"Error: {e}"))
+                    self.root.after(0, lambda: barra.stop())
+
+            def _ejecutar_instalador(ruta_tmp):
+                barra.stop()
+                ventana.grab_release()
+                ventana.destroy()
+                self.root.destroy()
+                subprocess.Popen([ruta_tmp, '/SILENT'])
+
+            threading.Thread(target=descargar_e_instalar, daemon=True).start()
+
+        btn_despues = tk.Button(
+            frame_btns,
+            text="Recordar después",
+            font=("Segoe UI", 10),
+            bg="#e0e0e0",
+            width=16,
+            command=recordar_despues
+        )
+        btn_despues.pack(side='left')
+
+        btn_actualizar = tk.Button(
+            frame_btns,
+            text="Actualizar ahora",
+            font=("Segoe UI", 10, "bold"),
+            bg="#1a73e8",
+            fg="white",
+            width=16,
+            command=actualizar_ahora
+        )
+        btn_actualizar.pack(side='right')
 
     def _construir_ui(self):
         """Construye la interfaz del panel"""

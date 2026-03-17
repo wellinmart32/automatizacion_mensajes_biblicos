@@ -37,6 +37,28 @@ class GestorLicencias:
         """Verifica si es un código developer master"""
         return codigo == self.codigo_developer_master
 
+    def verificar_actualizacion(self, version_actual):
+        """
+        Consulta al backend si hay una versión más reciente disponible.
+        Retorna dict con: hay_actualizacion, version_actual, version_nueva
+        """
+        try:
+            url = f"{self.url_backend.replace('/verificar-licencia', '')}/version?nombre=Mensajes"
+            respuesta = requests.get(url, timeout=5)
+            if respuesta.status_code == 200:
+                datos = respuesta.json()
+                version_nueva = datos.get('version', version_actual)
+                hay_actualizacion = version_nueva != version_actual
+                return {
+                    'hay_actualizacion': hay_actualizacion,
+                    'version_actual': version_actual,
+                    'version_nueva': version_nueva,
+                    'ruta_archivo': datos.get('rutaArchivo', '')
+                }
+        except Exception:
+            pass
+        return {'hay_actualizacion': False, 'version_actual': version_actual, 'version_nueva': version_actual}
+
     def obtener_codigo_guardado(self):
         """Obtiene el código de licencia guardado localmente"""
         try:

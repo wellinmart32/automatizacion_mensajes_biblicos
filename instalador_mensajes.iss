@@ -28,6 +28,7 @@ Source: "dist\ExtractorPredicaciones.exe"; DestDir: "{app}"; Flags: ignoreversio
 Source: "dist\GestorMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\GestorTareasMensajes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "config_global.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "version.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "compartido\*"; DestDir: "{app}\compartido"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "publicadores\*"; DestDir: "{app}\publicadores"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "mensajes\*"; DestDir: "{app}\mensajes"; Flags: ignoreversion recursesubdirs createallsubdirs
