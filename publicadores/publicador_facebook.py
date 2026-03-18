@@ -154,11 +154,68 @@ class PublicadorFacebook:
             root.mainloop()
         threading.Thread(target=_mostrar, daemon=True).start()
 
+    def _es_pagina_seguridad_facebook(self):
+        """Detecta si Facebook mostró una página de verificación de seguridad"""
+        url_actual = self.driver.current_url
+        urls_seguridad = [
+            'two_step_verification',
+            'checkpoint',
+            'login/device-based',
+            'security_check',
+            'identity_confirmation',
+            'recaptcha',
+            'captcha'
+        ]
+        return any(p in url_actual for p in urls_seguridad)
+
+    def _esperar_resolucion_seguridad(self, timeout=180):
+        """
+        Espera a que el usuario resuelva el puzzle de seguridad de Facebook.
+        Retorna True si el usuario lo resolvió, False si se agotó el tiempo.
+        """
+        tiempo_transcurrido = 0
+        while tiempo_transcurrido < timeout:
+            time.sleep(5)
+            tiempo_transcurrido += 5
+            try:
+                url_actual = self.driver.current_url
+                # Si ya salió de la página de seguridad y no está en login → resuelto
+                if not self._es_pagina_seguridad_facebook()\
+                        and 'login' not in url_actual\
+                        and 'facebook.com' in url_actual:
+                    print(f"{V}✅ Verificación de seguridad resuelta correctamente{X}")
+                    time.sleep(3)
+                    return True
+                else:
+                    restantes = timeout - tiempo_transcurrido
+                    print(f"⏳ Esperando que resuelvas el puzzle... ({restantes}s restantes)")
+            except Exception:
+                return True
+        print(f"\n{R}❌ Tiempo de espera agotado para resolver el puzzle.{X}")
+        return False
+
     def verificar_sesion_facebook(self):
         print(f"{N}🔐 Verificando sesión de Facebook...{X}")
         try:
             self.driver.get("https://www.facebook.com")
             time.sleep(3)
+
+            # Caso 1: Página de seguridad/captcha de Facebook
+            if self._es_pagina_seguridad_facebook():
+                self._notificar_login(
+                    "Verificación de seguridad requerida",
+                    "Facebook pide que resuelvas un puzzle de seguridad.\n"
+                    "Resuélvelo en el navegador.\nTienes 3 minutos."
+                )
+                print(f"\n{A}{N}⚠️  FACEBOOK REQUIERE VERIFICACIÓN DE SEGURIDAD{X}")
+                print(f"{A}" + "=" * 60 + X)
+                print(f"{A}Facebook detectó actividad inusual y pide verificación.{X}")
+                print(f"{A}Por favor resuelve el puzzle en el navegador.{X}")
+                print(f"{A}Tienes 3 MINUTOS para completarlo.{X}")
+                print(f"{A}" + "=" * 60 + X + "\n")
+                return self._esperar_resolucion_seguridad(timeout=180)
+
+            # Caso 2: Formulario de login normal
             try:
                 login_elements = self.driver.find_elements(By.XPATH,
                     "//input[@name='email' or @name='pass']")
@@ -178,6 +235,16 @@ class PublicadorFacebook:
                         time.sleep(5)
                         tiempo_transcurrido += 5
                         try:
+                            # Verificar si apareció página de seguridad después del login
+                            if self._es_pagina_seguridad_facebook():
+                                print(f"\n{A}⚠️  Facebook pide verificación adicional...{X}")
+                                self._notificar_login(
+                                    "Verificación de seguridad requerida",
+                                    "Facebook pide que resuelvas un puzzle.\n"
+                                    "Resuélvelo en el navegador.\nTienes 3 minutos."
+                                )
+                                return self._esperar_resolucion_seguridad(timeout=180)
+
                             login_check = self.driver.find_elements(By.XPATH,
                                 "//input[@name='email' or @name='pass']")
                             if len(login_check) == 0:
@@ -186,7 +253,7 @@ class PublicadorFacebook:
                                 return True
                             else:
                                 print(f"⏳ Esperando login... ({timeout - tiempo_transcurrido}s restantes)")
-                        except:
+                        except Exception:
                             print("✅ Sesión iniciada correctamente")
                             time.sleep(3)
                             return True
@@ -195,7 +262,7 @@ class PublicadorFacebook:
                 else:
                     print(f"{V}✅ Ya tienes sesión activa en Facebook{X}")
                     return True
-            except:
+            except Exception:
                 print("✅ Ya tienes sesión activa en Facebook")
                 return True
         except Exception as e:

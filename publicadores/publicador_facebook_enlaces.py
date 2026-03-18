@@ -119,64 +119,135 @@ class PublicadorFacebookEnlaces:
         self.driver = webdriver.Chrome(service=servicio, options=opciones)
 
     
+    def _es_pagina_seguridad_facebook(self):
+        """Detecta si Facebook mostró una página de verificación de seguridad"""
+        url_actual = self.driver.current_url
+        urls_seguridad = [
+            'two_step_verification',
+            'checkpoint',
+            'login/device-based',
+            'security_check',
+            'identity_confirmation',
+            'recaptcha',
+            'captcha'
+        ]
+        return any(p in url_actual for p in urls_seguridad)
+
+    def _esperar_resolucion_seguridad(self, timeout=180):
+        """
+        Espera a que el usuario resuelva el puzzle de seguridad de Facebook.
+        Retorna True si el usuario lo resolvió, False si se agotó el tiempo.
+        """
+        tiempo_transcurrido = 0
+        while tiempo_transcurrido < timeout:
+            time.sleep(5)
+            tiempo_transcurrido += 5
+            try:
+                url_actual = self.driver.current_url
+                if not self._es_pagina_seguridad_facebook() \
+                        and 'login' not in url_actual \
+                        and 'facebook.com' in url_actual:
+                    print("✅ Verificación de seguridad resuelta correctamente")
+                    time.sleep(3)
+                    return True
+                else:
+                    restantes = timeout - tiempo_transcurrido
+                    print(f"⏳ Esperando que resuelvas el puzzle... ({restantes}s restantes)")
+            except Exception:
+                return True
+        print("\n❌ Tiempo de espera agotado para resolver el puzzle.")
+        return False
+
+    def _notificar_seguridad(self):
+        """Muestra toast avisando verificación de seguridad requerida"""
+        import threading
+        def _mostrar():
+            import tkinter as tk
+            from compartido.toast import Toast
+            root = tk.Tk()
+            root.withdraw()
+            Toast.advertencia(
+                root,
+                "Verificación de seguridad requerida\n"
+                "Facebook pide que resuelvas un puzzle.\n"
+                "Resuélvelo en el navegador. Tienes 3 minutos.",
+                duracion=10000
+            )
+            root.after(10500, root.destroy)
+            root.mainloop()
+        threading.Thread(target=_mostrar, daemon=True).start()
+
     def verificar_sesion_facebook(self):
         """
         Verifica si hay sesión activa en Facebook
-        Espera si necesita login
-        
+        Espera si necesita login o verificación de seguridad
+
         Returns:
             bool: True si hay sesión activa
         """
         print("🔐 Verificando sesión de Facebook...")
-        
         try:
             self.driver.get("https://www.facebook.com")
             time.sleep(3)
-            
-            # Verificar si hay campos de login
+
+            # Caso 1: Página de seguridad/captcha de Facebook
+            if self._es_pagina_seguridad_facebook():
+                self._notificar_seguridad()
+                print("\n⚠️  FACEBOOK REQUIERE VERIFICACIÓN DE SEGURIDAD")
+                print("=" * 60)
+                print("Facebook detectó actividad inusual y pide verificación.")
+                print("Por favor resuelve el puzzle en el navegador.")
+                print("Tienes 3 MINUTOS para completarlo.")
+                print("=" * 60 + "\n")
+                return self._esperar_resolucion_seguridad(timeout=180)
+
+            # Caso 2: Formulario de login normal
             try:
-                login_elements = self.driver.find_elements(By.XPATH, 
+                login_elements = self.driver.find_elements(By.XPATH,
                     "//input[@name='email' or @name='pass']")
-                
+
                 if len(login_elements) > 0:
                     print("\n⚠️  NO HAS INICIADO SESIÓN EN FACEBOOK")
                     print("=" * 60)
                     print("Por favor INICIA SESIÓN en Facebook ahora.")
                     print("Tienes 2 MINUTOS para iniciar sesión.")
                     print("=" * 60 + "\n")
-                    
+
                     timeout = 120
                     tiempo_transcurrido = 0
-                    
+
                     while tiempo_transcurrido < timeout:
                         time.sleep(5)
                         tiempo_transcurrido += 5
-                        
                         try:
-                            login_check = self.driver.find_elements(By.XPATH, 
+                            # Verificar si apareció página de seguridad después del login
+                            if self._es_pagina_seguridad_facebook():
+                                print("\n⚠️  Facebook pide verificación adicional...")
+                                return self._esperar_resolucion_seguridad(timeout=180)
+
+                            login_check = self.driver.find_elements(By.XPATH,
                                 "//input[@name='email' or @name='pass']")
-                            
                             if len(login_check) == 0:
                                 print("✅ Sesión iniciada correctamente")
                                 time.sleep(3)
                                 return True
                             else:
                                 print(f"⏳ Esperando login... ({timeout - tiempo_transcurrido}s restantes)")
-                        except:
+                        except Exception:
                             print("✅ Sesión iniciada correctamente")
                             time.sleep(3)
                             return True
-                    
+
                     print("\n❌ Tiempo de espera agotado. No se detectó inicio de sesión.")
                     return False
                 else:
                     print("✅ Ya tienes sesión activa en Facebook")
                     return True
-                    
-            except:
+
+            except Exception:
                 print("✅ Ya tienes sesión activa en Facebook")
                 return True
-                
+
         except Exception as e:
             print(f"⚠️  Error verificando sesión: {e}")
             print("Continuando de todos modos...")
