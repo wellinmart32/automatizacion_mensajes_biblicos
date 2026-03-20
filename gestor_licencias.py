@@ -10,7 +10,7 @@ class GestorLicencias:
 
     def __init__(self, nombre_app="MensajesBiblicos"):
         self.nombre_app = nombre_app
-        self.url_backend = "http://localhost:8080/api/public/verificar-licencia"
+        self.url_backend = "https://automapro-backend.onrender.com/api/public/verificar-licencia"
         
         # Código developer maestro (funciona para todas las apps)
         self.codigo_developer_master = "LIC-MASTER-WELLI"
@@ -43,21 +43,22 @@ class GestorLicencias:
         Retorna dict con: hay_actualizacion, version_actual, version_nueva
         """
         try:
-            url = f"{self.url_backend.replace('/verificar-licencia', '')}/version?nombre=Mensajes"
-            respuesta = requests.get(url, timeout=5)
+            url = "https://automapro-backend.onrender.com/api/public/version?nombre=MensajesBiblicos"
+            respuesta = requests.get(url, timeout=10)
             if respuesta.status_code == 200:
                 datos = respuesta.json()
                 version_nueva = datos.get('version', version_actual)
-                hay_actualizacion = version_nueva != version_actual
+                url_descarga = datos.get('rutaArchivo', '')
+                hay_actualizacion = version_nueva != version_actual and version_nueva != ''
                 return {
                     'hay_actualizacion': hay_actualizacion,
                     'version_actual': version_actual,
                     'version_nueva': version_nueva,
-                    'ruta_archivo': datos.get('rutaArchivo', '')
+                    'url_descarga': url_descarga
                 }
         except Exception:
             pass
-        return {'hay_actualizacion': False, 'version_actual': version_actual, 'version_nueva': version_actual}
+        return {'hay_actualizacion': False}
 
     def obtener_codigo_guardado(self):
         """Obtiene el código de licencia guardado localmente"""

@@ -29,6 +29,51 @@ from gestor_licencias import GestorLicencias
 from dialogos_licencia import DialogosLicencia
 
 
+def verificar_actualizacion_disponible():
+    """Verifica si hay una actualización disponible y notifica al usuario"""
+    try:
+        # Leer versión instalada desde version.txt
+        import sys
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        ruta_version = os.path.join(base_dir, 'version.txt')
+        if not os.path.exists(ruta_version):
+            return
+        
+        with open(ruta_version, 'r', encoding='utf-8') as f:
+            version_actual = f.read().strip()
+        
+        gestor_lic = GestorLicencias("MensajesBiblicos")
+        resultado = gestor_lic.verificar_actualizacion(version_actual)
+        
+        if resultado.get('hay_actualizacion'):
+            version_nueva = resultado.get('version_nueva', '')
+            url_descarga = resultado.get('url_descarga', '')
+            print(f"\n🔔 ACTUALIZACIÓN DISPONIBLE: v{version_nueva}")
+            print(f"   Versión actual: v{version_actual}")
+            
+            if url_descarga:
+                import tkinter as tk
+                from tkinter import messagebox
+                root = tk.Tk()
+                root.withdraw()
+                respuesta = messagebox.askyesno(
+                    "🔔 Actualización disponible",
+                    f"Hay una nueva versión disponible: v{version_nueva}\n"
+                    f"Versión actual: v{version_actual}\n\n"
+                    f"¿Deseas descargar la actualización ahora?"
+                )
+                root.destroy()
+                if respuesta:
+                    import webbrowser
+                    webbrowser.open(url_descarga)
+    except Exception as e:
+        print(f"⚠️  No se pudo verificar actualizaciones: {e}")
+
+
 def verificar_licencia_inicio():
     gestor_lic = GestorLicencias("MensajesBiblicos")
     resultado = gestor_lic.verificar_e_iniciar()
@@ -368,6 +413,9 @@ def main():
         print("\n❌ No se pudo verificar la licencia.")
         input("\nPresiona Enter para cerrar...")
         return
+
+    # Verificar actualizaciones disponibles (no bloquea el flujo)
+    verificar_actualizacion_disponible()
 
     try:
         config = leer_config_global()
