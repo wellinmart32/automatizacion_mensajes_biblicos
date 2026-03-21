@@ -803,12 +803,14 @@ class PanelControl:
             messagebox.showerror("❌ Error", f"No se pudo abrir el gestor de tareas:\n{e}")
 
     def _abrir_upgrade(self):
-        """Abre la página de compra — pendiente de URL real"""
-        messagebox.showinfo(
-            "⬆️ Versión Completa",
-            "Para adquirir la versión Completa visita:\n\nautomapro.com\n\n"
-            "Desbloquea WhatsApp, tareas automáticas y publicación de predicaciones."
-        )
+        """Abre la página de compra con el código de licencia del usuario"""
+        import webbrowser
+        try:
+            codigo = self.gestor_licencias.obtener_codigo_guardado()
+            url = f"https://automapro-frontend.vercel.app/aplicacion/1?codigo={codigo}"
+            webbrowser.open(url)
+        except Exception:
+            webbrowser.open("https://automapro-frontend.vercel.app/aplicacion/1")
 
     def _mostrar_mensaje_upgrade(self):
         """Muestra mensaje cuando el usuario intenta acceder a función premium"""
