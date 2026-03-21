@@ -55,7 +55,7 @@ class DialogosLicencia:
         root.destroy()
 
         if respuesta == 'yes':
-            url = f"http://localhost:4200/cliente/comprar?codigo={codigo_licencia}&app=1"
+            url = f"https://automapro-frontend.vercel.app/cliente/comprar?codigo={codigo_licencia}&app=1"
             webbrowser.open(url)
             return False
 
@@ -120,4 +120,4 @@ class DialogosLicencia:
         root.destroy()
 
         if respuesta == 'yes':
-            webbrowser.open("http://localhost:4200/cliente/comprar?app=1")
+            webbrowser.open("https://automapro-frontend.vercel.app/cliente/comprar?app=1")
