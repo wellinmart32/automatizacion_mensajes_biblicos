@@ -244,12 +244,28 @@ class PanelControl:
         header = tk.Frame(self.root, bg="#1a73e8", pady=15)
         header.pack(fill='x')
 
+        # Leer versión desde version.txt
+        try:
+            ruta_version = os.path.join(self.base_dir, 'version.txt')
+            with open(ruta_version, 'r', encoding='utf-8') as f:
+                version = f.read().strip()
+        except Exception:
+            version = '1.0.0'
+
         tk.Label(
             header,
             text="📘 Mensajes Bíblicos",
             font=("Segoe UI", 20, "bold"),
             bg="#1a73e8",
             fg="white"
+        ).pack()
+
+        tk.Label(
+            header,
+            text=f"v{version}",
+            font=("Segoe UI", 9),
+            bg="#1a73e8",
+            fg="#c8d8f8"
         ).pack()
 
         # Badge de licencia
