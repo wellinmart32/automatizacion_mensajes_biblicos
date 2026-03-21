@@ -54,10 +54,11 @@ class GestorLicencias:
                     'hay_actualizacion': hay_actualizacion,
                     'version_actual': version_actual,
                     'version_nueva': version_nueva,
-                    'url_descarga': url_descarga
+                    'url_descarga': url_descarga,
+                    'ruta_archivo': url_descarga
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"⚠️  Error en verificar_actualizacion: {e}")
         return {'hay_actualizacion': False}
 
     def obtener_codigo_guardado(self):

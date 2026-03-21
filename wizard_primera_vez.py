@@ -39,6 +39,16 @@ class WizardPrimeraVez:
         self.root.geometry(f'{width}x{height}+{x}+{y}')
         self.root.deiconify()
 
+        # Reaplicar icono múltiples veces para garantizar que Windows lo aplique
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            ico = os.path.join(base_ico, 'iconos', 'wizard.ico')
+            self.root.after(100, lambda: self.root.iconbitmap(ico))
+            self.root.after(300, lambda: self.root.iconbitmap(ico))
+            self.root.after(500, lambda: self.root.iconbitmap(ico))
+        except Exception:
+            pass
+
         self.paso_actual = 0
         self.datos_config = {
             'codigo_licencia': '',

@@ -23,6 +23,21 @@ from gestor_registro import GestorRegistro
 
 
 def mostrar_banner():
+    # Aplicar icono aquí — consola ya está activa en este punto
+    try:
+        import ctypes as _ct
+        _hwnd = _ct.windll.kernel32.GetConsoleWindow()
+        if _hwnd:
+            _base = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            _ico = os.path.join(_base, 'iconos', 'clapper.ico')
+            if os.path.exists(_ico):
+                _hicon = _ct.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
+                if _hicon:
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+    except Exception:
+        pass
+
     print(f"\n{N}{C}" + "="*70 + X)
     print(f"{N}{C}" + " " * 10 + "📱 EXTRACTOR DE PREDICACIONES DE WHATSAPP" + X)
     print(f"{N}{C}" + " " * 15 + "Sistema de Predicaciones Automáticas" + X)
@@ -129,7 +144,7 @@ def main():
     try:
         import ctypes as _ct
         _hwnd = 0
-        for _ in range(20):
+        for _ in range(50):
             _hwnd = _ct.windll.kernel32.GetConsoleWindow()
             if _hwnd:
                 break
@@ -140,6 +155,10 @@ def main():
             if os.path.exists(_ico):
                 _hicon = _ct.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
                 if _hicon:
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+                    # Reaplicar después de un momento para garantizar
+                    time.sleep(0.3)
                     _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
                     _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
     except Exception:

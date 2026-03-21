@@ -32,8 +32,24 @@ class GestorTareasGUI:
 
         x = (self.root.winfo_screenwidth() // 2) - 450
         y = (self.root.winfo_screenheight() // 2) - 300
+        # Aplicar icono ANTES de mostrar la ventana
+        try:
+            base_ico = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            ico = os.path.join(base_ico, 'iconos', 'calendar.ico')
+            self.root.iconbitmap(ico)
+        except Exception:
+            pass
+
         self.root.geometry(f'900x600+{x}+{y}')
         self.root.deiconify()
+
+        # Reaplicar icono múltiples veces por si Windows lo sobreescribe
+        try:
+            self.root.after(50, lambda: self.root.iconbitmap(ico))
+            self.root.after(200, lambda: self.root.iconbitmap(ico))
+            self.root.after(500, lambda: self.root.iconbitmap(ico))
+        except Exception:
+            pass
 
         self.gestor_licencias = GestorLicencias()
         if not self._verificar_licencia_full():

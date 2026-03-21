@@ -525,7 +525,7 @@ def main():
     try:
         import ctypes as _ct
         _hwnd = 0
-        for _ in range(20):
+        for _ in range(50):
             _hwnd = _ct.windll.kernel32.GetConsoleWindow()
             if _hwnd:
                 break
@@ -536,6 +536,10 @@ def main():
             if os.path.exists(_ico):
                 _hicon = _ct.windll.user32.LoadImageW(0, _ico, 1, 0, 0, 0x10)
                 if _hicon:
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
+                    _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
+                    # Reaplicar después de un momento para garantizar
+                    time.sleep(0.3)
                     _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 1, _hicon)
                     _ct.windll.user32.SendMessageW(_hwnd, 0x0080, 0, _hicon)
     except Exception:

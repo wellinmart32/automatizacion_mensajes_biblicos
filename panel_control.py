@@ -12,7 +12,14 @@ class PanelControl:
     """Panel de control principal - Mensajes Bíblicos"""
 
     def __init__(self):
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('AutomaPro.PanelControlMensajes')
+        except Exception:
+            pass
+
         self.root = tk.Tk()
+        self.root.withdraw()
         self.root.title("📘 Mensajes Bíblicos - Panel de Control")
         self.root.geometry("700x680")
         self.root.resizable(False, False)
@@ -23,15 +30,6 @@ class PanelControl:
             self.root.iconbitmap(os.path.join(base_ico, 'iconos', 'dashboard.ico'))
         except Exception:
             pass
-
-        self.root.withdraw()
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f'{width}x{height}+{x}+{y}')
-        self.root.deiconify()
 
         self.gestor_licencias = GestorLicencias()
         self.licencia = self._verificar_licencia()
@@ -47,6 +45,16 @@ class PanelControl:
             return
 
         self._construir_ui()
+
+        # Centrar después de construir la UI completa
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+        self.root.deiconify()
+
         self._verificar_actualizacion()
 
     def _exe(self, nombre):
