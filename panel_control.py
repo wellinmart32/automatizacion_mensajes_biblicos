@@ -196,10 +196,8 @@ class PanelControl:
 
             def descargar_e_instalar():
                 try:
-                    nombre_archivo = ruta_archivo.split('/')[-1]
-                    url_descarga = f"http://localhost:8080/api/archivos/descargar/{nombre_archivo}"
                     tmp = tempfile.mktemp(suffix=".exe")
-                    urllib.request.urlretrieve(url_descarga, tmp)
+                    urllib.request.urlretrieve(ruta_archivo, tmp)
 
                     self.root.after(0, lambda: label_progreso.config(text="Instalando..."))
                     self.root.after(500, lambda: _ejecutar_instalador(tmp))
