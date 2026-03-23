@@ -303,7 +303,7 @@ class GestorLicencias:
                 self.url_backend,
                 json={'codigoLicencia': codigo_licencia},
                 headers={'Content-Type': 'application/json'},
-                timeout=5
+                timeout=30
             )
             
             if response.status_code == 200:

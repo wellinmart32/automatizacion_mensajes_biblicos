@@ -122,7 +122,7 @@ class WizardPrimeraVez:
                  "• Publicación automática en Facebook\n"
                  "• Rotación inteligente de mensajes\n"
                  "• Integración con predicaciones de WhatsApp\n"
-                 "• Programación de tareas (versión FULL)",
+                 "• Programación de tareas (versión Completa)",
             font=("Segoe UI", 10),
             bg="#f0f0f0",
             justify='left'
@@ -721,7 +721,7 @@ class WizardPrimeraVez:
             # Título sección
             tk.Label(
                 frame,
-                text="🗓️ PROGRAMACIÓN AUTOMÁTICA (COMPLETA)",
+                text="🗓️ PROGRAMACIÓN AUTOMÁTICA (VERSIÓN COMPLETA)",
                 font=("Segoe UI", 11, "bold"),
                 bg="#f0f0f0",
                 fg="#1a73e8"
@@ -826,6 +826,26 @@ class WizardPrimeraVez:
         email = self.entry_email.get().strip() if hasattr(self, 'entry_email') else None
         if not email:
             messagebox.showwarning("Email requerido", "Ingresa el email con el que te registraste en automapro-frontend.vercel.app")
+            return
+        # Validar que el email existe en AutomaPro
+        self.label_formato.config(fg="gray", text="⏳ Verificando email...")
+        self.root.update()
+        try:
+            url_verificar = self.gestor_licencias.url_backend.replace('/verificar-licencia', '/verificar-email')
+            resp = requests.get(url_verificar, params={'email': email}, timeout=30)
+            if resp.status_code == 200 and resp.json().get('existe'):
+                pass
+            else:
+                self.label_formato.config(fg="#dc3545", text="❌ Email no encontrado en AutomaPro")
+                messagebox.showerror(
+                    "Email no registrado",
+                    f"El email '{email}' no está registrado en AutomaPro.\n\n"
+                    "Regístrate en:\nautomapro-frontend.vercel.app"
+                )
+                return
+        except Exception as e:
+            self.label_formato.config(fg="#dc3545", text="❌ No se pudo verificar el email")
+            messagebox.showerror("Error de conexión", "No se pudo verificar el email. Verifica tu conexión.")
             return
         self.label_formato.config(fg="gray", text="⏳ Activando período de prueba...")
         self.root.update()
