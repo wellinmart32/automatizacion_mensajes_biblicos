@@ -329,8 +329,10 @@ class GestorLicencias:
                 raise Exception(f"Error del servidor: {response.status_code}")
                 
         except requests.exceptions.ConnectionError:
-            # Backend no disponible
-            if not forzar_backend and cache and cache.get('valida'):
+            # Backend no disponible — solo FULL/MASTER pueden usar cache offline
+            tipo_cache = cache.get('tipo', 'TRIAL') if cache else 'TRIAL'
+            es_full_cache = tipo_cache in ['FULL', 'MASTER'] or (cache and cache.get('es_developer_permanente'))
+            if not forzar_backend and cache and cache.get('valida') and es_full_cache:
                 # SI hay cache válido → Modo offline permitido
                 if mostrar_mensajes:
                     print("⚠️  Backend no disponible. Usando cache local.")
@@ -373,8 +375,10 @@ class GestorLicencias:
                 }
                 
         except requests.exceptions.Timeout:
-            # Timeout
-            if not forzar_backend and cache and cache.get('valida'):
+            # Timeout — solo FULL/MASTER pueden usar cache offline
+            tipo_cache = cache.get('tipo', 'TRIAL') if cache else 'TRIAL'
+            es_full_cache = tipo_cache in ['FULL', 'MASTER'] or (cache and cache.get('es_developer_permanente'))
+            if not forzar_backend and cache and cache.get('valida') and es_full_cache:
                 if mostrar_mensajes:
                     print("⚠️  Timeout al verificar. Usando cache local.")
                 
@@ -414,8 +418,10 @@ class GestorLicencias:
                 }
                 
         except Exception as e:
-            # Error general
-            if not forzar_backend and cache and cache.get('valida'):
+            # Error general — solo FULL/MASTER pueden usar cache offline
+            tipo_cache = cache.get('tipo', 'TRIAL') if cache else 'TRIAL'
+            es_full_cache = tipo_cache in ['FULL', 'MASTER'] or (cache and cache.get('es_developer_permanente'))
+            if not forzar_backend and cache and cache.get('valida') and es_full_cache:
                 if mostrar_mensajes:
                     print(f"⚠️  Error al verificar ({e}). Usando cache local.")
                 
