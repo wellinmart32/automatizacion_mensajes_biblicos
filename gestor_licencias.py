@@ -60,13 +60,16 @@ class GestorLicencias:
             archivo_uuid.write_text(nuevo_uuid)
             return nuevo_uuid
 
-    def registrar_instalacion(self):
+    def registrar_instalacion(self, email=None):
         """Registra la instalación en el backend y obtiene código TRIAL automáticamente"""
         try:
             device_uuid = self.obtener_uuid_dispositivo()
+            payload = {'deviceUuid': device_uuid, 'nombreApp': self.nombre_app}
+            if email:
+                payload['email'] = email
             response = requests.post(
                 f"{self.url_backend.replace('/verificar-licencia', '')}/registrar-instalacion",
-                json={'deviceUuid': device_uuid, 'nombreApp': self.nombre_app},
+                json=payload,
                 headers={'Content-Type': 'application/json'},
                 timeout=10
             )

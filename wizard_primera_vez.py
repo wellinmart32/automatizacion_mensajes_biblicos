@@ -159,9 +159,26 @@ class WizardPrimeraVez:
         frame = tk.Frame(self.root, bg="#f0f0f0")
         frame.pack(fill='both', expand=True, padx=40, pady=30)
 
+        # Campo email
         tk.Label(
             frame,
-            text="Ingresa tu código de licencia:",
+            text="Email de tu cuenta en AutomaPro:",
+            font=("Segoe UI", 11, "bold"),
+            bg="#f0f0f0"
+        ).pack(anchor='w', pady=(0, 5))
+
+        self.entry_email = tk.Entry(
+            frame,
+            font=("Segoe UI", 11),
+            width=30,
+            justify='center'
+        )
+        self.entry_email.pack(pady=(0, 15))
+        self.entry_email.focus()
+
+        tk.Label(
+            frame,
+            text="Ingresa tu código de licencia (opcional si ya tienes trial):",
             font=("Segoe UI", 11, "bold"),
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 10))
@@ -806,10 +823,14 @@ class WizardPrimeraVez:
 
     def _usar_trial(self):
         """Registra automáticamente la instalación y obtiene código TRIAL"""
+        email = self.entry_email.get().strip() if hasattr(self, 'entry_email') else None
+        if not email:
+            messagebox.showwarning("Email requerido", "Ingresa el email con el que te registraste en automapro-frontend.vercel.app")
+            return
         self.label_formato.config(fg="gray", text="⏳ Activando período de prueba...")
         self.root.update()
         try:
-            codigo = self.gestor_licencias.registrar_instalacion()
+            codigo = self.gestor_licencias.registrar_instalacion(email=email)
             if codigo:
                 self.datos_config['codigo_licencia'] = codigo
                 self.licencia_validada = True
