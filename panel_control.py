@@ -70,15 +70,7 @@ class PanelControl:
         codigo = self.gestor_licencias.obtener_codigo_guardado()
 
         if not codigo:
-            cache = self.gestor_licencias._obtener_cache_local()
-            if cache and cache.get('valida'):
-                return {
-                    'valida': True,
-                    'tipo': cache.get('tipo', 'TRIAL'),
-                    'diasRestantes': cache.get('dias_restantes', 0),
-                    'developer_permanente': cache.get('es_developer_permanente', False)
-                }
-            # Sin licencia — lanzar wizard automáticamente
+            # Sin código — lanzar wizard automáticamente
             import subprocess
             if getattr(sys, 'frozen', False):
                 wizard = os.path.join(os.path.dirname(sys.executable), "WizardMensajes.exe")
@@ -95,6 +87,20 @@ class PanelControl:
         if not resultado['valida']:
             messagebox.showerror("Licencia Inválida", "Tu licencia no es válida o ha expirado.")
             return None
+
+        # Verificar expiración para licencias TRIAL
+        tipo = resultado.get('tipo', 'TRIAL')
+        if tipo == 'TRIAL':
+            dias = resultado.get('diasRestantes', 0)
+            if dias is not None and dias <= 0:
+                messagebox.showwarning(
+                    "⏰ Período de Prueba Expirado",
+                    "Tu período de prueba ha terminado.\n\n"
+                    "Adquiere la versión Completa para seguir usando todas las funciones.\n\n"
+                    "Visita: automapro-frontend.vercel.app"
+                )
+                self._abrir_upgrade()
+                return None
 
         return resultado
 

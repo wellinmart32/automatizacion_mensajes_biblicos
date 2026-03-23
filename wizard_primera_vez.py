@@ -680,7 +680,7 @@ class WizardPrimeraVez:
         resumen_frame = tk.Frame(frame, bg="white", relief='solid', borderwidth=1)
         resumen_frame.pack(fill='x', pady=(0, 15))
 
-        licencia_texto = "PRUEBA" if not self.datos_config['codigo_licencia'] else self.datos_config['codigo_licencia']
+        licencia_texto = "Versión Completa ✅" if self.tipo_licencia in ['FULL', 'MASTER'] else "Período de Prueba (30 días)"
         mensajes_count = len([f for f in os.listdir('mensajes') if f.endswith('.txt')]) if os.path.exists('mensajes') else 0
 
         items = [
@@ -805,17 +805,21 @@ class WizardPrimeraVez:
         self._mostrar_paso()
 
     def _usar_trial(self):
-        self.datos_config['codigo_licencia'] = ''
-        self.licencia_validada = True
-        self.tipo_licencia = 'TRIAL'
-        self.gestor_licencias._guardar_cache_local({
-            'tipo': 'TRIAL',
-            'valida': True,
-            'expirada': False,
-            'diasRestantes': 30,
-            'es_developer_permanente': False
-        })
-        self._siguiente()
+        """Registra automáticamente la instalación y obtiene código TRIAL"""
+        self.label_formato.config(fg="gray", text="⏳ Activando período de prueba...")
+        self.root.update()
+        try:
+            codigo = self.gestor_licencias.registrar_instalacion()
+            if codigo:
+                self.datos_config['codigo_licencia'] = codigo
+                self.licencia_validada = True
+                self.tipo_licencia = 'TRIAL'
+                self.label_formato.config(fg="#28a745", text="✅ Período de prueba activado")
+                self.root.after(1000, self._siguiente)
+            else:
+                self.label_formato.config(fg="#dc3545", text="❌ Error al activar. Verifica tu conexión.")
+        except Exception as e:
+            self.label_formato.config(fg="#dc3545", text=f"❌ Error: {e}")
 
     def _validar_licencia(self):
         codigo = self.entry_licencia.get().strip().upper()

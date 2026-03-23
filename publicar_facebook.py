@@ -32,27 +32,28 @@ def verificar_licencia_inicio():
     gestor_lic = GestorLicencias("MensajesBiblicos")
     resultado = gestor_lic.verificar_e_iniciar()
 
-    if resultado.get('necesita_ingreso'):
-        codigo = DialogosLicencia.solicitar_codigo_licencia()
-        if not codigo:
-            DialogosLicencia.mostrar_error("Necesitas un código de licencia para usar la aplicación")
-            return None
-        gestor_lic.guardar_codigo_licencia(codigo)
-        resultado = gestor_lic.verificar_e_iniciar()
-
-    if resultado.get('error'):
-        DialogosLicencia.mostrar_error(resultado.get('mensaje'))
+    if not resultado.get('valida'):
         return None
 
-    if resultado.get('expirado'):
-        DialogosLicencia.mostrar_trial_expirado(resultado.get('codigo'))
-        return None
-
+    # Verificar expiración para TRIAL
     if resultado.get('tipo') == 'TRIAL':
-        dias = resultado.get('dias_restantes')
-        print(f"\n⚠️  MODO TRIAL - Quedan {dias} días\n")
+        dias = resultado.get('diasRestantes', 0)
+        if dias is not None and dias <= 0:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning(
+                "⏰ Período de Prueba Expirado",
+                "Tu período de prueba ha terminado.\n\n"
+                "Adquiere la versión Completa para seguir publicando.\n\n"
+                "Visita: automapro-frontend.vercel.app"
+            )
+            root.destroy()
+            return None
+        print(f"\n⚠️  MODO PRUEBA - Quedan {dias} días\n")
 
-    if resultado.get('tipo') == 'FULL':
+    if resultado.get('tipo') == 'FULL' or resultado.get('developer_permanente'):
         print("\n✅ Licencia completa activada - Todas las funciones desbloqueadas\n")
 
     return resultado
@@ -364,7 +365,7 @@ def main():
     estado_licencia = verificar_licencia_inicio()
     if not estado_licencia:
         _abrir_consola()
-        print("\n❌ No se pudo verificar la licencia.")
+        print("\n⏰ Acceso bloqueado — período de prueba expirado o licencia inválida.")
         input("\nPresiona Enter para cerrar...")
         return
 

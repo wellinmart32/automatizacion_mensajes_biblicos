@@ -37,6 +37,68 @@ class GestorLicencias:
         """Verifica si es un código developer master"""
         return codigo == self.codigo_developer_master
 
+    def obtener_uuid_dispositivo(self):
+        """Genera un UUID único y estable basado en el hardware del dispositivo"""
+        import hashlib
+        import socket
+        import uuid as uuid_mod
+        try:
+            # Combinar múltiples identificadores del dispositivo
+            nombre_pc = socket.gethostname()
+            usuario_win = os.environ.get('USERNAME', 'unknown')
+            mac = ':'.join(['{:02x}'.format((uuid_mod.getnode() >> i) & 0xff)
+                           for i in range(0, 48, 8)][::-1])
+            identificador = f"{nombre_pc}_{usuario_win}_{mac}_{self.nombre_app}"
+            return hashlib.sha256(identificador.encode()).hexdigest()[:32]
+        except Exception:
+            # Fallback — usar UUID guardado localmente
+            archivo_uuid = self.carpeta_config / 'device.uuid'
+            if archivo_uuid.exists():
+                return archivo_uuid.read_text().strip()
+            nuevo_uuid = str(uuid_mod.uuid4()).replace('-', '')[:32]
+            self.carpeta_config.mkdir(parents=True, exist_ok=True)
+            archivo_uuid.write_text(nuevo_uuid)
+            return nuevo_uuid
+
+    def registrar_instalacion(self):
+        """Registra la instalación en el backend y obtiene código TRIAL automáticamente"""
+        try:
+            device_uuid = self.obtener_uuid_dispositivo()
+            response = requests.post(
+                f"{self.url_backend.replace('/verificar-licencia', '')}/registrar-instalacion",
+                json={'deviceUuid': device_uuid, 'nombreApp': self.nombre_app},
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
+            if response.status_code == 200:
+                datos = response.json()
+                codigo = datos.get('codigo')
+                if codigo:
+                    self.guardar_codigo_licencia(codigo)
+                    return codigo
+        except Exception as e:
+            print(f"⚠️  Error registrando instalación: {e}")
+        return None
+
+    def recuperar_licencia_full_por_email(self, email):
+        """Recupera licencia FULL por email (para reinstalaciones)"""
+        try:
+            url = self.url_backend.replace('/verificar-licencia', '/licencia-por-email')
+            response = requests.get(
+                url,
+                params={'email': email, 'app': self.nombre_app},
+                timeout=10
+            )
+            if response.status_code == 200:
+                datos = response.json()
+                codigo = datos.get('codigo')
+                if codigo:
+                    self.guardar_codigo_licencia(codigo)
+                    return codigo
+        except Exception as e:
+            print(f"⚠️  Error recuperando licencia: {e}")
+        return None
+
     def verificar_actualizacion(self, version_actual):
         """
         Consulta al backend si hay una versión más reciente disponible.
