@@ -813,10 +813,10 @@ class PanelControl:
         import webbrowser
         try:
             codigo = self.gestor_licencias.obtener_codigo_guardado()
-            url = f"https://automapro-frontend.vercel.app/aplicacion/1?codigo={codigo}"
+            url = f"https://automapro-frontend.vercel.app/cliente/comprar?codigo={codigo}&app=1"
             webbrowser.open(url)
         except Exception:
-            webbrowser.open("https://automapro-frontend.vercel.app/aplicacion/1")
+            webbrowser.open("https://automapro-frontend.vercel.app/catalogo")
 
     def _mostrar_mensaje_upgrade(self):
         """Muestra mensaje cuando el usuario intenta acceder a función premium"""

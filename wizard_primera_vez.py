@@ -6,6 +6,9 @@ import configparser
 import re
 import sys
 import subprocess
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from gestor_licencias import GestorLicencias
 
 
@@ -122,7 +125,7 @@ class WizardPrimeraVez:
                  "• Publicación automática en Facebook\n"
                  "• Rotación inteligente de mensajes\n"
                  "• Integración con predicaciones de WhatsApp\n"
-                 "• Programación de tareas (versión Completa)",
+                 "• Programación de tareas (Versión Completa)",
             font=("Segoe UI", 10),
             bg="#f0f0f0",
             justify='left'
