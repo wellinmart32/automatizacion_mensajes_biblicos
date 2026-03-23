@@ -832,7 +832,7 @@ class WizardPrimeraVez:
         self.root.update()
         try:
             url_verificar = self.gestor_licencias.url_backend.replace('/verificar-licencia', '/verificar-email')
-            resp = requests.get(url_verificar, params={'email': email}, timeout=30)
+            resp = requests.get(url_verificar, params={'email': email}, timeout=30, verify=False)
             if resp.status_code == 200 and resp.json().get('existe'):
                 pass
             else:
