@@ -160,30 +160,63 @@ class WizardPrimeraVez:
 
         # Contenido
         frame = tk.Frame(self.root, bg="#f0f0f0")
-        frame.pack(fill='both', expand=True, padx=40, pady=30)
+        frame.pack(fill='both', expand=True, padx=40, pady=20)
 
         # Campo email
         tk.Label(
             frame,
-            text="Email de tu cuenta en AutomaPro:",
+            text="Paso 1 — Ingresa tu email de AutomaPro:",
             font=("Segoe UI", 11, "bold"),
             bg="#f0f0f0"
         ).pack(anchor='w', pady=(0, 5))
 
+        frame_email = tk.Frame(frame, bg="#f0f0f0")
+        frame_email.pack(fill='x', pady=(0, 5))
+
         self.entry_email = tk.Entry(
-            frame,
+            frame_email,
             font=("Segoe UI", 11),
-            width=30,
+            width=28,
             justify='center'
         )
-        self.entry_email.pack(pady=(0, 15))
+        self.entry_email.pack(side='left', padx=(0, 5))
         self.entry_email.focus()
+
+        self.btn_verificar_email = tk.Button(
+            frame_email,
+            text="Verificar",
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a73e8",
+            fg="white",
+            command=self._verificar_email_wizard
+        )
+        self.btn_verificar_email.pack(side='left')
+
+        self.label_estado_email = tk.Label(
+            frame,
+            text="",
+            font=("Segoe UI", 9),
+            bg="#f0f0f0"
+        )
+        self.label_estado_email.pack(anchor='w', pady=(0, 15))
+
+        # Separador
+        tk.Frame(frame, bg="#e0e0e0", height=1).pack(fill='x', pady=(0, 15))
+
+        # Campo código — deshabilitado hasta verificar email
+        tk.Label(
+            frame,
+            text="Paso 2 — ¿Tienes licencia completa? Ingresa tu código:",
+            font=("Segoe UI", 11, "bold"),
+            bg="#f0f0f0"
+        ).pack(anchor='w', pady=(0, 5))
 
         tk.Label(
             frame,
-            text="Ingresa tu código de licencia (opcional si ya tienes trial):",
-            font=("Segoe UI", 11, "bold"),
-            bg="#f0f0f0"
+            text="Si no tienes código, usa el botón 'Usar Prueba' abajo.",
+            font=("Segoe UI", 9),
+            bg="#f0f0f0",
+            fg="gray"
         ).pack(anchor='w', pady=(0, 10))
 
         # Frame para el entry y el formato
@@ -194,10 +227,10 @@ class WizardPrimeraVez:
             entry_frame,
             font=("Segoe UI", 12, "bold"),
             width=20,
-            justify='center'
+            justify='center',
+            state='disabled'
         )
         self.entry_licencia.pack()
-        self.entry_licencia.focus()
         
         # Label de formato esperado
         self.label_formato = tk.Label(
@@ -824,31 +857,94 @@ class WizardPrimeraVez:
         self.paso_actual -= 1
         self._mostrar_paso()
 
+    def _verificar_email_wizard(self):
+        """Verifica el email y determina el estado de la licencia del usuario"""
+        email = self.entry_email.get().strip()
+        if not email:
+            messagebox.showwarning("Email requerido", "Ingresa tu email.")
+            return
+
+        self.label_estado_email.config(fg="gray", text="⏳ Verificando...")
+        self.btn_verificar_email.config(state='disabled')
+        self.root.update()
+
+        try:
+            url = self.gestor_licencias.url_backend.replace('/verificar-licencia', '/verificar-email')
+            resp = requests.get(url, params={'email': email}, timeout=30, verify=False)
+
+            if resp.status_code != 200:
+                self.label_estado_email.config(fg="#dc3545", text="❌ Error al verificar. Intenta nuevamente.")
+                self.btn_verificar_email.config(state='normal')
+                return
+
+            datos = resp.json()
+
+            if not datos.get('existe'):
+                self.label_estado_email.config(fg="#dc3545", text="❌ Email no encontrado en AutomaPro.")
+                messagebox.showerror("Email no registrado",
+                    f"El email '{email}' no está registrado.\n\nRegístrate en:\nautomapro-frontend.vercel.app")
+                self.btn_verificar_email.config(state='normal')
+                return
+
+            tipo = datos.get('tipoLicencia', 'NINGUNA')
+
+            if tipo == 'FULL':
+                # Tiene licencia completa — activar directamente
+                self.label_estado_email.config(fg="#28a745", text="✅ Email verificado — Licencia Completa encontrada")
+                self.entry_licencia.config(state='normal')
+                codigo = datos.get('codigo', '')
+                self.entry_licencia.delete(0, tk.END)
+                self.entry_licencia.insert(0, codigo)
+                self.entry_licencia.config(state='disabled')
+                self.label_formato.config(fg="#28a745", text="✅ LICENCIA COMPLETA VÁLIDA")
+                self.licencia_validada = True
+                self.tipo_licencia = 'FULL'
+                self.btn_verificar_email.config(state='disabled')
+
+            elif tipo == 'TRIAL':
+                dias = datos.get('diasRestantes', 0)
+                expirado = datos.get('expirado', False)
+                if expirado:
+                    # Trial expirado — solo puede ingresar código de licencia completa
+                    self.label_estado_email.config(fg="#ffc107", text="⚠️ Email verificado — Período de prueba expirado")
+                    self.entry_licencia.config(state='normal')
+                    self.label_formato.config(fg="#ffc107", text="Ingresa tu código de licencia completa")
+                    self.btn_verificar_email.config(state='disabled')
+                else:
+                    # Trial vigente
+                    self.label_estado_email.config(fg="#28a745", text=f"✅ Email verificado — Prueba activa ({dias} días restantes)")
+                    self.entry_licencia.config(state='normal')
+                    self.label_formato.config(fg="gray", text="Opcional: ingresa código de licencia completa")
+                    self.licencia_validada = True
+                    self.tipo_licencia = 'TRIAL'
+                    self.btn_verificar_email.config(state='disabled')
+
+            elif tipo == 'NINGUNA':
+                # Sin licencia — puede usar prueba
+                self.label_estado_email.config(fg="#28a745", text="✅ Email verificado")
+                self.entry_licencia.config(state='normal')
+                self.label_formato.config(fg="gray", text="Opcional: ingresa código de licencia completa")
+                self.btn_verificar_email.config(state='disabled')
+
+        except Exception as e:
+            self.label_estado_email.config(fg="#dc3545", text="❌ Error de conexión.")
+            messagebox.showerror("Error", "No se pudo verificar el email. Verifica tu conexión.")
+            self.btn_verificar_email.config(state='normal')
+
     def _usar_trial(self):
         """Registra automáticamente la instalación y obtiene código TRIAL"""
         email = self.entry_email.get().strip() if hasattr(self, 'entry_email') else None
         if not email:
-            messagebox.showwarning("Email requerido", "Ingresa el email con el que te registraste en automapro-frontend.vercel.app")
+            messagebox.showwarning("Email requerido", "Primero verifica tu email con el botón Verificar.")
             return
-        # Validar que el email existe en AutomaPro
-        self.label_formato.config(fg="gray", text="⏳ Verificando email...")
-        self.root.update()
-        try:
-            url_verificar = self.gestor_licencias.url_backend.replace('/verificar-licencia', '/verificar-email')
-            resp = requests.get(url_verificar, params={'email': email}, timeout=30, verify=False)
-            if resp.status_code == 200 and resp.json().get('existe'):
-                pass
-            else:
-                self.label_formato.config(fg="#dc3545", text="❌ Email no encontrado en AutomaPro")
-                messagebox.showerror(
-                    "Email no registrado",
-                    f"El email '{email}' no está registrado en AutomaPro.\n\n"
-                    "Regístrate en:\nautomapro-frontend.vercel.app"
-                )
-                return
-        except Exception as e:
-            self.label_formato.config(fg="#dc3545", text="❌ No se pudo verificar el email")
-            messagebox.showerror("Error de conexión", "No se pudo verificar el email. Verifica tu conexión.")
+        # Verificar que el email fue verificado
+        estado_email = self.label_estado_email.cget("text") if hasattr(self, 'label_estado_email') else ""
+        if not estado_email or "❌" in estado_email:
+            messagebox.showwarning("Email no verificado", "Primero verifica tu email con el botón Verificar.")
+            return
+        # Si ya tiene licencia completa no necesita usar prueba
+        if self.tipo_licencia == 'FULL':
+            messagebox.showinfo("Licencia Completa", "Ya tienes licencia completa activada. Da clic en Siguiente.")
             return
         self.label_formato.config(fg="gray", text="⏳ Activando período de prueba...")
         self.root.update()
@@ -867,18 +963,37 @@ class WizardPrimeraVez:
 
     def _validar_licencia(self):
         codigo = self.entry_licencia.get().strip().upper()
-        
-        # Si está vacío, debe usar TRIAL
+        email = self.entry_email.get().strip() if hasattr(self, 'entry_email') else ""
+
+        # Verificar que el email fue verificado
+        estado_email = self.label_estado_email.cget("text") if hasattr(self, 'label_estado_email') else ""
+        if not estado_email or "❌" in estado_email:
+            messagebox.showwarning("Email no verificado", "Primero verifica tu email con el botón Verificar.")
+            return
+
+        # Si ya tiene licencia FULL activada automáticamente — avanzar directo
+        if self.tipo_licencia == 'FULL' and self.licencia_validada:
+            self.datos_config['codigo_licencia'] = self.entry_licencia.get().strip().upper()
+            self.gestor_licencias.guardar_codigo_licencia(self.datos_config['codigo_licencia'])
+            self._siguiente()
+            return
+
+        # Si tiene TRIAL vigente — avanzar directo
+        if self.tipo_licencia == 'TRIAL' and self.licencia_validada and not codigo:
+            self._siguiente()
+            return
+
+        # Si está vacío y no tiene licencia activa
         if not codigo:
             messagebox.showwarning(
                 "Campo Vacío",
                 "Debes ingresar un código de licencia o presionar 'Usar Prueba'."
             )
             return
-        
+
         # Quitar guiones para validar
         codigo_limpio = re.sub(r'[^A-Z0-9]', '', codigo)
-        
+
         # Validar formato (exactamente 14 caracteres)
         if len(codigo_limpio) != 14:
             messagebox.showerror(
@@ -888,8 +1003,8 @@ class WizardPrimeraVez:
                 f"Tienes: {len(codigo_limpio)} caracteres"
             )
             return
-        
-        # Validar que la licencia haya sido verificada
+
+        # Validar que la licencia haya sido verificada y pertenezca al email
         if not self.licencia_validada:
             messagebox.showerror(
                 "Licencia Inválida",
@@ -897,12 +1012,11 @@ class WizardPrimeraVez:
                 "Por favor verifica el código o usa Prueba."
             )
             return
-        
+
         # Formatear correctamente
-        codigo = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
-        self.datos_config['codigo_licencia'] = codigo
-        self.gestor_licencias.guardar_codigo_licencia(codigo)
-        
+        codigo_formateado = f"{codigo_limpio[:3]}-{codigo_limpio[3:9]}-{codigo_limpio[9:]}"
+        self.datos_config['codigo_licencia'] = codigo_formateado
+        self.gestor_licencias.guardar_codigo_licencia(codigo_formateado)
         self._siguiente()
 
     def _guardar_config_basica(self):
