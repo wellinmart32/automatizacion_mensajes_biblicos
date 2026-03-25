@@ -889,10 +889,10 @@ class WizardPrimeraVez:
             tipo = datos.get('tipoLicencia', 'NINGUNA')
 
             if tipo == 'FULL':
-                # Tiene licencia completa — activar directamente
+                # Tiene licencia completa — activar directamente y cachear
                 self.label_estado_email.config(fg="#28a745", text="✅ Email verificado — Licencia Completa encontrada")
-                self.entry_licencia.config(state='normal')
                 codigo = datos.get('codigo', '')
+                self.entry_licencia.config(state='normal')
                 self.entry_licencia.delete(0, tk.END)
                 self.entry_licencia.insert(0, codigo)
                 self.entry_licencia.config(state='disabled')
@@ -900,6 +900,15 @@ class WizardPrimeraVez:
                 self.licencia_validada = True
                 self.tipo_licencia = 'FULL'
                 self.btn_verificar_email.config(state='disabled')
+                # Cachear datos de licencia FULL para evitar verificación al abrir Panel
+                self.gestor_licencias.guardar_codigo_licencia(codigo)
+                self.gestor_licencias._guardar_cache_local({
+                    'tipo': 'FULL',
+                    'valida': True,
+                    'expirado': False,
+                    'diasRestantes': None,
+                    'developer_permanente': False
+                })
 
             elif tipo == 'TRIAL':
                 dias = datos.get('diasRestantes', 0)
