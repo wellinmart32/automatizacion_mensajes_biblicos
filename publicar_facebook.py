@@ -409,10 +409,22 @@ def main():
 def _verificar_wizard_completado():
     try:
         import subprocess
+        import json
         config_path = os.path.join(
             os.path.expanduser("~"), ".config", "AutomaPro", "MensajesBiblicos", "config.json"
         )
-        if not os.path.exists(config_path):
+        # Verificar si existe el archivo y tiene código de licencia
+        tiene_configuracion = False
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                    if datos.get('codigo_licencia'):
+                        tiene_configuracion = True
+            except Exception:
+                pass
+
+        if not tiene_configuracion:
             if getattr(sys, 'frozen', False):
                 base_dir = os.path.dirname(sys.executable)
                 wizard = os.path.join(base_dir, "WizardMensajes.exe")
