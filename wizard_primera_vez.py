@@ -322,14 +322,15 @@ class WizardPrimeraVez:
             command=self._anterior
         ).pack(side='left', padx=(40, 10))
 
-        tk.Button(
+        self.btn_usar_prueba = tk.Button(
             frame_btn,
             text="Usar Prueba",
             font=("Segoe UI", 10),
             bg="#ffc107",
             width=12,
             command=self._usar_trial
-        ).pack(side='left', padx=10)
+        )
+        self.btn_usar_prueba.pack(side='left', padx=10)
 
         tk.Button(
             frame_btn,
@@ -900,6 +901,8 @@ class WizardPrimeraVez:
                 self.licencia_validada = True
                 self.tipo_licencia = 'FULL'
                 self.btn_verificar_email.config(state='disabled')
+                if hasattr(self, 'btn_usar_prueba'):
+                    self.btn_usar_prueba.config(state='disabled')
                 # Cachear datos de licencia FULL para evitar verificación al abrir Panel
                 self.gestor_licencias.guardar_codigo_licencia(codigo)
                 self.gestor_licencias._guardar_cache_local({
@@ -915,10 +918,13 @@ class WizardPrimeraVez:
                 expirado = datos.get('expirado', False)
                 if expirado:
                     # Trial expirado — solo puede ingresar código de licencia completa
-                    self.label_estado_email.config(fg="#ffc107", text="⚠️ Email verificado — Período de prueba expirado")
+                    self.label_estado_email.config(fg="#dc3545", text="⚠️ Email verificado — Período de prueba expirado")
                     self.entry_licencia.config(state='normal')
                     self.label_formato.config(fg="#ffc107", text="Ingresa tu código de licencia completa")
                     self.btn_verificar_email.config(state='disabled')
+                    # Bloquear botón Usar Prueba
+                    if hasattr(self, 'btn_usar_prueba'):
+                        self.btn_usar_prueba.config(state='disabled')
                 else:
                     # Trial vigente
                     self.label_estado_email.config(fg="#28a745", text=f"✅ Email verificado — Prueba activa ({dias} días restantes)")
