@@ -927,8 +927,12 @@ class WizardPrimeraVez:
                 self.btn_verificar_email.config(state='disabled')
 
         except Exception as e:
-            self.label_estado_email.config(fg="#dc3545", text="❌ Error de conexión.")
-            messagebox.showerror("Error", "No se pudo verificar el email. Verifica tu conexión.")
+            self.label_estado_email.config(fg="#e65100", text="⏳ Servidor iniciando...")
+            messagebox.showwarning(
+                "Servidor iniciando",
+                "El servidor está iniciando. Esto puede tomar hasta 2 minutos.\n\n"
+                "Por favor espera un momento e intenta nuevamente."
+            )
             self.btn_verificar_email.config(state='normal')
 
     def _usar_trial(self):
