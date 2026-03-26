@@ -871,7 +871,7 @@ class WizardPrimeraVez:
 
         try:
             url = self.gestor_licencias.url_backend.replace('/verificar-licencia', '/verificar-email')
-            resp = requests.get(url, params={'email': email}, timeout=30, verify=False)
+            resp = requests.get(url, params={'email': email, 'nombreApp': 'MensajesBiblicos'}, timeout=30, verify=False)
 
             if resp.status_code != 200:
                 self.label_estado_email.config(fg="#dc3545", text="❌ Error al verificar. Intenta nuevamente.")
