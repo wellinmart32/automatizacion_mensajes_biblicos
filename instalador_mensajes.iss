@@ -45,4 +45,4 @@ Name: "{autodesktop}\Mensajes Biblicos"; Filename: "{app}\MensajesBiblicos.exe";
 Name: "{autodesktop}\Panel de Control MB"; Filename: "{app}\PanelControl.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\WizardMensajes.exe"; Description: "Configurar Mensajes Biblicos"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\MensajesBiblicos.exe"; Description: "Iniciar Mensajes Biblicos"; Flags: nowait postinstall skipifsilent
