@@ -40,7 +40,7 @@ class WizardPrimeraVez:
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
-        self.root.deiconify()
+        # NO hacer deiconify aquí — se hará solo si necesita mostrar el wizard
 
         # Reaplicar icono múltiples veces para garantizar que Windows lo aplique
         try:
@@ -63,6 +63,26 @@ class WizardPrimeraVez:
         self.licencia_validada = False
         self.tipo_licencia = None
 
+        # Si ya existe configuración, lanzar Panel de Control directamente sin mostrar wizard
+        if self.gestor_licencias.obtener_codigo_guardado():
+            try:
+                if getattr(sys, 'frozen', False):
+                    base_dir = os.path.dirname(sys.executable)
+                    panel = os.path.join(base_dir, "PanelControl.exe")
+                else:
+                    panel = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel_control.py")
+                if os.path.exists(panel):
+                    if panel.endswith('.exe'):
+                        subprocess.Popen([panel])
+                    else:
+                        subprocess.Popen([sys.executable, panel])
+            except Exception:
+                pass
+            self.root.after(100, self.root.destroy)
+            return
+
+        # Solo mostrar el wizard si no hay configuración previa
+        self.root.deiconify()
         self._mostrar_paso()
 
     def _limpiar_ventana(self):
