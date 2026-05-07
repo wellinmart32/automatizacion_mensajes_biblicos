@@ -236,22 +236,68 @@ class ExtractorWhatsAppPredicaciones:
             root.mainloop()
         threading.Thread(target=_mostrar, daemon=True).start()
 
-    def esperar_whatsapp_cargado(self, timeout=60):
+    def esperar_whatsapp_cargado(self, timeout=300):
         """Espera a que WhatsApp Web esté completamente cargado"""
         print("⏳ Esperando que WhatsApp Web cargue...")
         print("   (Si no has iniciado sesión, escanea el código QR)")
 
-        notificado = False
-        inicio = time.time()
+        TIMEOUT_SIN_PROGRESO = 60
+        import re
+
+        notificado           = False
+        inicio               = time.time()
+        ultimo_porcentaje    = -1
+        tiempo_ultimo_cambio = time.time()
+
         try:
             while True:
+                tiempo_total = time.time() - inicio
+
+                if tiempo_total > timeout:
+                    print(f"\n❌ WhatsApp no cargó en {timeout // 60} minutos")
+                    return False
+
                 try:
-                    WebDriverWait(self.driver, 5).until(
-                        EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"))
+                    WebDriverWait(self.driver, 3).until(
+                        EC.presence_of_element_located(
+                            (By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
+                        )
                     )
                     print("\n✅ WhatsApp Web cargado correctamente\n")
                     return True
                 except Exception:
+                    pass
+
+                porcentaje_actual = -1
+                try:
+                    elementos = self.driver.find_elements(
+                        By.XPATH, "//*[contains(text(), '%')]"
+                    )
+                    for el in elementos:
+                        texto = el.text
+                        if '%' in texto and any(c.isdigit() for c in texto):
+                            numeros = re.findall(r'\d+', texto)
+                            if numeros:
+                                porcentaje_actual = int(numeros[0])
+                                break
+                except Exception:
+                    pass
+
+                if porcentaje_actual != -1:
+                    if porcentaje_actual != ultimo_porcentaje:
+                        ultimo_porcentaje    = porcentaje_actual
+                        tiempo_ultimo_cambio = time.time()
+                        print(f"⏳ Cargando... {porcentaje_actual}% ({int(tiempo_total)}s)    ", end='\r')
+                    else:
+                        sin_progreso = time.time() - tiempo_ultimo_cambio
+                        if sin_progreso > TIMEOUT_SIN_PROGRESO:
+                            print(f"\n❌ Sin progreso por {TIMEOUT_SIN_PROGRESO}s (detenido en {ultimo_porcentaje}%)")
+                            return False
+                        print(f"⏳ Cargando... {porcentaje_actual}% (sin cambio {int(sin_progreso)}s)    ", end='\r')
+                else:
+                    sin_progreso = time.time() - tiempo_ultimo_cambio
+                    print(f"⏳ Esperando interfaz... {int(tiempo_total)}s    ", end='\r')
+
                     if not notificado:
                         try:
                             qr_elements = self.driver.find_elements(By.XPATH, "//canvas[@aria-label]")
@@ -263,13 +309,16 @@ class ExtractorWhatsAppPredicaciones:
                                 notificado = True
                         except Exception:
                             pass
-                    if time.time() - inicio >= timeout:
-                        break
+
+                    if sin_progreso > TIMEOUT_SIN_PROGRESO and tiempo_total > 30:
+                        print(f"\n❌ Sin actividad por {TIMEOUT_SIN_PROGRESO}s")
+                        return False
+
+                time.sleep(3)
+
         except Exception as e:
             print(f"\n❌ Error esperando carga de WhatsApp: {e}")
             return False
-        print(f"\n❌ WhatsApp no cargó en {timeout}s")
-        return False
     
     def buscar_grupo(self, nombre_grupo):
         """Busca y abre un grupo específico"""

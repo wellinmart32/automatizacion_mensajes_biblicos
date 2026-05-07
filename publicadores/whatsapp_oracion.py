@@ -46,7 +46,7 @@ class PublicadorWhatsAppOracion:
 
         # Tiempos de espera
         self.ESPERA_ENTRE_GRUPOS = 3
-        self.ESPERA_MAX_CARGA_WHATSAPP = 90   # Máximo 90s esperando que cargue WhatsApp
+        self.ESPERA_MAX_CARGA_WHATSAPP = 300  # Timeout máximo absoluto (dinámico)
         self.ESPERA_BUSQUEDA = 5
 
         self.mensajes_grupos = []
@@ -234,35 +234,87 @@ class PublicadorWhatsAppOracion:
         threading.Thread(target=_mostrar, daemon=True).start()
 
     def abrir_whatsapp_web(self):
-        """Abre WhatsApp Web y espera a que cargue completamente"""
+        """Abre WhatsApp Web con espera dinámica basada en progreso de carga"""
         print("\n📱 Abriendo WhatsApp Web...")
+
+        TIMEOUT_MAXIMO        = 300  # 5 minutos máximo total
+        TIMEOUT_SIN_PROGRESO  = 60   # 60s sin cambio en porcentaje → cancelar
 
         try:
             self.driver.get("https://web.whatsapp.com")
 
-            print(f"   ⏳ Esperando que WhatsApp cargue (máximo {self.ESPERA_MAX_CARGA_WHATSAPP}s)...")
-            print("   ℹ️  Si es la primera vez, puede tardar mientras sincroniza con tu móvil...")
+            print("   ⏳ Esperando que WhatsApp cargue...")
+            print("   ℹ️  Si lleva mucho tiempo sin sesión, puede tardar varios minutos...")
 
-            # Esperar hasta que aparezca el campo de búsqueda de chats
-            # Esto confirma que WhatsApp cargó completamente y está listo
-            inicio = time.time()
-            cargado = False
+            inicio               = time.time()
+            ultimo_porcentaje    = -1
+            tiempo_ultimo_cambio = time.time()
+            notificado           = False
 
-            notificado = False
-            while (time.time() - inicio) < self.ESPERA_MAX_CARGA_WHATSAPP:
+            while True:
+                tiempo_total = time.time() - inicio
+
+                # Timeout máximo absoluto
+                if tiempo_total > TIMEOUT_MAXIMO:
+                    print(f"\n   ❌ WhatsApp no cargó en {TIMEOUT_MAXIMO // 60} minutos")
+                    print("   💡 Verifica que tu móvil esté conectado y sincronizado")
+                    return False
+
+                # Verificar si ya cargó la interfaz principal
                 try:
-                    # Verificar si ya cargó la interfaz principal (campo de búsqueda visible)
-                    WebDriverWait(self.driver, 5).until(
+                    WebDriverWait(self.driver, 3).until(
                         EC.presence_of_element_located(
                             (By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
                         )
                     )
-                    cargado = True
-                    break
+                    print(f"\n   ✅ WhatsApp Web cargado correctamente")
+                    time.sleep(2)
+                    return True
                 except TimeoutException:
+                    pass
+
+                # Detectar porcentaje de carga para seguimiento de progreso
+                porcentaje_actual = -1
+                try:
+                    import re
+                    elementos = self.driver.find_elements(
+                        By.XPATH, "//*[contains(text(), '%')]"
+                    )
+                    for el in elementos:
+                        texto = el.text
+                        if '%' in texto and any(c.isdigit() for c in texto):
+                            numeros = re.findall(r'\d+', texto)
+                            if numeros:
+                                porcentaje_actual = int(numeros[0])
+                                break
+                except Exception:
+                    pass
+
+                # Verificar si hay progreso
+                if porcentaje_actual != -1:
+                    if porcentaje_actual != ultimo_porcentaje:
+                        ultimo_porcentaje    = porcentaje_actual
+                        tiempo_ultimo_cambio = time.time()
+                        print(f"   ⏳ Cargando... {porcentaje_actual}% "
+                              f"({int(tiempo_total)}s transcurridos)    ", end='\r')
+                    else:
+                        sin_progreso = time.time() - tiempo_ultimo_cambio
+                        if sin_progreso > TIMEOUT_SIN_PROGRESO:
+                            print(f"\n   ❌ Sin progreso por {TIMEOUT_SIN_PROGRESO}s "
+                                  f"(detenido en {ultimo_porcentaje}%)")
+                            print("   💡 Verifica tu conexión a internet y que el móvil esté activo")
+                            return False
+                        print(f"   ⏳ Cargando... {porcentaje_actual}% "
+                              f"(sin cambio por {int(sin_progreso)}s)    ", end='\r')
+                else:
+                    sin_progreso = time.time() - tiempo_ultimo_cambio
+                    print(f"   ⏳ Esperando interfaz... {int(tiempo_total)}s    ", end='\r')
+
                     if not notificado:
                         try:
-                            qr_elements = self.driver.find_elements(By.XPATH, "//canvas[@aria-label]")
+                            qr_elements = self.driver.find_elements(
+                                By.XPATH, "//canvas[@aria-label]"
+                            )
                             if qr_elements:
                                 self._notificar_login(
                                     "Escanea el código QR",
@@ -271,18 +323,13 @@ class PublicadorWhatsAppOracion:
                                 notificado = True
                         except Exception:
                             pass
-                    segundos_esperados = int(time.time() - inicio)
-                    print(f"   ⏳ Esperando interfaz... {segundos_esperados}s", end='\r')
-                    time.sleep(3)
 
-            if cargado:
-                print(f"\n   ✅ WhatsApp Web cargado correctamente")
-                time.sleep(2)  # Pequeña pausa adicional para estabilizar
-                return True
-            else:
-                print(f"\n   ❌ WhatsApp no cargó en {self.ESPERA_MAX_CARGA_WHATSAPP}s")
-                print("   💡 Verifica que tu móvil esté conectado y sincronizado")
-                return False
+                    if sin_progreso > TIMEOUT_SIN_PROGRESO and tiempo_total > 30:
+                        print(f"\n   ❌ Sin actividad por {TIMEOUT_SIN_PROGRESO}s")
+                        print("   💡 Verifica tu conexión a internet")
+                        return False
+
+                time.sleep(3)
 
         except Exception as e:
             print(f"   ❌ Error abriendo WhatsApp Web: {e}")
