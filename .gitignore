@@ -31,6 +31,9 @@ cola-facebook/publicados/*
 !cola-facebook/pendientes/.gitkeep
 !cola-facebook/publicados/.gitkeep
 
+# Ignorar historial de predicaciones publicadas (dato dinámico)
+cola-facebook/historial_publicados.json
+
 # ============================================================
 # ARCHIVOS DE PYTHON
 # ============================================================

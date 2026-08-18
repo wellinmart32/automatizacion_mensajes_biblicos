@@ -9,11 +9,11 @@ navegador = firefox
 modo_debug = si
 
 [MENSAJES]
-seleccion = aleatoria
+seleccion = aleatorio
 historial_evitar_repetir = 5
 formato_fecha = no
 agregar_hashtags = no
-hashtags = #Fe,#Biblia,#Reflexión
+hashtags = #Fe,#Biblia
 agregar_firma = no
 texto_firma = Publicado automáticamente
 
@@ -36,9 +36,9 @@ permitir_duplicados = no
 permitir_forzar_publicacion_manual = si
 
 [PREDICACIONES]
-activar_predicaciones = no
+activar_predicaciones = si
 alternar_con_predicaciones = no
-nombre_grupo_whatsapp =
+nombre_grupo_whatsapp = Prédicas
 mensajes_por_extraccion = 10
 navegador = firefox
 usar_perfil_existente = si
@@ -50,9 +50,12 @@ tiempo_espera_previsualizacion = 12
 usar_estrategia_optimizada_enlaces = si
 
 [ORACIONES]
-navegador = chrome
+navegador = firefox
 usar_perfil_existente = si
 
 [DEBUG]
 modo_debug = detallado
+
+[SECUENCIA]
+modulos_activos = biblico,extraer,publicar_predica
 

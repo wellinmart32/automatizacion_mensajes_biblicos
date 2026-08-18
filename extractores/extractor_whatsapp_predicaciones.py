@@ -236,6 +236,47 @@ class ExtractorWhatsAppPredicaciones:
             root.mainloop()
         threading.Thread(target=_mostrar, daemon=True).start()
 
+    # Selectores en cascada: WhatsApp cambia su HTML de vez en cuando.
+    # Se prueban en orden hasta que uno funcione.
+    SELECTORES_BARRA_BUSQUEDA = [
+        "//input[@data-tab='3']",
+        "//div[@contenteditable='true'][@data-tab='3']",
+        "//input[contains(@aria-label, 'Buscar')]",
+    ]
+
+    # Selectores en cascada para identificar mensajes propios dentro del chat.
+    # WhatsApp ya no usa la clase 'message-out'; ahora se detecta por el
+    # ícono de estado de entrega (✓ Enviado / ✓✓ Leído), que solo aparece
+    # en los mensajes que el usuario envió.
+    SELECTORES_MENSAJES_PROPIOS = [
+        "//div[@data-testid='msg-container'][.//span[contains(@aria-label, 'Enviado')]]",
+        "//div[@data-testid='msg-container'][.//span[contains(@aria-label, 'Leído')]]",
+        "//div[contains(@class, 'message-out')]",
+    ]
+
+    def _encontrar_mensajes_propios(self):
+        """Encuentra los mensajes propios en el DOM probando varios selectores"""
+        for selector in self.SELECTORES_MENSAJES_PROPIOS:
+            try:
+                elementos = self.driver.find_elements(By.XPATH, selector)
+                if elementos:
+                    return elementos
+            except Exception:
+                continue
+        return []
+
+    def _encontrar_barra_busqueda(self, timeout=3):
+        """Busca la barra de búsqueda probando varios selectores por si WhatsApp cambió su HTML"""
+        for selector in self.SELECTORES_BARRA_BUSQUEDA:
+            try:
+                elemento = WebDriverWait(self.driver, timeout).until(
+                    EC.presence_of_element_located((By.XPATH, selector))
+                )
+                return elemento
+            except Exception:
+                continue
+        return None
+
     def esperar_whatsapp_cargado(self, timeout=300):
         """Espera a que WhatsApp Web esté completamente cargado"""
         print("⏳ Esperando que WhatsApp Web cargue...")
@@ -257,16 +298,9 @@ class ExtractorWhatsAppPredicaciones:
                     print(f"\n❌ WhatsApp no cargó en {timeout // 60} minutos")
                     return False
 
-                try:
-                    WebDriverWait(self.driver, 3).until(
-                        EC.presence_of_element_located(
-                            (By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
-                        )
-                    )
+                if self._encontrar_barra_busqueda(timeout=3):
                     print("\n✅ WhatsApp Web cargado correctamente\n")
                     return True
-                except Exception:
-                    pass
 
                 porcentaje_actual = -1
                 try:
@@ -326,9 +360,10 @@ class ExtractorWhatsAppPredicaciones:
         
         try:
             # Limpiar barra de búsqueda
-            barra_busqueda = self.driver.find_element(
-                By.XPATH, "//div[@contenteditable='true'][@data-tab='3']"
-            )
+            barra_busqueda = self._encontrar_barra_busqueda(timeout=10)
+            if not barra_busqueda:
+                print("❌ No se encontró la barra de búsqueda")
+                return False
             barra_busqueda.click()
             time.sleep(0.5)
             
@@ -407,9 +442,7 @@ class ExtractorWhatsAppPredicaciones:
                     break
                 
                 # Obtener mensajes actuales del DOM (solo mensajes propios)
-                mensajes_dom = self.driver.find_elements(
-                    By.XPATH, "//div[contains(@class, 'message-out')]"
-                )
+                mensajes_dom = self._encontrar_mensajes_propios()
                 
                 print(f"{'─'*60}")
                 print(f"📊 Iteración #{scrolls_realizados + 1}")

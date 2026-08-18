@@ -261,17 +261,10 @@ class PublicadorWhatsAppOracion:
                     return False
 
                 # Verificar si ya cargó la interfaz principal
-                try:
-                    WebDriverWait(self.driver, 3).until(
-                        EC.presence_of_element_located(
-                            (By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
-                        )
-                    )
+                if self._encontrar_barra_busqueda(timeout=3):
                     print(f"\n   ✅ WhatsApp Web cargado correctamente")
                     time.sleep(2)
                     return True
-                except TimeoutException:
-                    pass
 
                 # Detectar porcentaje de carga para seguimiento de progreso
                 porcentaje_actual = -1
@@ -335,6 +328,42 @@ class PublicadorWhatsAppOracion:
             print(f"   ❌ Error abriendo WhatsApp Web: {e}")
             return False
 
+    # Selectores en cascada: WhatsApp cambia su HTML de vez en cuando.
+    SELECTORES_BARRA_BUSQUEDA = [
+        "//input[@data-tab='3']",
+        "//div[@contenteditable='true'][@data-tab='3']",
+        "//input[contains(@aria-label, 'Buscar')]",
+    ]
+
+    SELECTORES_CAMPO_MENSAJE = [
+        "//div[@contenteditable='true'][@data-tab='10']",
+        "//div[@contenteditable='true'][contains(@aria-label, 'Escribe un mensaje')]",
+    ]
+
+    def _encontrar_barra_busqueda(self, timeout=3):
+        """Busca la barra de búsqueda probando varios selectores"""
+        for selector in self.SELECTORES_BARRA_BUSQUEDA:
+            try:
+                elemento = WebDriverWait(self.driver, timeout).until(
+                    EC.presence_of_element_located((By.XPATH, selector))
+                )
+                return elemento
+            except Exception:
+                continue
+        return None
+
+    def _encontrar_campo_mensaje(self, timeout=15):
+        """Busca el campo de escribir mensaje probando varios selectores"""
+        for selector in self.SELECTORES_CAMPO_MENSAJE:
+            try:
+                elemento = WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
+                return elemento
+            except Exception:
+                continue
+        return None
+
     def buscar_chat(self, nombre_chat):
         """Busca chat por nombre"""
         print(f"\n🔍 Buscando chat: {nombre_chat}")
@@ -360,11 +389,10 @@ class PublicadorWhatsAppOracion:
             except:
                 pass
 
-            campo_busqueda = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, "//div[@contenteditable='true'][@data-tab='3']")
-                )
-            )
+            campo_busqueda = self._encontrar_barra_busqueda(timeout=10)
+            if not campo_busqueda:
+                print("   ❌ No se encontró la barra de búsqueda")
+                return False
             campo_busqueda.click()
             time.sleep(0.8)
 
@@ -417,11 +445,10 @@ class PublicadorWhatsAppOracion:
             from selenium.webdriver.common.action_chains import ActionChains
             time.sleep(1.5)
 
-            campo_mensaje = WebDriverWait(self.driver, 15).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "//div[@contenteditable='true'][@data-tab='10']")
-                )
-            )
+            campo_mensaje = self._encontrar_campo_mensaje(timeout=15)
+            if not campo_mensaje:
+                print("   ❌ No se encontró el campo de mensaje")
+                return False
 
             self.driver.execute_script("arguments[0].focus();", campo_mensaje)
             time.sleep(0.5)
