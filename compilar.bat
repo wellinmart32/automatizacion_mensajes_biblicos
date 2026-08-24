@@ -16,10 +16,11 @@ pause
 set PYINSTALLER=py -m PyInstaller
 set DATOS_BASE=--add-data "compartido;compartido" --add-data "iconos;iconos" --add-data "config_global.txt;." --add-data "version.txt;."
 set FLAGS=--onefile --windowed --noconfirm
+set FLAGS_CONSOLA=--onefile --noconfirm
 
 echo.
 echo [1/8] Compilando MensajesBiblicos.exe...
-%PYINSTALLER% %FLAGS% %DATOS_BASE% --add-data "publicadores;publicadores" --add-data "extractores;extractores" --add-data "mensajes;mensajes" --add-data "llamados-oracion;llamados-oracion" --icon=iconos/dashboard.ico --name MensajesBiblicos publicar_facebook.py
+%PYINSTALLER% %FLAGS_CONSOLA% %DATOS_BASE% --add-data "publicadores;publicadores" --add-data "extractores;extractores" --add-data "mensajes;mensajes" --add-data "llamados-oracion;llamados-oracion" --icon=iconos/dashboard.ico --name MensajesBiblicos publicar_facebook.py
 echo.
 
 echo [2/8] Compilando PanelControl.exe...
